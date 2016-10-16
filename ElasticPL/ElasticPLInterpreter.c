@@ -412,6 +412,7 @@ extern char* compile(ast* exp) {
 			
 			break;
 		case NODE_BLOCK:
+			sprintf(result,"{\n%s\n}\n",lval);
 			break;
 		case NODE_ADD:
 			
