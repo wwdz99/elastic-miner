@@ -70,14 +70,12 @@ enum submit_commands {
 
 struct work {
 	int thr_id;
+	uint64_t block_id;
 	uint64_t work_id;
-	char work_id_str[22];
+	uint32_t pow_target[8];
 	int32_t vm_input[12];					// Value Of Random VM Inputs
 	unsigned char multiplicator[32];
 	unsigned char announcement_hash[32];
-	enum submit_commands req_type;
-	time_t delay_tm;
-	int retries;
 };
 
 struct cpu_info {
@@ -107,17 +105,21 @@ enum workio_commands {
 	WC_SUBMIT_WORK,
 };
 
+struct submit_req {
+	int thr_id;
+	enum submit_commands req_type;
+	time_t start_tm;	// Time Request Was Submitted
+	time_t delay_tm;	// If Populated, Time When Next Request Can Be Sent
+	int retries;
+	char work_id[22];	// Work ID As A String
+	char hash[65];		// Announcment Hash In Hex
+	char mult[65];		// Multiplicator In Hex
+};
+
 struct workio_cmd {
 	enum workio_commands cmd;
 	struct thr_info *thr;
-	struct work *work;
-};
-
-struct bounty_req {
-	time_t req_time;
-	time_t start_tm;
-	int retries;
-	struct work *work;
+	struct submit_req *req;
 };
 
 struct header_info {
@@ -248,10 +250,10 @@ static int work_decode(const json_t *val, struct work *work, char *source_code);
 static int get_upstream_work(CURL *curl, struct work *work);
 static bool blacklist_work(char *work_id, enum blacklist_reason reason);
 
-static bool submit_work(struct thr_info *thr, struct work *work_in);
-static bool submit_upstream_work(CURL *curl, struct work *work);
+static bool submit_work(struct thr_info *thr, struct submit_req *req);
+static bool submit_upstream_work(CURL *curl, struct submit_req *req);
 static bool delete_submit_req(int idx);
-static bool add_submit_req(struct work *work);
+static bool add_submit_req(struct work *work, enum submit_commands req_type);
 
 // Function Prototypes - util.c
 extern void applog(int prio, const char *fmt, ...);

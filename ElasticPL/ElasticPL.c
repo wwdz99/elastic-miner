@@ -54,7 +54,7 @@ extern bool create_epl_vm(char *source) {
 
 	vm_ast = calloc(vm_ast_cnt, sizeof(ast*));
 	memcpy(vm_ast, stack_exp, vm_ast_cnt * sizeof(ast*));
-
+	
 	free(stack_op);
 	free(stack_exp);
 

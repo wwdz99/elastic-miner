@@ -60,10 +60,9 @@ static enum prefs opt_pref = PREF_WCET;
 char pref_workid[32];
 
 int num_cpus;
-uint64_t g_block_id;
-char g_block_id_str[22];
-uint32_t g_pow_target[8];
-unsigned char g_pow_target_str[32];
+char *g_work_nm;
+char *g_work_id;
+unsigned char g_pow_target[65];
 
 pthread_mutex_t applog_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t work_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -75,9 +74,6 @@ __thread int vm_stack_idx;
 __thread bool vm_bounty;
 __thread uint64_t vm_state1 = 0L;
 __thread uint64_t vm_state2 = 0L;
-
-char source[MAX_SOURCE_SIZE];
-char str[MAX_SOURCE_SIZE];
 
 char *rpc_url = NULL;
 char *rpc_user = NULL;
@@ -93,8 +89,9 @@ static time_t g_work_time = 0;
 static struct blacklisted_work *blacklist;
 static int g_blacklist_cnt = 0;
 
-struct bounty_req *g_submit_req;
+struct submit_req *g_submit_req;
 int g_submit_req_cnt = 0;
+
 uint32_t g_bounty_accepted_cnt = 0;
 uint32_t g_bounty_rejected_cnt = 0;
 uint32_t g_bounty_timeout_cnt = 0;
@@ -484,11 +481,9 @@ static void *test_vm_thread(void *userdata) {
 		goto out;
 
 	applog(LOG_DEBUG, "DEBUG: Running ElasticPL VM");
-	g_block_id = 8319514204250745608;
-	g_pow_target[0] = 0x0000FFFF;
-	unsigned char pk[] = { 0x96,0x4b,0xe5,0x3d,0xb0,0xcc,0x61,0xdd,0x46,0x5f,0xa7,0x65,0xb0,0x36,0x51,0xc1,0xbb,0x06,0xc7,0xce,0x6b,0x73,0x8b,0xe7,0x39,0xee,0x1f,0x14,0x3e,0xa1,0x91,0x0f };
-	memcpy(publickey, pk, 32);
-	work.work_id = 1231951424250745456;
+	work.block_id = 1234567890L;
+	work.pow_target[0] = 0x0000FFFF;
+	work.work_id = 9876543210L;
 
 	rc = scanhash(0, &work, &cnt);
 
@@ -508,6 +503,7 @@ out:
 	return NULL;
 }
 
+<<<<<<< HEAD
 static void *test_compiler_thread(void *userdata) {
 	struct thr_info *mythr = (struct thr_info *) userdata;
 	int rc, thr_id = mythr->id;
@@ -540,6 +536,8 @@ out:
 #define VM_INPUTS 12
 #define VM_MSG_SIZE 256048
 
+=======
+>>>>>>> 00f340eb32bf7b94a6c722f40655cb141b22c14f
 static bool get_vm_input(struct work *work) {
 	int i;
 	char msg[80];
@@ -547,7 +545,7 @@ static bool get_vm_input(struct work *work) {
 	uint32_t *msg32 = (uint32_t *)msg;
 	uint32_t *hash32 = (uint32_t *)hash;
 	uint32_t *workid32 = (uint32_t *)&work->work_id;
-	uint32_t *blockid32 = (uint32_t *)&g_block_id;
+	uint32_t *blockid32 = (uint32_t *)&work->block_id;
 
 	memcpy(&msg[0], work->multiplicator, 32);
 	memcpy(&msg[32],  publickey, 32);
@@ -604,11 +602,19 @@ static int scanhash(int thr_id, struct work *work, long *hashes_done) {
 		mult32[6] = genrand_int32();
 		mult32[7] = genrand_int32();
 
+		//// POW Test
 		//unsigned char c2[] = { 0x97,0x8E,0xA1,0x62,0xE1,0x0F,0xAA,0x50,0x7C,0xEA,0x49,0x14,0x2D,0x29,0xD7,0xEB,0x84,0x3D,0x20,0x2B,0xDC,0xEB,0xF4,0x83,0x01,0x0F,0xFD,0x41,0x27,0x45,0xA8,0xA1 };
 		//memcpy(&work->multiplicator[0], c2, 32);
 		//work->work_id = 3832971199958062557;
-		//g_block_id = -2761506866885707942;
+		//work->block_id = -2761506866885707942;
 		////Digest :  E359006C0A1C01358CCA7CC99D004AD1
+
+		//// Bounty Test
+		//unsigned char c2[] = { 0xC9,0x34,0x61,0x79,0x2D,0xAB,0x2D,0x8D,0xEE,0xEC,0x68,0x3E,0x20,0x03,0xF4,0xF7,0x6C,0x50,0x1F,0x55,0xC5,0xC1,0x95,0x46,0x28,0x60,0xE7,0x5B,0x13,0xAF,0xEA,0x22 };
+		//memcpy(&work->multiplicator[0], c2, 32);
+		//work->work_id = -8186430844110356191;
+		//work->block_id = -1201033493715896973;
+		////Digest :  2E1401A073EB39375C8D2430F289842E181E84232FBDBE70C5B8CFA64A75D8C4
 
 		// Get Values For VM Inputs
 		get_vm_input(work);
@@ -639,7 +645,7 @@ static int scanhash(int thr_id, struct work *work, long *hashes_done) {
 			sha256(msg, 64, hash);
 
 			// POW Solution Found
-			if (swap32(hash32[0]) < g_pow_target[0])
+			if (swap32(hash32[0]) <= work->pow_target[0])
 					rc = 1;
 			else
 				rc = 0;
@@ -795,7 +801,7 @@ static int get_upstream_work(CURL *curl, struct work *work) {
 			applog(LOG_DEBUG, "DEBUG: ElasticPL Source Code -\n%s", source_code);
 
 		if (!create_epl_vm(source_code)) {
-			blacklist_work(work->work_id_str, BLST_SYNTAX_ERROR);
+			blacklist_work(g_work_id, BLST_SYNTAX_ERROR);
 			return 0;
 		}
 
@@ -821,6 +827,17 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 	long xel_per_pow;
 	json_t *wrk, *pkg;
 
+	memset(work, 0, sizeof(struct work));
+	if (g_work_nm) {
+		free(g_work_nm);
+		g_work_nm = NULL;
+	}
+	if (g_work_id) {
+		free(g_work_id);
+		g_work_id = NULL;
+	}
+	if(g_pow_target) strcpy(g_pow_target, "");
+
 	if (opt_protocol) {
 		str = json_dumps(val, JSON_INDENT(3));
 		applog(LOG_DEBUG, "DEBUG: JSON Response -\n%s", str);
@@ -842,8 +859,8 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 		return -1;
 	}
 
-	strcpy(g_pow_target_str, tgt);
-	rc = hex2ints(g_pow_target, 8, g_pow_target_str, strlen(tgt));
+	strcpy(g_pow_target, tgt);
+	rc = hex2ints(work->pow_target, 8, g_pow_target, strlen(tgt));
 	if (!rc) {
 		applog(LOG_ERR, "Invalid Target in JSON response to getwork request");
 		return 0;
@@ -855,14 +872,18 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 	for (i = 0; i<num_pkg; i++) {
 		pkg = json_array_get(wrk, i);
 
+		blk_id = (char *)json_string_value(json_object_get(pkg, "block_id"));
 		wrk_id = (char *)json_string_value(json_object_get(pkg, "work_id"));
-		if (!wrk_id) {
-			applog(LOG_ERR, "Unable to get 'work_id' from work package");
+		xel_per_pow = (long)json_number_value(json_object_get(pkg, "xel_per_pow"));
+		bty_limit = (int)json_integer_value(json_object_get(pkg, "bounty_limit"));
+		bty_rcvd = (int)json_integer_value(json_object_get(pkg, "received_bounties"));
+		if (!blk_id | !wrk_id || !xel_per_pow || !bty_limit) {
+			applog(LOG_ERR, "Unable to parse work package");
 			return 0;
 		}
 
-		blacklisted = false;
 		// Check If Work Has Been Blacklisted
+		blacklisted = false;
 		for (j = 0; j < g_blacklist_cnt; j++) {
 //			applog(LOG_NOTICE, "checking: %s vs list: %s", wrk_id, blacklist[j].work_id);
 			if (!strcmp(wrk_id, blacklist[j].work_id)) {
@@ -877,15 +898,17 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 			continue;
 		}
 
-		xel_per_pow = (long)json_number_value(json_object_get(pkg, "xel_per_pow"));
-		//if (!xel_per_pow || xel_per_pow <= 0) {
-		if (!xel_per_pow) {
-				applog(LOG_ERR, "Invalid 'xel_per_pow' for work_id: %s", wrk_id);
-			
-			// Blacklist This Work ID
-			blacklist_work(wrk_id, BLST_INVALID_PACKAGE);
-
-			return 0;
+		// Check If Work Has Available Bounties
+		for (j = 0; j < g_submit_req_cnt; j++) {
+			if ((g_submit_req[j].req_type == SUBMIT_BTY_ANN ||
+				g_submit_req[j].req_type == SUBMIT_BTY_CONF ||
+				g_submit_req[j].req_type == SUBMIT_BOUNTY) && (!strcmp(g_submit_req[j].work_id, wrk_id))) {
+				bty_pend++;
+			}
+		}
+		if ((bty_rcvd + bty_pend) >= bty_limit) {
+			applog(LOG_DEBUG, "DEBUG: Skipping work_id: %s - No Bounties Left", wrk_id);
+			return -1;
 		}
 
 		// Calculate WCET - Hopefully This Will Get Added To Response
@@ -909,54 +932,36 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 	// If No Work Matched Current Preference Switch To Profit Mode
 	if (best_pkg < 0) {
 		opt_pref = PREF_PROFIT;
-		work->work_id = 0L;
-		strcpy(work->work_id_str, "");
 		applog(LOG_INFO, "No work available that matches preference...retrying in 15s");
 		return -1;
 	}
 
+	// Copy Data From Best Package Into Work
 	pkg = json_array_get(wrk, best_pkg);
-
+	g_work_nm = strdup((char *)json_string_value(json_object_get(pkg, "title")));
+	g_work_id = strdup((char *)json_string_value(json_object_get(pkg, "work_id")));
 	blk_id = (char *)json_string_value(json_object_get(pkg, "block_id"));
-	strcpy(g_block_id_str, blk_id);
-	g_block_id = strtoull(g_block_id_str, NULL, 10);
-
-	strcpy(work->work_id_str, json_string_value(json_object_get(pkg, "work_id")));
-	work->work_id = strtoull(work->work_id_str, NULL, 10);
-
-	// If No Bounties Remain, Blacklist The Work
-	bty_limit = (int)json_integer_value(json_object_get(pkg, "bounty_limit"));
-	bty_rcvd = (int)json_integer_value(json_object_get(pkg, "received_bounties"));
-	for (i = 0; i < g_submit_req_cnt; i++) {
-		if ((g_submit_req[i].work->req_type == SUBMIT_BTY_ANN ||
-			g_submit_req[i].work->req_type == SUBMIT_BTY_CONF ||
-			g_submit_req[i].work->req_type == SUBMIT_BOUNTY) && (!strcmp(g_submit_req[i].work->work_id_str, work->work_id_str))) {
-
-			bty_pend++;
-		}
-	}
-	if ((bty_rcvd + bty_pend) >= bty_limit) {
-		blacklist_work(work->work_id_str, BLST_NO_BOUNTIES);
-		return -1;
-	}
-
+	wrk_id = (char *)json_string_value(json_object_get(pkg, "work_id"));
+	work->block_id = strtoull(blk_id, NULL, 10);
+	work->work_id = strtoull(wrk_id, NULL, 10);
+	
 	// Extract The ElasticPL Source Code
 	src = (char *)json_string_value(json_object_get(pkg, "source"));
 	if (!src || strlen(src) > MAX_SOURCE_SIZE) {
-		applog(LOG_ERR, "Invalid 'source' for work_id: %s", work->work_id_str);
+		applog(LOG_ERR, "Invalid 'source' for work_id: %s", g_work_id);
 
 		// Blacklist This Work ID
-		blacklist_work(work->work_id_str, BLST_INVALID_PACKAGE);
+		blacklist_work(g_work_id, BLST_INVALID_PACKAGE);
 
 		return 0;
 	}
 
 	rc = ascii85dec(source_code, MAX_SOURCE_SIZE, src);
 	if (!rc) {
-		applog(LOG_ERR, "Unable to decode 'source' for work_id: %s\n\n%s\n", work->work_id_str, src);
+		applog(LOG_ERR, "Unable to decode 'source' for work_id: %s\n\n%s\n", g_work_id, src);
 
 		// Blacklist This Work ID
-		blacklist_work(work->work_id_str, BLST_INVALID_PACKAGE);
+		blacklist_work(g_work_id, BLST_INVALID_PACKAGE);
 
 		return 0;
 	}
@@ -964,7 +969,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 	return 1;
 }
 
-static bool submit_work(struct thr_info *thr, struct work *work_in) {
+static bool submit_work(struct thr_info *thr, struct submit_req *req) {
 	struct workio_cmd *wc;
 
 	// Fill Out Work Request Message
@@ -974,7 +979,7 @@ static bool submit_work(struct thr_info *thr, struct work *work_in) {
 
 	wc->cmd = WC_SUBMIT_WORK;
 	wc->thr = thr;
-	wc->work = work_in;
+	wc->req = req;
 
 	// Send Solution To workio Thread
 	if (!tq_push(thr_info[work_thr_id].q, wc))
@@ -992,7 +997,7 @@ static bool workio_submit_work(struct workio_cmd *wc, CURL *curl)
 	int failures = 0;
 
 	// Sumbit Solutions via JSON-RPC
-	while (!submit_upstream_work(curl, wc->work)) {
+	while (!submit_upstream_work(curl, wc->req)) {
 
 		if ((opt_retries >= 0) && (++failures > opt_retries)) {
 			applog(LOG_ERR, "...terminating workio thread");
@@ -1006,54 +1011,44 @@ static bool workio_submit_work(struct workio_cmd *wc, CURL *curl)
 	return true;
 }
 
-static bool submit_upstream_work(CURL *curl, struct work *work) {
+static bool submit_upstream_work(CURL *curl, struct submit_req *req) {
 	int err;
 	json_t *val;
 	struct timeval tv_start, tv_end, diff;
-	char req[1000];
+	char data[1000];
 	char *url, *err_desc, *accepted;
-	char hex[65];
-	uint32_t *data32;
 
 	url = calloc(1, strlen(rpc_url) + 50);
 	if (!url) {
 		applog(LOG_ERR, "ERROR: Unable to allocate memory for submit work url");
 		return false;
 	}
-
-	if (work->req_type == SUBMIT_BTY_ANN) {
-		data32 = (uint32_t *)work->announcement_hash;
-		sprintf(hex, "%08X%08X%08X%08X%08X%08X%08X%08X", swap32(data32[0]), swap32(data32[1]), swap32(data32[2]), swap32(data32[3]), swap32(data32[4]), swap32(data32[5]), swap32(data32[6]), swap32(data32[7]));
+	
+	if (req->req_type == SUBMIT_BTY_ANN) {
 		sprintf(url, "%s?requestType=bountyAnnouncement", rpc_url);
-		sprintf(req, "deadline=3&feeNQT=0&amountNQT=5000&work_id=%s&hash_announcement=%s&secretPhrase=%s", work->work_id_str, hex, passphrase);
+		sprintf(data, "deadline=3&feeNQT=0&amountNQT=5000&work_id=%s&hash_announcement=%s&secretPhrase=%s", req->work_id, req->hash, passphrase);
 	}
-	else if (work->req_type == SUBMIT_BTY_CONF) {
-		data32 = (uint32_t *)work->announcement_hash;
-		sprintf(hex, "%08X%08X%08X%08X%08X%08X%08X%08X", swap32(data32[0]), swap32(data32[1]), swap32(data32[2]), swap32(data32[3]), swap32(data32[4]), swap32(data32[5]), swap32(data32[6]), swap32(data32[7]));
+	else if (req->req_type == SUBMIT_BTY_CONF) {
 		sprintf(url, "%s?requestType=getApprovedBounties", rpc_url);
-		sprintf(req, "work_id=%s&hash_announcement=%s&secretPhrase=%s", work->work_id_str, hex, passphrase);
+		sprintf(data, "work_id=%s&hash_announcement=%s&secretPhrase=%s", req->work_id, req->hash, passphrase);
 	}
-	else if (work->req_type == SUBMIT_BOUNTY) {
-		data32 = (uint32_t *)work->multiplicator;
-		sprintf(hex, "%08X%08X%08X%08X%08X%08X%08X%08X", swap32(data32[0]), swap32(data32[1]), swap32(data32[2]), swap32(data32[3]), swap32(data32[4]), swap32(data32[5]), swap32(data32[6]), swap32(data32[7]));
+	else if (req->req_type == SUBMIT_BOUNTY) {
 		sprintf(url, "%s?requestType=createPoX", rpc_url);
-		sprintf(req, "deadline=3&feeNQT=0&amountNQT=0&work_id=%s&multiplicator=%s&is_pow=false&secretPhrase=%s", work->work_id_str, hex, passphrase);
+		sprintf(data, "deadline=3&feeNQT=0&amountNQT=0&work_id=%s&multiplicator=%s&is_pow=false&secretPhrase=%s", req->work_id, req->mult, passphrase);
 	}
-	else if (work->req_type == SUBMIT_POW) {
-		data32 = (uint32_t *)work->multiplicator;
-		sprintf(hex, "%08X%08X%08X%08X%08X%08X%08X%08X", swap32(data32[0]), swap32(data32[1]), swap32(data32[2]), swap32(data32[3]), swap32(data32[4]), swap32(data32[5]), swap32(data32[6]), swap32(data32[7]));
+	else if (req->req_type == SUBMIT_POW) {
 		sprintf(url, "%s?requestType=createPoX", rpc_url);
-		sprintf(req, "deadline=3&feeNQT=0&amountNQT=0&work_id=%s&multiplicator=%s&is_pow=true&secretPhrase=%s", work->work_id_str, hex, passphrase);
+		sprintf(data, "deadline=3&feeNQT=0&amountNQT=0&work_id=%s&multiplicator=%s&is_pow=true&secretPhrase=%s", req->work_id, req->mult, passphrase);
 	}
 	else {
 		applog(LOG_ERR, "ERROR: Unknown request type");
+		req->req_type = SUBMIT_COMPLETE;
 		free(url);
 		return true;
-//		return false;
 	}
 
 	gettimeofday(&tv_start, NULL);
-	val = json_rpc_call(curl, url, rpc_userpass, req, &err);
+	val = json_rpc_call(curl, url, rpc_userpass, data, &err);
 
 	if (!val)
 		return false;
@@ -1064,7 +1059,7 @@ static bool submit_upstream_work(CURL *curl, struct work *work) {
 		applog(LOG_DEBUG, "DEBUG: Time to submit solution: %.2f ms", (1000.0 * diff.tv_sec) + (0.001 * diff.tv_usec));
 	}
 
-	applog(LOG_DEBUG, "DEBUG: Submit request - %s %s", url, req);
+	applog(LOG_DEBUG, "DEBUG: Submit request - %s %s", url, data);
 
 	accepted = (char *)json_string_value(json_object_get(val, "approved"));
 	err_desc = (char *)json_string_value(json_object_get(val, "errorDescription"));
@@ -1072,60 +1067,60 @@ static bool submit_upstream_work(CURL *curl, struct work *work) {
 	if (err_desc)
 		applog(LOG_DEBUG, "DEBUG: Submit response error - %s", err_desc);
 
-	if (work->req_type == SUBMIT_BTY_ANN) {
+	if (req->req_type == SUBMIT_BTY_ANN) {
 		if (err_desc) {
 			if (strstr(err_desc, "duplicate")) {
-				applog(LOG_DEBUG, "Work ID: %s is not accepting bounties", work->work_id_str);
-				work->delay_tm = time(NULL) + 30;  // Retry In 30s
+				applog(LOG_DEBUG, "Work ID: %s is not accepting bounties", req->work_id);
+				req->delay_tm = time(NULL) + 30;  // Retry In 30s
 			}
 			else {
-				work->req_type = SUBMIT_COMPLETE;
+				req->req_type = SUBMIT_COMPLETE;
 				g_bounty_error_cnt++;
 			}
 		}
 		else
-			work->req_type = SUBMIT_BTY_CONF;
+			req->req_type = SUBMIT_BTY_CONF;
 	}
-	else if (work->req_type == SUBMIT_BTY_CONF) {
+	else if (req->req_type == SUBMIT_BTY_CONF) {
 		if (accepted && !strcmp(accepted, "true")) {
-			work->req_type = SUBMIT_BOUNTY;
+			req->req_type = SUBMIT_BOUNTY;
 		}
 		else if (accepted && !strcmp(accepted, "deprecated")) {
-			applog(LOG_NOTICE, "CPU%d: %s***** Bounty Rejected - Deprecated *****", work->thr_id, CL_RED);
+			applog(LOG_NOTICE, "CPU%d: %s***** Bounty Rejected - Deprecated *****", req->thr_id, CL_RED);
 			g_bounty_deprecated_cnt++;
-			work->req_type = SUBMIT_COMPLETE;
+			req->req_type = SUBMIT_COMPLETE;
 		}
-		else if (work->retries++ > 20) {		// Timeout After 10 Min
-			applog(LOG_NOTICE, "CPU%d: %s***** Bounty Timed Out *****", work->thr_id, CL_RED);
+		else if (req->retries++ > 20) {		// Timeout After 10 Min
+			applog(LOG_NOTICE, "CPU%d: %s***** Bounty Timed Out *****", req->thr_id, CL_RED);
 			g_bounty_timeout_cnt++;
-			work->req_type = SUBMIT_COMPLETE;
+			req->req_type = SUBMIT_COMPLETE;
 		}
 		else {
-			work->delay_tm = time(NULL) + 30;  // Retry In 30s
+			req->delay_tm = time(NULL) + 30;  // Retry In 30s
 			applog(LOG_DEBUG, "DEBUG: Retry confirmation in 30s");
 		}
 	}
-	else if (work->req_type == SUBMIT_BOUNTY) {
+	else if (req->req_type == SUBMIT_BOUNTY) {
 		if (err_desc) {
-			applog(LOG_NOTICE, "CPU%d: %s***** Bounty Rejected! *****", work->thr_id, CL_RED);
+			applog(LOG_NOTICE, "CPU%d: %s***** Bounty Rejected! *****", req->thr_id, CL_RED);
 			g_bounty_rejected_cnt++;
 		}
 		else {
-			applog(LOG_NOTICE, "CPU%d: %s***** Bounty Claimed! *****", work->thr_id, CL_GRN);
+			applog(LOG_NOTICE, "CPU%d: %s***** Bounty Claimed! *****", req->thr_id, CL_GRN);
 			g_bounty_accepted_cnt++;
 		}
-		work->req_type = SUBMIT_COMPLETE;
+		req->req_type = SUBMIT_COMPLETE;
 	}
-	else if (work->req_type == SUBMIT_POW) {
+	else if (req->req_type == SUBMIT_POW) {
 		if (err_desc) {
-			applog(LOG_NOTICE, "CPU%d: %s***** POW Rejected! *****", work->thr_id, CL_RED);
+			applog(LOG_NOTICE, "CPU%d: %s***** POW Rejected! *****", req->thr_id, CL_RED);
 			g_pow_rejected_cnt++;
 		}
 		else {
-			applog(LOG_NOTICE, "CPU%d: %s***** POW Accepted! *****", work->thr_id, CL_CYN);
+			applog(LOG_NOTICE, "CPU%d: %s***** POW Accepted! *****", req->thr_id, CL_CYN);
 			g_pow_accepted_cnt++;
 		}
-		work->req_type = SUBMIT_COMPLETE;
+		req->req_type = SUBMIT_COMPLETE;
 	}
 
 	json_decref(val);
@@ -1182,7 +1177,7 @@ static void *miner_thread(void *userdata) {
 		}
 
 		// Check If We Are Mining The Most Current Work
-		if (strcmp(work.work_id_str, g_work.work_id_str))
+		if (work.work_id != g_work.work_id)
 			memcpy((void *)&work, (void *)&g_work, sizeof(struct work));
 
 		pthread_mutex_unlock(&work_lock);
@@ -1207,7 +1202,7 @@ static void *miner_thread(void *userdata) {
 		// VM Encountered An Error
 		if (rc < 0) {
 			// Blacklist Work ID
-			blacklist_work(work.work_id_str, BLST_RUNTIME_ERROR);
+			blacklist_work(g_work_id, BLST_RUNTIME_ERROR);
 
 			// Force g_work To Refresh
 			pthread_mutex_lock(&work_lock);
@@ -1231,8 +1226,7 @@ static void *miner_thread(void *userdata) {
 			sha256(msg, 41, work.announcement_hash);
 
 			// Create Submit Request
-			work.req_type = SUBMIT_BTY_ANN;
-			if (!add_submit_req(&work))
+			if (!add_submit_req(&work, SUBMIT_BTY_ANN))
 				break;
 
 			// Force g_work To Refresh
@@ -1244,8 +1238,7 @@ static void *miner_thread(void *userdata) {
 		// Submit Work That Meets POW Target
 		if (rc == 1) {
 			applog(LOG_NOTICE, "CPU%d: Submitting POW Solution", thr_id);
-			work.req_type = SUBMIT_POW;
-			if (!add_submit_req(&work))
+			if (!add_submit_req(&work, SUBMIT_POW))
 				break;
 
 			// Force g_work To Refresh
@@ -1323,24 +1316,26 @@ static void workio_cmd_free(struct workio_cmd *wc)
 	free(wc);
 }
 
-static bool add_submit_req(struct work *work) {
+static bool add_submit_req(struct work *work, enum submit_commands req_type) {
+	uint32_t *hash32 = (uint32_t *)work->announcement_hash;
+	uint32_t *mult32 = (uint32_t *)work->multiplicator;
+
 	pthread_mutex_lock(&submit_lock);
 
-	g_submit_req = realloc(g_submit_req, (g_submit_req_cnt + 1) * sizeof(struct bounty_req));
+	g_submit_req = realloc(g_submit_req, (g_submit_req_cnt + 1) * sizeof(struct submit_req));
 	if (!g_submit_req) {
 		g_submit_req_cnt = 0;
 		applog(LOG_ERR, "ERROR: Bounty request allocation failed");
 		return false;
 	}
-	g_submit_req[g_submit_req_cnt].work = malloc(sizeof(struct work));
-	if (!g_submit_req[g_submit_req_cnt - 1].work) {
-		g_submit_req_cnt = 0;
-		free(g_submit_req);
-		applog(LOG_ERR, "ERROR: Bounty work allocation failed");
-		return false;
-	}
+	g_submit_req[g_submit_req_cnt].thr_id = work->thr_id;
+	g_submit_req[g_submit_req_cnt].req_type = req_type;
 	g_submit_req[g_submit_req_cnt].start_tm = time(NULL);
-	memcpy(g_submit_req[g_submit_req_cnt].work, work, sizeof(struct work));
+	g_submit_req[g_submit_req_cnt].delay_tm = 0;
+	g_submit_req[g_submit_req_cnt].retries = 0;
+	sprintf(g_submit_req[g_submit_req_cnt].work_id, "%llu", work->work_id);
+	sprintf(g_submit_req[g_submit_req_cnt].hash, "%08X%08X%08X%08X%08X%08X%08X%08X", swap32(hash32[0]), swap32(hash32[1]), swap32(hash32[2]), swap32(hash32[3]), swap32(hash32[4]), swap32(hash32[5]), swap32(hash32[6]), swap32(hash32[7]));
+	sprintf(g_submit_req[g_submit_req_cnt].mult, "%08X%08X%08X%08X%08X%08X%08X%08X", swap32(mult32[0]), swap32(mult32[1]), swap32(mult32[2]), swap32(mult32[3]), swap32(mult32[4]), swap32(mult32[5]), swap32(mult32[6]), swap32(mult32[7]));
 	g_submit_req_cnt++;
 
 	pthread_mutex_unlock(&submit_lock);
@@ -1348,12 +1343,12 @@ static bool add_submit_req(struct work *work) {
 }
 
 static bool delete_submit_req(int idx) {
-	struct bounty_req *req = NULL;
+	struct submit_req *req = NULL;
 	int i;
 
 	pthread_mutex_lock(&submit_lock);
 	if (g_submit_req_cnt > 0) {
-		req = malloc((g_submit_req_cnt - 1) * sizeof(struct bounty_req));
+		req = malloc((g_submit_req_cnt - 1) * sizeof(struct submit_req));
 		if (!req) {
 			applog(LOG_ERR, "ERROR: Bounty request allocation failed");
 			pthread_mutex_unlock(&submit_lock);
@@ -1364,12 +1359,11 @@ static bool delete_submit_req(int idx) {
 		free(g_submit_req);
 
 	for (i = 0; i < idx; i++)
-		memcpy(&req[i], &g_submit_req[i], sizeof(struct bounty_req));
+		memcpy(&req[i], &g_submit_req[i], sizeof(struct submit_req));
 
 	for (i = idx + 1; i < g_submit_req_cnt; i++)
-		memcpy(&req[i - 1], &g_submit_req[i], sizeof(struct bounty_req));
+		memcpy(&req[i - 1], &g_submit_req[i], sizeof(struct submit_req));
 
-	free(g_submit_req[idx].work);
 	free(g_submit_req);
 	g_submit_req = req;
 	g_submit_req_cnt--;
@@ -1387,7 +1381,7 @@ static void *submit_thread(void *userdata) {
 		for (i = 0; i < g_submit_req_cnt; i++) {
 			
 			// Remove Completed Requests
-			if (g_submit_req[i].work->req_type == SUBMIT_COMPLETE) {
+			if (g_submit_req[i].req_type == SUBMIT_COMPLETE) {
 				applog(LOG_DEBUG, "DEBUG: Submit complete...deleting request");
 				delete_submit_req(i);
 				break;
@@ -1402,11 +1396,11 @@ static void *submit_thread(void *userdata) {
 			}
 
 			// Check If Request Is On Hold
-			if (g_submit_req[i].work->delay_tm >= time(NULL))
+			if (g_submit_req[i].delay_tm >= time(NULL))
 				continue;
 
 			// Submit Request
-			if (!submit_work(mythr, g_submit_req[i].work)) {
+			if (!submit_work(mythr, &g_submit_req[i])) {
 				applog(LOG_ERR, "ERROR: Submit bounty request failed");
 			}
 			sleep(1);
@@ -1441,9 +1435,9 @@ static void *key_monitor_thread(void *userdata)
 			sec = total_sec % 60;
 
 			applog(LOG_WARNING, "************************** Mining Summary **************************");
-			applog(LOG_WARNING, "Run Time: %02d Days %02d:%02d:%02d\t\tWork Name: %s", day, hour, min, sec, g_work.work_id_str ? g_work.work_id_str : "");
-			applog(LOG_WARNING, "Bounty Accept:\t%3d\t\tWork ID:   %s", g_bounty_accepted_cnt, g_work.work_id_str ? g_work.work_id_str : "");
-			applog(LOG_WARNING, "Bounty Reject:\t%3d\t\tTarget:  %s", g_bounty_rejected_cnt, g_pow_target_str);
+			applog(LOG_WARNING, "Run Time: %02d Days %02d:%02d:%02d\t\tWork Name: %s", day, hour, min, sec, g_work_nm ? g_work_nm : "");
+			applog(LOG_WARNING, "Bounty Accept:\t%3d\t\tWork ID:   %s", g_bounty_accepted_cnt, g_work_id ? g_work_id : "");
+			applog(LOG_WARNING, "Bounty Reject:\t%3d\t\tTarget:    %s", g_bounty_rejected_cnt, g_pow_target);
 			applog(LOG_WARNING, "Bounty Deprct:\t%3d", g_bounty_deprecated_cnt);
 			applog(LOG_WARNING, "Bounty Timeout:\t%3d\t\tPOW Accept:  %3d", g_bounty_timeout_cnt, g_pow_accepted_cnt);
 			applog(LOG_WARNING, "Bounty Error:\t%3d\t\tPOW Reject:  %3d", g_bounty_error_cnt, g_pow_rejected_cnt);
