@@ -397,21 +397,22 @@ extern char* compile(ast* exp) {
 				
 		switch (exp->type) {
 		case NODE_CONSTANT:
-			
+			sprintf(result,"%d",exp->value);
 			break;
 		case NODE_VAR_CONST:
-			
+			sprintf(result,"mem[%d]",exp->value);
 			break;
 		case NODE_VAR_EXP:
 			
 			break;
 		case NODE_ASSIGN:
-			
+			sprintf(result,"%s = %s;\n",lval,rval);
 			break;
 		case NODE_IF:
 			
 			break;
 		case NODE_BLOCK:
+			sprintf(result,"{\n%s\n}\n",lval);
 			break;
 		case NODE_ADD:
 			
@@ -462,7 +463,7 @@ extern char* compile(ast* exp) {
 	
 			break;
 		case NODE_EQ:
-			
+			sprintf(result,"((%s) == (%s))",lval,rval);
 			break;
 		case NODE_NE:
 			
@@ -492,7 +493,7 @@ extern char* compile(ast* exp) {
 			applog(LOG_ERR, "ERROR: VM Runtime - MD5 Not Implemented");
 			return NULL;
 		case NODE_VERIFY:
-		
+			sprintf(result,"return %s;\n",lval);
 			break;
 		default:
 			applog(LOG_ERR, "ERROR: VM Runtime - Unsupported Operation (%d)", exp->type);
