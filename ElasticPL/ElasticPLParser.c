@@ -65,7 +65,6 @@ static NODE_TYPE validate_unary_stmnt(SOURCE_TOKEN *token) {
 	TOKEN_EXP l_exp;
 
 	switch (token->type) {
-		case TOKEN_INPUT:		node_type = NODE_INPUT;		break;
 		case TOKEN_VERIFY:		node_type = NODE_VERIFY;	break;
 	default: return NODE_ERROR;
 	}

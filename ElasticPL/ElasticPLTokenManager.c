@@ -76,8 +76,7 @@ struct EPL_TOKEN_LIST epl_token[] = {
 	{ "!",		1,	TOKEN_NOT,			UNARY_EXPRESSION,		15 },	// Unary Operator
 	{ "true",	4,	TOKEN_TRUE,			UNARY_EXPRESSION,		15 },	// Unary Operator
 	{ "false",	5,	TOKEN_FALSE,		UNARY_EXPRESSION,		15 },	// Unary Operator
-
-	{ "input",	5,	TOKEN_INPUT,		UNARY_STATEMENT,		60 },	// 
+	
 	{ "sha256",	6,	TOKEN_SHA256,		BINARY_STATEMENT,		60 }	// Built In Functions
 };
 

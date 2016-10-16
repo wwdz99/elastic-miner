@@ -24,7 +24,6 @@ extern bool create_epl_vm(char *source) {
 	stack_op_idx = -1;
 	stack_exp_idx = -1;
 	top_op = -1;
-
 	stack_op = calloc(PARSE_STACK_SIZE, sizeof(int));
 	stack_exp = calloc(PARSE_STACK_SIZE, sizeof(ast) / sizeof(stack_exp[0]));
 
@@ -52,6 +51,7 @@ extern bool create_epl_vm(char *source) {
 
 	// Copy Parsed Statements Into VM Array
 	vm_ast_cnt = stack_exp_idx + 1;
+
 	vm_ast = calloc(vm_ast_cnt, sizeof(ast*));
 	memcpy(vm_ast, stack_exp, vm_ast_cnt * sizeof(ast*));
 	

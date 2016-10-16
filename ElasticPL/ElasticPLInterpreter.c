@@ -9,9 +9,39 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <limits.h>
 
 #include "ElasticPL.h"
 #include "../miner.h"
+
+
+uint64_t rotl64 (uint64_t x, unsigned int n)
+{
+  const unsigned int mask = (CHAR_BIT*sizeof(x)-1);
+  n &= mask;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers
+  return (x<<n) | (x>>( (-n)&mask ));
+}
+uint64_t rotr64 (uint64_t x, unsigned int n)
+{
+  const unsigned int mask = (CHAR_BIT*sizeof(x)-1);
+  n &= mask;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers
+  return (x>>n) | (x<<( (-n)&mask ));
+}
+uint64_t rotl32 (uint32_t x, unsigned int n)
+{
+  const unsigned int mask = (CHAR_BIT*sizeof(x)-1);
+  n &= mask;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers
+  return (x<<n) | (x>>( (-n)&mask ));
+}
+uint64_t rotr32 (uint32_t x, unsigned int n)
+{
+  const unsigned int mask = (CHAR_BIT*sizeof(x)-1);
+  n &= mask;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers
+  return (x>>n) | (x<<( (-n)&mask ));
+}
+
+
 
 //int vm_stack_idx = -1;
 //vm_stack_item vm_stack[VM_STACK_SIZE];
@@ -63,6 +93,40 @@ extern int interpret_ast() {
 	else
 		return 2;
 }
+
+char* append_strings(char * old, char * new)
+{
+	if(new == NULL && old != NULL) return old;
+	if(old == NULL && new != NULL) return new;
+	if(new == NULL && old == NULL) return NULL;
+
+    // find the size of the string to allocate
+    const size_t old_len = strlen(old), new_len = strlen(new);
+    const size_t out_len = old_len + new_len + 1;
+
+    // allocate a pointer to the new string
+    char *out = malloc(out_len);
+
+    // concat both strings and return
+    memcpy(out, old, old_len);
+    memcpy(out + old_len, new, new_len + 1);
+
+    // Free here
+    free(old);
+    free(new);
+
+    return out;
+}
+
+extern char* c_compile_ast() {
+	char* ret = NULL;
+	int i;
+	for (i = 0; i < vm_ast_cnt; i++) {
+		ret = append_strings(ret, compile(vm_ast[i]));
+	}
+	return ret;
+}
+
 
 // Use Post Order Traversal To Process The Expressions In The AST
 extern bool interpret(ast* exp) {
@@ -194,8 +258,8 @@ extern bool interpret(ast* exp) {
 		case NODE_NOT:
 			rval = pop();
 			push(!rval, false);
-			break;
 			mangle_state(!rval);
+			break;
 		case NODE_COMPL:
 			rval = pop();
 			push(~rval, false);
@@ -316,16 +380,139 @@ extern bool interpret(ast* exp) {
 	return true;
 }
 
+// Use Post Order Traversal To Translate The Expressions In The AST to C
+extern char* compile(ast* exp) {
+	char* lval = 0;
+	char* rval = 0;
+	char *result = malloc(sizeof(char)*256);
+	result[0] = 0;
+
+	if (exp != NULL) {
+		if(exp->left != NULL){
+			lval = compile(exp->left);
+		}
+		if (exp->right != NULL){
+			rval = compile(exp->right);
+		}
+				
+		switch (exp->type) {
+		case NODE_CONSTANT:
+			
+			break;
+		case NODE_VAR_CONST:
+			
+			break;
+		case NODE_VAR_EXP:
+			
+			break;
+		case NODE_ASSIGN:
+			
+			break;
+		case NODE_IF:
+			
+			break;
+		case NODE_BLOCK:
+			break;
+		case NODE_ADD:
+			
+			break;
+		case NODE_SUB:
+			
+			break;
+		case NODE_MUL:
+			
+			break;
+		case NODE_DIV:
+		
+			break;
+		case NODE_MOD:
+			
+			break;
+		case NODE_LSHIFT:
+			
+			break;
+		case NODE_LROT:
+		
+			break;
+		case NODE_RSHIFT:
+			
+			break;
+		case NODE_RROT:
+		
+			break;
+		case NODE_NOT:
+			
+			break;
+		case NODE_COMPL:
+			
+			break;
+		case NODE_AND:
+			
+			break;
+		case NODE_OR:
+			
+			break;
+		case NODE_BITWISE_AND:
+			
+			break;
+		case NODE_BITWISE_XOR:
+			
+			break;
+		case NODE_BITWISE_OR:
+	
+			break;
+		case NODE_EQ:
+			
+			break;
+		case NODE_NE:
+			
+			break;
+		case NODE_GT:
+		
+			break;
+		case NODE_LT:
+			
+			break;
+		case NODE_GE:
+		
+			break;
+		case NODE_LE:
+			
+			break;
+		case NODE_NEG:
+			
+			break;
+		case NODE_POS:
+
+			break;
+		case NODE_SHA256:
+			
+			break;
+		case NODE_MD5:
+			applog(LOG_ERR, "ERROR: VM Runtime - MD5 Not Implemented");
+			return NULL;
+		case NODE_VERIFY:
+		
+			break;
+		default:
+			applog(LOG_ERR, "ERROR: VM Runtime - Unsupported Operation (%d)", exp->type);
+			return NULL;
+		}
+	}
+
+	return result;
+}
+
 static void mangle_state(int x) {
-	int mod = (x < 0) ? 64 + (x % 64) : (x % 64);
+	int mod = x%64;
 	if (x % 2 == 0) {
 		//		internal_state = internal_state << (x % 64);
-		vm_state1 = (vm_state1 << mod) | (vm_state1 >> (64 - mod));
+		vm_state1 = rotl64(vm_state1,mod);
 		vm_state1 = vm_state1 ^ x;
 	}
 	else {
 		//		internal_state2 = internal_state2 >> (x % 64);
-		vm_state2 = ((vm_state2) << (64 - mod)) | ((vm_state2) >> mod);
+		vm_state2 = rotr64(vm_state2,mod);
 		vm_state2 = vm_state2 ^ x;
 	}
 }
