@@ -28,13 +28,13 @@ uint64_t rotr64 (uint64_t x, unsigned int n)
   n &= mask;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers
   return (x>>n) | (x<<( (-n)&mask ));
 }
-uint64_t rotl32 (uint32_t x, unsigned int n)
+uint32_t rotl32 (uint32_t x, unsigned int n)
 {
   const unsigned int mask = (CHAR_BIT*sizeof(x)-1);
   n &= mask;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers
   return (x<<n) | (x>>( (-n)&mask ));
 }
-uint64_t rotr32 (uint32_t x, unsigned int n)
+uint32_t rotr32 (uint32_t x, unsigned int n)
 {
   const unsigned int mask = (CHAR_BIT*sizeof(x)-1);
   n &= mask;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers
