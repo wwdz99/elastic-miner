@@ -176,8 +176,8 @@ extern bool interpret(ast* exp) {
 		case NODE_LROT:
 			rval = pop();
 			lval = pop();
-			push((((lval) << (32 - (rval%32))) | ((lval) >> (rval%32))), false);
-			mangle_state((((lval) << (32 - (rval%32))) | ((lval) >> (rval%32))));
+			push((((lval) >> (32 - (rval%32))) | ((lval) << (rval%32))), false);
+			mangle_state((((lval) >> (32 - (rval%32))) | ((lval) << (rval%32))));
 			break;
 		case NODE_RSHIFT:
 			rval = pop();
