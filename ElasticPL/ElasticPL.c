@@ -52,9 +52,9 @@ extern bool create_epl_vm(char *source) {
 
 	// Copy Parsed Statements Into VM Array
 	vm_ast_cnt = stack_exp_idx + 1;
-	vm_ast = malloc(vm_ast_cnt * (sizeof(ast) / sizeof(vm_ast[0])));
-	memcpy(vm_ast, stack_exp, vm_ast_cnt * (sizeof(ast) / sizeof(vm_ast[0])));
-
+	vm_ast = calloc(vm_ast_cnt, sizeof(ast*));
+	memcpy(vm_ast, stack_exp, vm_ast_cnt * sizeof(ast*));
+	
 	free(stack_op);
 	free(stack_exp);
 
