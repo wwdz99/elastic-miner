@@ -240,8 +240,8 @@ extern bool interpret(ast* exp) {
 		case NODE_LROT:
 			rval = pop();
 			lval = pop();
-			push(rotl(lval,rval%32), false);
-			mangle_state(rotl(lval,rval%32));
+			push(rotl32(lval,rval%32), false);
+			mangle_state(rotl32(lval,rval%32));
 			break;
 		case NODE_RSHIFT:
 			rval = pop();
@@ -252,8 +252,8 @@ extern bool interpret(ast* exp) {
 		case NODE_RROT:
 			rval = pop();
 			lval = pop();
-			push(rotr(lval,rval%32), false);
-			mangle_state(rotr(lval,rval%32));
+			push(rotr32(lval,rval%32), false);
+			mangle_state(rotr32(lval,rval%32));
 			break;
 		case NODE_NOT:
 			rval = pop();
