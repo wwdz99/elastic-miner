@@ -240,8 +240,8 @@ extern bool interpret(ast* exp) {
 		case NODE_LROT:
 			rval = pop();
 			lval = pop();
-			push((((lval) >> (32 - (rval%32))) | ((lval) << (rval%32))), false);
-			mangle_state((((lval) >> (32 - (rval%32))) | ((lval) << (rval%32))));
+			push(rotl(lval,rval%32), false);
+			mangle_state(rotl(lval,rval%32));
 			break;
 		case NODE_RSHIFT:
 			rval = pop();
@@ -252,8 +252,8 @@ extern bool interpret(ast* exp) {
 		case NODE_RROT:
 			rval = pop();
 			lval = pop();
-			push((((lval) << (32 - (rval%32))) | ((lval) >> (rval%32))), false);
-			mangle_state((((lval) << (32 - (rval%32))) | ((lval) >> (rval%32))));
+			push(rotr(lval,rval%32), false);
+			mangle_state(rotr(lval,rval%32));
 			break;
 		case NODE_NOT:
 			rval = pop();
@@ -409,7 +409,8 @@ extern char* compile(ast* exp) {
 			sprintf(result,"%s = %s;\n",lval,rval);
 			break;
 		case NODE_IF:
-			
+			sprintf(result,"if( %s ) %s\n",lval,rval);
+
 			break;
 		case NODE_BLOCK:
 			sprintf(result,"{\n%s\n}\n",lval);
