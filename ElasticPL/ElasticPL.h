@@ -67,7 +67,6 @@ typedef enum {
 
 
 typedef enum {
-	TOKEN_INPUT,
 	TOKEN_ASSIGN,
 	TOKEN_OR,
 	TOKEN_AND,
@@ -195,7 +194,9 @@ extern char* get_node_str(NODE_TYPE node_type);
 extern void dump_vm_ast(ast* root);
 
 extern int interpret_ast();
+extern char* c_compile_ast();
 extern bool interpret(ast* exp);
+extern char* compile(ast* exp);
 static void mangle_state(int x);
 static void mangle_state_verify(int x);
 static void push(long l, bool memory);

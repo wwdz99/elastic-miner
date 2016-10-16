@@ -94,6 +94,7 @@ struct thr_info {
 	struct thread_q	*q;
 	struct cpu_info cpu;
 	struct work work;
+	char* c_code;
 };
 
 struct work_restart {

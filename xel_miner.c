@@ -53,6 +53,7 @@ static int opt_fail_pause = 10;
 static int opt_scantime = 60;  // Get New Work From Server At Least Every 60s
 bool opt_test_vm = false;
 bool opt_test_miner = false;
+bool opt_test_compiler = false;
 int opt_timeout = 30;
 int opt_n_threads = 0;
 static enum prefs opt_pref = PREF_WCET;
@@ -161,6 +162,7 @@ static struct option const options[] = {
 	{ "scan-time",		1, NULL, 's' },
 	{ "test-miner",		1, NULL, 1003 },
 	{ "test-vm",		1, NULL, 1004 },
+	{ "test-compiler",	1, NULL, 1005 },
 	{ "threads",		1, NULL, 't' },
 	{ "timeout",		1, NULL, 'T' },
 	{ "url",			1, NULL, 'o' },
@@ -329,11 +331,18 @@ void parse_arg(int key, char *arg)
 		opt_test_miner = true;
 		break;
 	case 1004:
-		if (!arg)
+		if (!arg || opt_test_compiler)
 			show_usage_and_exit(1);
 		test_filename = malloc(strlen(arg) + 1);
 		strcpy(test_filename, arg);
 		opt_test_vm = true;
+		break;
+	case 1005:
+		if (!arg || opt_test_vm)
+			show_usage_and_exit(1);
+		test_filename = malloc(strlen(arg) + 1);
+		strcpy(test_filename, arg);
+		opt_test_compiler = true;
 		break;
 	default:
 		show_usage_and_exit(1);
@@ -496,6 +505,35 @@ static void *test_vm_thread(void *userdata) {
 out:
 	free(vm_mem);
 	free(vm_stack);
+	return NULL;
+}
+
+static void *test_compiler_thread(void *userdata) {
+	struct thr_info *mythr = (struct thr_info *) userdata;
+	int rc, thr_id = mythr->id;
+	long cnt;
+	char test_code[MAX_SOURCE_SIZE];
+	
+	applog(LOG_DEBUG, "DEBUG: Loading Test File");
+	if (!load_test_file(test_code))
+		goto out;
+
+	fprintf(stdout, "%s\n\n", test_code);
+
+	applog(LOG_DEBUG, "DEBUG: Running ElasticPL Parser");
+	if (!create_epl_vm(test_code))
+		goto out;
+
+	// Compile
+	applog(LOG_DEBUG, "DEBUG: Running ElasticPL C-Compiler");
+	char* c_code = c_compile_ast();
+	mythr->c_code = c_code;
+	fprintf(stdout, "%s\n\n", c_code);
+
+	applog(LOG_DEBUG, "DEBUG: Delete ElasticPL VM");
+	delete_epl_vm();
+
+out:
 	return NULL;
 }
 
@@ -1579,6 +1617,24 @@ int main(int argc, char **argv) {
 		free(test_filename);
 		return 0;
 	}
+
+	// In Test Compiler Mode, Run VM Compiler on Test File, Then Dump C-Code and Exit
+	if (opt_test_compiler) {
+		char* c_code = NULL;
+		thr = &thr_info[0];
+		thr->id = 0;
+		thr->q = tq_new();
+		if (!thr->q)
+			return 1;
+		if (thread_create(thr, test_compiler_thread)) {
+			applog(LOG_ERR, "Test Compiler thread create failed!");
+			return 1;
+		}
+		pthread_join(thr_info[work_thr_id].pth, NULL);
+		free(test_filename);
+		return 0;
+	}
+
 
 	applog(LOG_INFO, "Attempting to start %d miner threads", opt_n_threads);
 	thr_idx = 0;
