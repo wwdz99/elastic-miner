@@ -142,7 +142,6 @@ extern char* get_node_str(NODE_TYPE node_type) {
 	case NODE_REPEAT:		return "repeat";
 	case NODE_SHA256:		return "sha256";
 	case NODE_MD5:			return "md5";
-	case NODE_INPUT:		return "input";
 	default: return "Unknown";
 	}
 }
