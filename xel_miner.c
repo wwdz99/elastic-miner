@@ -503,7 +503,6 @@ out:
 	return NULL;
 }
 
-<<<<<<< HEAD
 static void *test_compiler_thread(void *userdata) {
 	struct thr_info *mythr = (struct thr_info *) userdata;
 	int rc, thr_id = mythr->id;
@@ -536,8 +535,7 @@ out:
 #define VM_INPUTS 12
 #define VM_MSG_SIZE 256048
 
-=======
->>>>>>> 00f340eb32bf7b94a6c722f40655cb141b22c14f
+
 static bool get_vm_input(struct work *work) {
 	int i;
 	char msg[80];
