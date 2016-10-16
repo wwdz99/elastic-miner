@@ -84,16 +84,14 @@ extern bool interpret(ast* exp) {
 			break;
 		case NODE_VAR_CONST:
 			if (exp->value < 0 || exp->value > VM_MEMORY_SIZE) {
-				applog(LOG_ERR, "ERROR: VM Runtime - Memory Out Of Bounds  vm_mem[%d]\n", exp->value);
-				return false;
+				exp->value = 0;
 			}
 			push(exp->value, true);
 			break;
 		case NODE_VAR_EXP:
 			lval = pop();
 			if (lval < 0 || lval > VM_MEMORY_SIZE) {
-				applog(LOG_ERR, "ERROR: VM Runtime - Memory Out Of Bounds  vm_mem[%d]\n", lval);
-				return false;
+				lval = 0;
 			}
 			push(lval, true);
 			break;
@@ -101,8 +99,7 @@ extern bool interpret(ast* exp) {
 			rval = pop();
 			lval = pop_item().value;	// Get The Memory Location, Not The Value
 			if (lval < 0 || lval > VM_MEMORY_SIZE) {
-				applog(LOG_ERR, "ERROR: VM Runtime - Invalid Assignment  vm_mem[%d]=%d", lval, rval);
-				return false;
+				lval = 0;
 			}
 			vm_mem[lval] = rval;
 			mangle_state(lval);
@@ -125,9 +122,6 @@ extern bool interpret(ast* exp) {
 				}
 			}
 			break;
-		case NODE_INPUT:
-			pop();
-			break;
 		case NODE_BLOCK:
 			break;
 		case NODE_ADD:
@@ -149,72 +143,53 @@ extern bool interpret(ast* exp) {
 			mangle_state(lval * rval);
 			break;
 		case NODE_DIV:
-			applog(LOG_ERR, "ERROR: VM Runtime - \"/\" Operator Not Implemented");
-			return false;
-			//rval = pop();
-			//lval = pop();
-			//if (rval != 0)
-			//	push(lval / rval, false);
-			//else {
-			//	applog(LOG_ERR, "ERROR: VM Runtime - Divide By Zero");
-			//	return false;
-			//}
-			//mangle_state(lval / rval);
-			//break;
+			rval = pop();
+			lval = pop();
+			if (rval != 0){
+				push(lval / rval, false);
+				mangle_state(lval / rval);
+			}
+			else {
+				push(0, false);
+				mangle_state(0);
+			}
+			
+			break;
 		case NODE_MOD:
 			rval = pop();
 			lval = pop();
-			if (rval != 0)
+			if (rval != 0){
 				push(lval % rval, false);
-			else {
-				applog(LOG_ERR, "ERROR: VM Runtime - Modulus Operand Equal To Zero");
-				return false;
+				mangle_state(lval % rval);
 			}
-			mangle_state(lval % rval);
+			else {
+				push(0, false);
+				mangle_state(0);
+			}
 			break;
 		case NODE_LSHIFT:
 			rval = pop();
 			lval = pop();
-			if (rval >= 0)
-				push(lval << rval, false);
-			else {
-				applog(LOG_ERR, "ERROR: VM Runtime - Negative Left Shift");
-				return false;
-			}
+			push(lval << rval, false);
 			mangle_state(lval << rval);
 			break;
 		case NODE_LROT:
 			rval = pop();
 			lval = pop();
-			if (rval >= 0 && rval <= 32)
-				push(((lval << (rval)) | (lval >> (32 - (rval)))), false);
-			else {
-				applog(LOG_ERR, "ERROR: VM Runtime - Illegal Left Shift Rotate");
-				return false;
-			}
-			mangle_state(((lval << (rval)) | (lval >> (32 - (rval)))));
+			push((((lval) << (32 - (rval%32))) | ((lval) >> (rval%32))), false);
+			mangle_state((((lval) << (32 - (rval%32))) | ((lval) >> (rval%32))));
 			break;
 		case NODE_RSHIFT:
 			rval = pop();
 			lval = pop();
-			if (rval >= 0)
-				push(lval >> rval, false);
-			else {
-				applog(LOG_ERR, "ERROR: VM Runtime - Negative Right Shift");
-				return false;
-			}
+			push(lval >> rval, false);
 			mangle_state(lval >> rval);
 			break;
 		case NODE_RROT:
 			rval = pop();
 			lval = pop();
-			if (rval >= 0 && rval <= 32)
-				push((((lval) << (32 - (rval))) | ((lval) >> (rval))), false);
-			else {
-				applog(LOG_ERR, "ERROR: VM Runtime - Illegal Right Shift Rotate");
-				return false;
-			}
-			mangle_state((((lval) << (32 - (rval))) | ((lval) >> (rval))));
+			push((((lval) << (32 - (rval%32))) | ((lval) >> (rval%32))), false);
+			mangle_state((((lval) << (32 - (rval%32))) | ((lval) >> (rval%32))));
 			break;
 		case NODE_NOT:
 			rval = pop();
@@ -305,6 +280,11 @@ extern bool interpret(ast* exp) {
 		case NODE_SHA256:
 			rval = pop();
 			lval = pop();
+
+//
+// Never crash!
+//
+
 			if (((rval % 4) != 0) || ((lval + rval) > VM_MEMORY_SIZE)) {
 				applog(LOG_ERR, "ERROR: VM Runtime - Invalid SHA256 byte length\n");
 				return false;
