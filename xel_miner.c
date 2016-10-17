@@ -26,6 +26,13 @@
 
 #ifdef WIN32
 #include "compat/winansi.h"
+#define MAXMODULE 50
+typedef int(__cdecl* cfunc)();
+cfunc run_spl;
+char mod[MAXMODULE];
+HINSTANCE hLib = NULL;
+#else
+#include "spl.h"
 #endif
 
 enum prefs {
@@ -419,7 +426,7 @@ static bool load_test_file(char *buf) {
 	FILE *fp;
 
 	fp = fopen(test_filename, "r");
-	
+
 	if (!fp) {
 		fprintf(stderr, "ERROR: Unable to open test file: '%s'\n", test_filename);
 		return false;
@@ -443,7 +450,7 @@ static bool load_test_file(char *buf) {
 	bytes = fread(buf, 1, len, fp);
 	fclose(fp);
 
-	if(bytes == 0)
+	if (bytes == 0)
 		fprintf(stderr, "ERROR: Unable to read test file: '%s'\n", test_filename);
 
 	buf[bytes] = 0;
@@ -508,7 +515,7 @@ static void *test_compiler_thread(void *userdata) {
 	int rc, thr_id = mythr->id;
 	long cnt;
 	char test_code[MAX_SOURCE_SIZE];
-	
+
 	applog(LOG_DEBUG, "DEBUG: Loading Test File");
 	if (!load_test_file(test_code))
 		goto out;
@@ -546,7 +553,7 @@ static bool get_vm_input(struct work *work) {
 	uint32_t *blockid32 = (uint32_t *)&work->block_id;
 
 	memcpy(&msg[0], work->multiplicator, 32);
-	memcpy(&msg[32],  publickey, 32);
+	memcpy(&msg[32], publickey, 32);
 	memcpy(&msg[64], &workid32[1], 4);	// Swap First 4 Bytes Of Long
 	memcpy(&msg[68], &workid32[0], 4);	// With Second 4 Bytes Of Long
 	memcpy(&msg[72], &blockid32[1], 4);
@@ -563,9 +570,9 @@ static bool get_vm_input(struct work *work) {
 
 	// Randomize The Inputs
 	for (i = 0; i < 12; i++) {
-		work->vm_input[i] = swap32(hash32[i%4]);
+		work->vm_input[i] = swap32(hash32[i % 4]);
 		if (i > 4)
-			work->vm_input[i] = work->vm_input[i] ^ work->vm_input[i-3];
+			work->vm_input[i] = work->vm_input[i] ^ work->vm_input[i - 3];
 	}
 
 	return true;
@@ -616,11 +623,22 @@ static int scanhash(int thr_id, struct work *work, long *hashes_done) {
 
 		// Get Values For VM Inputs
 		get_vm_input(work);
+
 		for (i = 0; i < 12; i++)
 			vm_mem[i] = work->vm_input[i];
 
+//
+// Need to fix this for linux
+//
 		// Run VM
-		rc = run_epl_vm();
+		if (hLib) {
+			rc = run_spl(vm_mem);
+		}
+		else {
+			rc = run_epl_vm();
+		}
+		run_spl();
+		rc = 1;
 
 		// VM Error Occured
 		if (!rc)
@@ -644,7 +662,7 @@ static int scanhash(int thr_id, struct work *work, long *hashes_done) {
 
 			// POW Solution Found
 			if (swap32(hash32[0]) <= work->pow_target[0])
-					rc = 1;
+				rc = 1;
 			else
 				rc = 0;
 		}
@@ -657,7 +675,8 @@ static int scanhash(int thr_id, struct work *work, long *hashes_done) {
 
 		if (rc)
 			return rc;
-		
+		(*hashes_done)++;
+
 		// Only Run For 1s Before Returning To Miner Thread
 		if ((time(NULL) - t_start) >= 1)
 			break;
@@ -733,7 +752,7 @@ static bool blacklist_work(char *work_id, enum blacklist_reason reason) {
 
 	blacklist = realloc(blacklist, sizeof(struct blacklisted_work) * (g_blacklist_cnt + 1));
 	if (!blacklist) {
-			applog(LOG_ERR, "ERROR: Unable to allocate memory for blacklist");
+		applog(LOG_ERR, "ERROR: Unable to allocate memory for blacklist");
 		return false;
 	}
 
@@ -812,12 +831,33 @@ static int get_upstream_work(CURL *curl, struct work *work) {
 	else
 		return 0;
 
+#ifdef WIN32
+	if (hLib) {
+		FreeLibrary((HMODULE)hLib);
+		hLib = NULL;
+	}
+
+	hLib = LoadLibrary("spl.dll");
+	if (!hLib) {
+		applog(LOG_ERR, "Unable to load library: 'spl.dll'");
+		return 0;
+	}
+	GetModuleFileName((HMODULE)hLib, (LPTSTR)mod, MAXMODULE);
+	run_spl = (cfunc)GetProcAddress((HMODULE)hLib, "run_spl");
+	if (run_spl == NULL) {
+		applog(LOG_ERR, "Unable to find 'run_spl' function");
+		FreeLibrary((HMODULE)hLib);
+		return 0;
+	}
+	applog(LOG_DEBUG, "DEBUG: SPL Library Loaded");
+#endif
+
 	return 1;
 }
 
 static int work_decode(const json_t *val, struct work *work, char *source_code) {
 	int i, j, idx, rc, num_pkg, best_pkg;
-	int bty_limit=0, bty_rcvd=0, bty_pend=0;
+	int bty_limit = 0, bty_rcvd = 0, bty_pend = 0;
 	float best_profit = 0.0;
 	unsigned int wcet = 1, best_wcet = 0xFFFFFFFF;
 	bool blacklisted = false;
@@ -834,7 +874,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 		free(g_work_id);
 		g_work_id = NULL;
 	}
-	if(g_pow_target) strcpy(g_pow_target, "");
+	if (g_pow_target) strcpy(g_pow_target, "");
 
 	if (opt_protocol) {
 		str = json_dumps(val, JSON_INDENT(3));
@@ -883,7 +923,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 		// Check If Work Has Been Blacklisted
 		blacklisted = false;
 		for (j = 0; j < g_blacklist_cnt; j++) {
-//			applog(LOG_NOTICE, "checking: %s vs list: %s", wrk_id, blacklist[j].work_id);
+			//			applog(LOG_NOTICE, "checking: %s vs list: %s", wrk_id, blacklist[j].work_id);
 			if (!strcmp(wrk_id, blacklist[j].work_id)) {
 				blacklisted = true;
 				break;
@@ -942,7 +982,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 	wrk_id = (char *)json_string_value(json_object_get(pkg, "work_id"));
 	work->block_id = strtoull(blk_id, NULL, 10);
 	work->work_id = strtoull(wrk_id, NULL, 10);
-	
+
 	// Extract The ElasticPL Source Code
 	src = (char *)json_string_value(json_object_get(pkg, "source"));
 	if (!src || strlen(src) > MAX_SOURCE_SIZE) {
@@ -1021,7 +1061,7 @@ static bool submit_upstream_work(CURL *curl, struct submit_req *req) {
 		applog(LOG_ERR, "ERROR: Unable to allocate memory for submit work url");
 		return false;
 	}
-	
+
 	if (req->req_type == SUBMIT_BTY_ANN) {
 		sprintf(url, "%s?requestType=bountyAnnouncement", rpc_url);
 		sprintf(data, "deadline=3&feeNQT=0&amountNQT=5000&work_id=%s&hash_announcement=%s&secretPhrase=%s", req->work_id, req->hash, passphrase);
@@ -1190,7 +1230,7 @@ static void *miner_thread(void *userdata) {
 		if (diff.tv_sec >= 5) {
 			eval_rate = (double)(hashes_done / (diff.tv_sec + diff.tv_usec * 1e-6));
 			if (!opt_quiet) {
-				sprintf(s, eval_rate >= 1000.0 ? "%0.2f kEval/s" : "%0.2f Eval/s", (eval_rate >= 1000.0) ? eval_rate /1000 : eval_rate);
+				sprintf(s, eval_rate >= 1000.0 ? "%0.2f kEval/s" : "%0.2f Eval/s", (eval_rate >= 1000.0) ? eval_rate / 1000 : eval_rate);
 				applog(LOG_INFO, "CPU%d: %s", thr_id, s);
 			}
 			gettimeofday((struct timeval *) &tv_start, NULL);
@@ -1375,9 +1415,9 @@ static void *submit_thread(void *userdata) {
 	int i;
 
 	while (1) {
-		
+
 		for (i = 0; i < g_submit_req_cnt; i++) {
-			
+
 			// Remove Completed Requests
 			if (g_submit_req[i].req_type == SUBMIT_COMPLETE) {
 				applog(LOG_DEBUG, "DEBUG: Submit complete...deleting request");
@@ -1659,16 +1699,16 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-	 // Start Key Monitor Thread
-	 thr = &thr_info[opt_n_threads + 2];
-	 thr->id = opt_n_threads + 2;
-	 thr->q = tq_new();
-	 if (!thr->q)
-	 return 1;
-	 if (thread_create(thr, key_monitor_thread)) {
+	// Start Key Monitor Thread
+	thr = &thr_info[opt_n_threads + 2];
+	thr->id = opt_n_threads + 2;
+	thr->q = tq_new();
+	if (!thr->q)
+		return 1;
+	if (thread_create(thr, key_monitor_thread)) {
 		applog(LOG_ERR, "Key monitor thread create failed");
-	 return 1;
-	 }
+		return 1;
+	}
 
 	// Main Loop - Wait for workio thread to exit
 	pthread_join(thr_info[work_thr_id].pth, NULL);
