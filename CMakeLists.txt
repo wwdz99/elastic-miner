@@ -42,6 +42,8 @@ target_link_libraries(${TARGET_NAME} crypto pthread ${CURL_LIBRARIES} jansson)
 
 IF(WIN32)
 	target_link_libraries(${TARGET_NAME} libcurl Ws2_32)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Ofast -msse -msse2 -msse3 -mmmx -m3dnow")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -msse -msse2 -msse3 -mmmx -m3dnow")
 ENDIF(WIN32)
 
 IF(UNIX)
