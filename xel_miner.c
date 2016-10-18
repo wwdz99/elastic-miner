@@ -4,7 +4,7 @@
 * Copyright 2014 Lucas Jones
 * Copyright 2016 sprocket
 *
-* This program is free software; you can redistribute it and/or modify it
+* This program is free software; you can redistribuSte it and/or modify it
 * under the terms of the GNU General Public License as published by the Free
 * Software Foundation; either version 2 of the License, or (at your option)
 * any later version.
@@ -21,18 +21,15 @@
 #include <sys/time.h>
 #include <time.h>
 
-#include "ElasticPL/ElasticPL.h"
 #include "miner.h"
 
 #ifdef WIN32
 #include "compat/winansi.h"
-#define MAXMODULE 50
-typedef int(__cdecl* cfunc)();
-cfunc run_spl;
-char mod[MAXMODULE];
-HINSTANCE hLib = NULL;
+
+//HINSTANCE hLib = NULL;
+//typedef int(__cdecl* cfunc)();
+//cfunc run_spl;
 #else
-#include "spl.h"
 #endif
 
 enum prefs {
@@ -49,7 +46,7 @@ static const char *pref_type[] = {
 	"\0"
 };
 
-bool opt_debug = true;
+bool opt_debug = false;
 bool opt_debug_epl = false;
 bool opt_debug_vm = false;
 bool opt_quiet = false;
@@ -58,9 +55,7 @@ bool use_colors = true;
 static int opt_retries = -1;
 static int opt_fail_pause = 10;
 static int opt_scantime = 60;  // Get New Work From Server At Least Every 60s
-bool opt_test_vm = false;
 bool opt_test_miner = false;
-bool opt_test_compiler = false;
 int opt_timeout = 30;
 int opt_n_threads = 0;
 static enum prefs opt_pref = PREF_WCET;
@@ -69,18 +64,12 @@ char pref_workid[32];
 int num_cpus;
 char *g_work_nm;
 char *g_work_id;
+uint64_t g_cur_work_id;
 unsigned char g_pow_target[65];
 
 pthread_mutex_t applog_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t work_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t submit_lock = PTHREAD_MUTEX_INITIALIZER;
-
-__thread long *vm_mem;
-__thread vm_stack_item *vm_stack;
-__thread int vm_stack_idx;
-__thread bool vm_bounty;
-__thread uint64_t vm_state1 = 0L;
-__thread uint64_t vm_state2 = 0L;
 
 char *rpc_url = NULL;
 char *rpc_user = NULL;
@@ -110,6 +99,7 @@ uint32_t g_pow_rejected_cnt = 0;
 int work_thr_id;
 struct thr_info *thr_info;
 struct work_restart *work_restart = NULL;
+struct instance* inst = NULL;
 
 extern uint32_t swap32(int a) {
 	return ((a << 24) | ((a << 8) & 0x00FF0000) | ((a >> 8) & 0x0000FF00) | ((a >> 24) & 0x000000FF));
@@ -137,7 +127,6 @@ Options:\n\
   -R, --retry-pause <n>       Time to pause between retries (Default: 10 sec)\n\
   -s, --scan-time <n>         Max time to scan work before requesting new work (Default: 60 sec)\n\
       --test-miner <file>     Run the Miner using JSON formatted work in <file>\n\
-      --test-vm <file>        Run the VM using the ElasticPL source code in <file>\n\
   -t, --threads <n>           Number of miner threads (Default: Number of CPUs)\n\
   -u, --user <username>       Username for mining server\n\
   -T, --timeout <n>           Timeout for rpc calls (Default: 30 sec)\n\
@@ -165,8 +154,6 @@ static struct option const options[] = {
 	{ "retry-pause",	1, NULL, 'R' },
 	{ "scan-time",		1, NULL, 's' },
 	{ "test-miner",		1, NULL, 1003 },
-	{ "test-vm",		1, NULL, 1004 },
-	{ "test-compiler",	1, NULL, 1005 },
 	{ "threads",		1, NULL, 't' },
 	{ "timeout",		1, NULL, 'T' },
 	{ "url",			1, NULL, 'o' },
@@ -334,20 +321,6 @@ void parse_arg(int key, char *arg)
 		strcpy(test_filename, arg);
 		opt_test_miner = true;
 		break;
-	case 1004:
-		if (!arg || opt_test_compiler)
-			show_usage_and_exit(1);
-		test_filename = malloc(strlen(arg) + 1);
-		strcpy(test_filename, arg);
-		opt_test_vm = true;
-		break;
-	case 1005:
-		if (!arg || opt_test_vm)
-			show_usage_and_exit(1);
-		test_filename = malloc(strlen(arg) + 1);
-		strcpy(test_filename, arg);
-		opt_test_compiler = true;
-		break;
 	default:
 		show_usage_and_exit(1);
 	}
@@ -458,91 +431,6 @@ static bool load_test_file(char *buf) {
 	return true;
 }
 
-static void *test_vm_thread(void *userdata) {
-	struct thr_info *mythr = (struct thr_info *) userdata;
-	int rc, thr_id = mythr->id;
-	long cnt;
-	char test_code[MAX_SOURCE_SIZE];
-	struct work work;
-
-	memset(&work, 0, sizeof(struct work));
-
-	// Initialize Global Variables
-	vm_mem = calloc(VM_MEMORY_SIZE, sizeof(long));
-	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
-	vm_stack_idx = -1;
-
-	if (!vm_mem || !vm_stack) {
-		applog(LOG_ERR, "ERROR: Unable to initialize VM memory");
-		return NULL;
-	}
-
-	applog(LOG_DEBUG, "DEBUG: Loading Test File");
-	if (!load_test_file(test_code))
-		goto out;
-
-	fprintf(stdout, "%s\n\n", test_code);
-
-	applog(LOG_DEBUG, "DEBUG: Running ElasticPL Parser");
-	if (!create_epl_vm(test_code))
-		goto out;
-
-	applog(LOG_DEBUG, "DEBUG: Running ElasticPL VM");
-	work.block_id = 1234567890L;
-	work.pow_target[0] = 0x0000FFFF;
-	work.work_id = 9876543210L;
-
-	rc = scanhash(0, &work, &cnt);
-
-	if (rc < 0)
-		goto out;
-	else if (rc == 2)
-		applog(LOG_INFO, "Verify: %sTrue", CL_GRN);
-	else
-		applog(LOG_INFO, "Verify: %sFalse", CL_RED);
-
-	applog(LOG_DEBUG, "DEBUG: Delete ElasticPL VM");
-	delete_epl_vm();
-
-out:
-	free(vm_mem);
-	free(vm_stack);
-	return NULL;
-}
-
-static void *test_compiler_thread(void *userdata) {
-	struct thr_info *mythr = (struct thr_info *) userdata;
-	int rc, thr_id = mythr->id;
-	long cnt;
-	char test_code[MAX_SOURCE_SIZE];
-
-	applog(LOG_DEBUG, "DEBUG: Loading Test File");
-	if (!load_test_file(test_code))
-		goto out;
-
-	fprintf(stdout, "%s\n\n", test_code);
-
-	applog(LOG_DEBUG, "DEBUG: Running ElasticPL Parser");
-	if (!create_epl_vm(test_code))
-		goto out;
-
-	// Compile
-	applog(LOG_DEBUG, "DEBUG: Running ElasticPL C-Compiler");
-	char* c_code = c_compile_ast();
-	mythr->c_code = c_code;
-	fprintf(stdout, "%s\n\n", c_code);
-
-	applog(LOG_DEBUG, "DEBUG: Delete ElasticPL VM");
-	delete_epl_vm();
-
-out:
-	return NULL;
-}
-
-#define VM_INPUTS 12
-#define VM_MSG_SIZE 256048
-
-
 static bool get_vm_input(struct work *work) {
 	int i;
 	char msg[80];
@@ -585,10 +473,10 @@ static int scanhash(int thr_id, struct work *work, long *hashes_done) {
 	char hash[32];
 	uint32_t *msg32 = (uint32_t *)msg;
 	uint32_t *hash32 = (uint32_t *)hash;
-	uint32_t *state1_32 = (uint32_t *)&vm_state1;
-	uint32_t *state2_32 = (uint32_t *)&vm_state2;
 	uint32_t *mult32 = (uint32_t *)work->multiplicator;
-	uint32_t *vm_mem32 = (uint32_t *)vm_mem;
+
+	mult32[6] = genrand_int32();
+	mult32[7] = genrand_int32();
 
 	while (1) {
 		// Check If New Work Is Available
@@ -597,85 +485,48 @@ static int scanhash(int thr_id, struct work *work, long *hashes_done) {
 			return 0;
 		}
 
-		// Increment Multiplicator
-		//m32[0] = genrand_int32();
-		//m32[1] = genrand_int32();
-		//m32[2] = genrand_int32();
-		//m32[3] = genrand_int32();
-		//m32[4] = genrand_int32();
-		//m32[5] = genrand_int32();
-		mult32[6] = genrand_int32();
-		mult32[7] = genrand_int32();
-
-		//// POW Test
-		//unsigned char c2[] = { 0x97,0x8E,0xA1,0x62,0xE1,0x0F,0xAA,0x50,0x7C,0xEA,0x49,0x14,0x2D,0x29,0xD7,0xEB,0x84,0x3D,0x20,0x2B,0xDC,0xEB,0xF4,0x83,0x01,0x0F,0xFD,0x41,0x27,0x45,0xA8,0xA1 };
-		//memcpy(&work->multiplicator[0], c2, 32);
-		//work->work_id = 3832971199958062557;
-		//work->block_id = -2761506866885707942;
-		////Digest :  E359006C0A1C01358CCA7CC99D004AD1
-
-		//// Bounty Test
-		//unsigned char c2[] = { 0xC9,0x34,0x61,0x79,0x2D,0xAB,0x2D,0x8D,0xEE,0xEC,0x68,0x3E,0x20,0x03,0xF4,0xF7,0x6C,0x50,0x1F,0x55,0xC5,0xC1,0x95,0x46,0x28,0x60,0xE7,0x5B,0x13,0xAF,0xEA,0x22 };
-		//memcpy(&work->multiplicator[0], c2, 32);
-		//work->work_id = -8186430844110356191;
-		//work->block_id = -1201033493715896973;
-		////Digest :  2E1401A073EB39375C8D2430F289842E181E84232FBDBE70C5B8CFA64A75D8C4
+		// Increment mult32
+		mult32[7] = mult32[7] + 1;
+		if (mult32[7] == INT32_MAX) {
+			mult32[7] = 0;
+			mult32[6] = mult32[6] + 1;
+		}
 
 		// Get Values For VM Inputs
 		get_vm_input(work);
+		inst->fill_ints(work->vm_input);
+		rc = inst->execute();
 
-		for (i = 0; i < 12; i++)
-			vm_mem[i] = work->vm_input[i];
-
-//
-// Need to fix this for linux
-//
-		// Run VM
-		if (hLib) {
-			rc = run_spl(vm_mem);
-		}
-		else {
-			rc = run_epl_vm();
-		}
-		run_spl();
-		rc = 1;
-
-		// VM Error Occured
-		if (!rc)
-			return -1;
+		// Hee, we have found a bounty, exit immediately
+		if (rc == 1)
+			return rc;
 
 		// Check For POW Result
-		if (rc == 1) {
-			memcpy(&msg[0], &state1_32[1], 4);	// Swap First 4 Bytes Of Long
-			memcpy(&msg[4], &state1_32[0], 4);	// With Second 4 Bytes Of Long
-			memcpy(&msg[8], &state2_32[1], 4);
-			memcpy(&msg[12], &state2_32[0], 4);
-			msg32[0] = swap32(msg32[0]);
-			msg32[1] = swap32(msg32[1]);
-			msg32[2] = swap32(msg32[2]);
-			msg32[3] = swap32(msg32[3]);
+		memcpy(&msg[0], inst->vm_state1, 4);
+		memcpy(&msg[4], inst->vm_state2, 4);
+		memcpy(&msg[8], inst->vm_state3, 4);
+		memcpy(&msg[12], inst->vm_state4, 4);
+		msg32[0] = swap32(msg32[0]);
+		msg32[1] = swap32(msg32[1]);
+		msg32[2] = swap32(msg32[2]);
+		msg32[3] = swap32(msg32[3]);
 
-			for (i = 0; i < VM_INPUTS; i++)
-				msg32[i + 4] = swap32(work->vm_input[i]);
+		for (i = 0; i < VM_INPUTS; i++)
+			msg32[i + 4] = swap32(work->vm_input[i]);
 
-			sha256(msg, 64, hash);
+		sha256(msg, 64, hash);
 
-			// POW Solution Found
-			if (swap32(hash32[0]) <= work->pow_target[0])
-				rc = 1;
-			else
-				rc = 0;
+		// POW Solution Found
+		if (swap32(hash32[0]) <= work->pow_target[0])
+			rc = 2;
+		else
+			rc = 0;
+
+		(*hashes_done)++;
+
+		if (rc == 2) {
+			return rc;
 		}
-
-		// In Test Mode Only Run Once
-		if (opt_test_vm)
-			return rc;
-
-		(*hashes_done)++;
-
-		if (rc)
-			return rc;
-		(*hashes_done)++;
 
 		// Only Run For 1s Before Returning To Miner Thread
 		if ((time(NULL) - t_start) >= 1)
@@ -803,6 +654,12 @@ static int get_upstream_work(CURL *curl, struct work *work) {
 	rc = work_decode(val, work, source_code);
 	json_decref(val);
 
+	// If We Are On The Same Work ID No Need To Recompile
+	if (work->work_id && work->work_id == g_cur_work_id)
+		return 1;
+
+	g_cur_work_id = work->work_id;
+
 	if (rc < 0)
 		return -1;
 	else if (rc > 0 && source_code) {
@@ -812,15 +669,22 @@ static int get_upstream_work(CURL *curl, struct work *work) {
 			applog(LOG_DEBUG, "DEBUG: Time to decode work: %.2f ms", (1000.0 * diff.tv_sec) + (0.001 * diff.tv_usec));
 		}
 
-		applog(LOG_DEBUG, "DEBUG: Running ElasticPL Parser");
+		applog(LOG_DEBUG, "DEBUG: Running ElasticPL Compiler");
 
 		if (opt_debug_epl)
 			applog(LOG_DEBUG, "DEBUG: ElasticPL Source Code -\n%s", source_code);
 
-		if (!create_epl_vm(source_code)) {
+		// Convert The ElasticPL Source Into A C Program Library
+		if (!compile_and_link(source_code)) {
 			blacklist_work(g_work_id, BLST_SYNTAX_ERROR);
 			return 0;
 		}
+
+		// Link To The C Program Library
+		if(inst)
+			free_compiler(inst);
+		inst = calloc(1, sizeof(struct instance));
+		create_instance(inst);
 
 		gettimeofday(&tv_end, NULL);
 		if (opt_protocol) {
@@ -830,27 +694,6 @@ static int get_upstream_work(CURL *curl, struct work *work) {
 	}
 	else
 		return 0;
-
-#ifdef WIN32
-	if (hLib) {
-		FreeLibrary((HMODULE)hLib);
-		hLib = NULL;
-	}
-
-	hLib = LoadLibrary("spl.dll");
-	if (!hLib) {
-		applog(LOG_ERR, "Unable to load library: 'spl.dll'");
-		return 0;
-	}
-	GetModuleFileName((HMODULE)hLib, (LPTSTR)mod, MAXMODULE);
-	run_spl = (cfunc)GetProcAddress((HMODULE)hLib, "run_spl");
-	if (run_spl == NULL) {
-		applog(LOG_ERR, "Unable to find 'run_spl' function");
-		FreeLibrary((HMODULE)hLib);
-		return 0;
-	}
-	applog(LOG_DEBUG, "DEBUG: SPL Library Loaded");
-#endif
 
 	return 1;
 }
@@ -1179,16 +1022,6 @@ static void *miner_thread(void *userdata) {
 	uint32_t *workid32;
 	double eval_rate;
 
-	// Initialize Global Variables
-	vm_mem = calloc(VM_MEMORY_SIZE, sizeof(long));
-	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
-	vm_stack_idx = -1;
-
-	if (!vm_mem || !vm_stack) {
-		applog(LOG_ERR, "CPU%d: Unable to allocate VM memory", thr_id, s);
-		goto out;
-	}
-
 	hashes_done = 0;
 	memset(&work, 0, sizeof(work));
 	workid32 = (uint32_t *)&work.work_id;
@@ -1237,19 +1070,8 @@ static void *miner_thread(void *userdata) {
 			hashes_done = 0;
 		}
 
-		// VM Encountered An Error
-		if (rc < 0) {
-			// Blacklist Work ID
-			blacklist_work(g_work_id, BLST_RUNTIME_ERROR);
-
-			// Force g_work To Refresh
-			pthread_mutex_lock(&work_lock);
-			g_work_time = 0;
-			pthread_mutex_unlock(&work_lock);
-		}
-
 		// Submit Work That Meets Bounty Criteria
-		if (rc == 2) {
+		if (rc == 1) {
 			applog(LOG_NOTICE, "CPU%d: Submitting Bounty Solution", thr_id);
 
 			// Create Announcement Message
@@ -1267,6 +1089,7 @@ static void *miner_thread(void *userdata) {
 			if (!add_submit_req(&work, SUBMIT_BTY_ANN))
 				break;
 
+
 			// Force g_work To Refresh
 			pthread_mutex_lock(&work_lock);
 			g_work_time = 0;
@@ -1274,7 +1097,7 @@ static void *miner_thread(void *userdata) {
 		}
 
 		// Submit Work That Meets POW Target
-		if (rc == 1) {
+		if (rc == 2) {
 			applog(LOG_NOTICE, "CPU%d: Submitting POW Solution", thr_id);
 			if (!add_submit_req(&work, SUBMIT_POW))
 				break;
@@ -1287,8 +1110,6 @@ static void *miner_thread(void *userdata) {
 	}
 
 out:
-	free(vm_mem);
-	free(vm_stack);
 	tq_freeze(mythr->q);
 
 	return NULL;
@@ -1415,7 +1236,6 @@ static void *submit_thread(void *userdata) {
 	int i;
 
 	while (1) {
-
 		for (i = 0; i < g_submit_req_cnt; i++) {
 
 			// Remove Completed Requests
@@ -1441,8 +1261,9 @@ static void *submit_thread(void *userdata) {
 			if (!submit_work(mythr, &g_submit_req[i])) {
 				applog(LOG_ERR, "ERROR: Submit bounty request failed");
 			}
-			sleep(1);
+
 		}
+		sleep(1);
 	}
 
 	return NULL;
@@ -1633,39 +1454,6 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-	// In Test VM Mode, Run VM Using Source Code From Test File
-	if (opt_test_vm) {
-		thr = &thr_info[0];
-		thr->id = 0;
-		thr->q = tq_new();
-		if (!thr->q)
-			return 1;
-		if (thread_create(thr, test_vm_thread)) {
-			applog(LOG_ERR, "Test VM thread create failed!");
-			return 1;
-		}
-
-		pthread_join(thr_info[work_thr_id].pth, NULL);
-		free(test_filename);
-		return 0;
-	}
-
-	// In Test Compiler Mode, Run VM Compiler on Test File, Then Dump C-Code and Exit
-	if (opt_test_compiler) {
-		char* c_code = NULL;
-		thr = &thr_info[0];
-		thr->id = 0;
-		thr->q = tq_new();
-		if (!thr->q)
-			return 1;
-		if (thread_create(thr, test_compiler_thread)) {
-			applog(LOG_ERR, "Test Compiler thread create failed!");
-			return 1;
-		}
-		pthread_join(thr_info[work_thr_id].pth, NULL);
-		free(test_filename);
-		return 0;
-	}
 
 
 	applog(LOG_INFO, "Attempting to start %d miner threads", opt_n_threads);

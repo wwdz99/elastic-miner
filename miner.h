@@ -14,16 +14,18 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <string.h> /* memset */
 
 #ifdef WIN32
 #include <windows.h>
 #define sleep(secs) Sleep((secs) * 1000)
+#else
+#include <unistd.h> /* close */
 #endif
 
 #include "elist.h"
 #include "crypto/md5.h"
 #include "crypto/sha2.h"
-#include "ElasticPL/ElasticPL.h"
 
 #ifdef _MSC_VER
 #define strdup(...) _strdup(__VA_ARGS__)
@@ -41,6 +43,7 @@
 #endif
 
 #define MAX_SOURCE_SIZE 4096
+#define VM_INPUTS 12
 
 extern bool opt_debug;
 extern bool opt_debug_epl;
@@ -170,13 +173,6 @@ extern bool use_colors;
 extern struct thr_info *thr_info;
 extern pthread_mutex_t applog_lock;
 
-extern __thread long *vm_mem;
-extern __thread vm_stack_item *vm_stack;
-extern __thread int vm_stack_idx;
-extern __thread bool vm_bounty;
-extern __thread uint64_t vm_state1;
-extern __thread uint64_t vm_state2;
-
 enum {
 	LOG_ERR,
 	LOG_WARNING,
@@ -269,5 +265,31 @@ void sha256d(unsigned char *hash, const unsigned char *data, int len);
 
 extern unsigned long genrand_int32(void);
 extern void init_genrand(unsigned long s);
+
+typedef int(__cdecl* cfunc1)(int *);
+typedef int(__cdecl* cfunc2)();
+
+struct instance {
+
+#ifdef WIN32
+	HINSTANCE hndl;
+	int(__cdecl* fill_ints)(int *);
+	int(__cdecl* execute)();
+#else
+	void *hndl;
+	int(*fill_ints)(int input[]);
+	int(*execute)();
+#endif
+
+	uint32_t* vm_state1;
+	uint32_t* vm_state2;
+	uint32_t* vm_state3;
+	uint32_t* vm_state4;
+
+};
+
+bool compile_and_link(char* source_code);
+void create_instance(struct instance* inst);
+void free_compiler(struct instance* inst);
 
 #endif /* __MINER_H__ */

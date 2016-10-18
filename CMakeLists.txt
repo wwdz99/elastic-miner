@@ -24,11 +24,8 @@ add_subdirectory(compat/jansson)
 include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/algo ${PROJECT_SOURCE_DIR}/compat/jansson ${CURL_INCLUDE_DIR})
 
 set(SRC_LIST	xel_miner.c
+		xel_compiler.c
 		util.c
-		./ElasticPL/ElasticPL.c
-		./ElasticPL/ElasticPLInterpreter.c
-		./ElasticPL/ElasticPLParser.c
-		./ElasticPL/ElasticPLTokenManager.c
 		./crypto/md5.c
 		./crypto/sha2.c
 )
@@ -48,7 +45,10 @@ IF(WIN32)
 ENDIF(WIN32)
 
 IF(UNIX)
-	target_link_libraries(${TARGET_NAME} m)
+	target_link_libraries(${TARGET_NAME} m dl)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Ofast -msse -msse2 -msse3 -mmmx -m3dnow -fPIC -fext-numeric-literals")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -msse -msse2 -msse3 -mmmx -m3dnow -fPIC -fext-numeric-literals")
+
 ENDIF(UNIX)
 
 set_target_properties( ${TARGET_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR} )
