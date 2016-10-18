@@ -266,9 +266,6 @@ void sha256d(unsigned char *hash, const unsigned char *data, int len);
 extern unsigned long genrand_int32(void);
 extern void init_genrand(unsigned long s);
 
-typedef int(__cdecl* cfunc1)(int *);
-typedef int(__cdecl* cfunc2)();
-
 struct instance {
 
 #ifdef WIN32
