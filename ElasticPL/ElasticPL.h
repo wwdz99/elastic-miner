@@ -176,8 +176,8 @@ ast **stack_exp;	// List Of Expresions For Parsing / Final Expression List
 
 int vm_ast_cnt;		// Number Of AST Root Nodes In VM
 ast **vm_ast;		// Final AST List For VM
-					
-// Function Declarations
+
+					// Function Declarations
 extern bool create_epl_vm(char *source);
 extern int run_epl_vm();
 extern void delete_epl_vm();
@@ -197,8 +197,8 @@ extern int interpret_ast();
 extern char* c_compile_ast();
 extern bool interpret(ast* exp);
 extern char* compile(ast* exp);
-static void mangle_state(int x);
-static void mangle_state_verify(int x);
+//static void mangle_state(int x);
+//static void mangle_state_verify(int x);
 static void push(long l, bool memory);
 static vm_stack_item pop_item(void);
 static long pop(void);

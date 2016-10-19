@@ -15,38 +15,30 @@
 #include "ElasticPL.h"
 #include "../miner.h"
 
-
-uint64_t rotl64 (uint64_t x, unsigned int n)
+uint64_t rotl64(uint64_t x, int n)
 {
-  const unsigned int mask = (CHAR_BIT*sizeof(x)-1);
-  n &= mask;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers
-  return (x<<n) | (x>>( (-n)&mask ));
+	const unsigned int mask = (CHAR_BIT * sizeof(x) - 1);
+	n &= mask;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers
+	return (x << n) | (x >> ((-n)&mask));
 }
-uint64_t rotr64 (uint64_t x, unsigned int n)
+uint64_t rotr64(uint64_t x, int n)
 {
-  const unsigned int mask = (CHAR_BIT*sizeof(x)-1);
-  n &= mask;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers
-  return (x>>n) | (x<<( (-n)&mask ));
+	const unsigned int mask = (CHAR_BIT * sizeof(x) - 1);
+	n &= mask;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers
+	return (x >> n) | (x << ((-n)&mask));
 }
-uint32_t rotl32 (uint32_t x, unsigned int n)
+uint32_t rotl32(uint32_t x, int n)
 {
-  const unsigned int mask = (CHAR_BIT*sizeof(x)-1);
-  n &= mask;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers
-  return (x<<n) | (x>>( (-n)&mask ));
+	const unsigned int mask = (CHAR_BIT * sizeof(x) - 1);
+	n &= mask;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers
+	return (x << n) | (x >> ((-n)&mask));
 }
-uint32_t rotr32 (uint32_t x, unsigned int n)
+uint32_t rotr32(uint32_t x, int n)
 {
-  const unsigned int mask = (CHAR_BIT*sizeof(x)-1);
-  n &= mask;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers
-  return (x>>n) | (x<<( (-n)&mask ));
+	const unsigned int mask = (CHAR_BIT * sizeof(x) - 1);
+	n &= mask;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers
+	return (x >> n) | (x << ((-n)&mask));
 }
-
-
-
-//int vm_stack_idx = -1;
-//vm_stack_item vm_stack[VM_STACK_SIZE];
-//bool vm_bounty;
-//long *vm_mem;
 
 void push(long l, bool memory) {
 	vm_stack[++vm_stack_idx].value = l;
@@ -64,18 +56,16 @@ static long pop() {
 		return vm_stack[vm_stack_idx--].value;
 }
 
+
 extern int interpret_ast() {
 	int i;
 
-	vm_state1 = 0L;
-	vm_state2 = 0L;
-
-//	vm_stack_idx = -1;
+	//	vm_stack_idx = -1;
 
 	for (i = 0; i < vm_ast_cnt; i++) {
 		//if (opt_debug_vm)
 		//	dump_statement(i, vm_ast[i]->type);
-		if(!interpret(vm_ast[i]))
+		if (!interpret(vm_ast[i]))
 			return 0;
 	}
 
@@ -94,38 +84,6 @@ extern int interpret_ast() {
 		return 2;
 }
 
-char* append_strings(char * old, char * new)
-{
-	if(new == NULL && old != NULL) return old;
-	if(old == NULL && new != NULL) return new;
-	if(new == NULL && old == NULL) return NULL;
-
-    // find the size of the string to allocate
-    const size_t old_len = strlen(old), new_len = strlen(new);
-    const size_t out_len = old_len + new_len + 1;
-
-    // allocate a pointer to the new string
-    char *out = malloc(out_len);
-
-    // concat both strings and return
-    memcpy(out, old, old_len);
-    memcpy(out + old_len, new, new_len + 1);
-
-    // Free here
-    free(old);
-    free(new);
-
-    return out;
-}
-
-extern char* c_compile_ast() {
-	char* ret = NULL;
-	int i;
-	for (i = 0; i < vm_ast_cnt; i++) {
-		ret = append_strings(ret, compile(vm_ast[i]));
-	}
-	return ret;
-}
 
 
 // Use Post Order Traversal To Process The Expressions In The AST
@@ -134,9 +92,9 @@ extern bool interpret(ast* exp) {
 
 	if (exp != NULL) {
 
-		if(!interpret(exp->left))
+		if (!interpret(exp->left))
 			return false;
-		
+
 		// Check For If Statement As Right Side Is Conditional
 		if (exp->type != NODE_IF)
 			if (!interpret(exp->right))
@@ -166,8 +124,8 @@ extern bool interpret(ast* exp) {
 				lval = 0;
 			}
 			vm_mem[lval] = rval;
-			mangle_state(lval);
-			mangle_state(rval);
+			//mangle_state(lval);
+			//mangle_state(rval);
 			break;
 		case NODE_IF:
 			if (exp->right->type != NODE_ELSE) {
@@ -192,171 +150,171 @@ extern bool interpret(ast* exp) {
 			rval = pop();
 			lval = pop();
 			push(lval + rval, false);
-			mangle_state(lval + rval);
+			//mangle_state(lval + rval);
 			break;
 		case NODE_SUB:
 			rval = pop();
 			lval = pop();
 			push(lval - rval, false);
-			mangle_state(lval - rval);
+			//mangle_state(lval - rval);
 			break;
 		case NODE_MUL:
 			rval = pop();
 			lval = pop();
 			push(lval * rval, false);
-			mangle_state(lval * rval);
+			//mangle_state(lval * rval);
 			break;
 		case NODE_DIV:
 			rval = pop();
 			lval = pop();
-			if (rval != 0){
+			if (rval != 0) {
 				push(lval / rval, false);
-				mangle_state(lval / rval);
+				//mangle_state(lval / rval);
 			}
 			else {
 				push(0, false);
-				mangle_state(0);
+				//mangle_state(0);
 			}
-			
+
 			break;
 		case NODE_MOD:
 			rval = pop();
 			lval = pop();
-			if (rval != 0){
+			if (rval != 0) {
 				push(lval % rval, false);
-				mangle_state(lval % rval);
+				//mangle_state(lval % rval);
 			}
 			else {
 				push(0, false);
-				mangle_state(0);
+				//mangle_state(0);
 			}
 			break;
 		case NODE_LSHIFT:
 			rval = pop();
 			lval = pop();
 			push(lval << rval, false);
-			mangle_state(lval << rval);
+			//mangle_state(lval << rval);
 			break;
 		case NODE_LROT:
 			rval = pop();
 			lval = pop();
-			push(rotl32(lval,rval%32), false);
-			mangle_state(rotl32(lval,rval%32));
+			push(rotl32(lval, rval % 32), false);
+			//mangle_state(rotl32(lval, rval % 32));
 			break;
 		case NODE_RSHIFT:
 			rval = pop();
 			lval = pop();
 			push(lval >> rval, false);
-			mangle_state(lval >> rval);
+			//mangle_state(lval >> rval);
 			break;
 		case NODE_RROT:
 			rval = pop();
 			lval = pop();
-			push(rotr32(lval,rval%32), false);
-			mangle_state(rotr32(lval,rval%32));
+			push(rotr32(lval, rval % 32), false);
+			//mangle_state(rotr32(lval, rval % 32));
 			break;
 		case NODE_NOT:
 			rval = pop();
 			push(!rval, false);
-			mangle_state(!rval);
+			//mangle_state(!rval);
 			break;
 		case NODE_COMPL:
 			rval = pop();
 			push(~rval, false);
-			mangle_state(~rval);
+			//mangle_state(~rval);
 			break;
 		case NODE_AND:
 			rval = pop();
 			lval = pop();
 			push(lval && rval, false);
-			mangle_state(lval && rval);
+			//mangle_state(lval && rval);
 			break;
 		case NODE_OR:
 			rval = pop();
 			lval = pop();
 			push(lval || rval, false);
-			mangle_state(lval || rval);
+			//mangle_state(lval || rval);
 			break;
 		case NODE_BITWISE_AND:
 			rval = pop();
 			lval = pop();
 			push(lval & rval, false);
-//			mangle_state(lval & rval);
+			//			//mangle_state(lval & rval);
 			break;
 		case NODE_BITWISE_XOR:
 			rval = pop();
 			lval = pop();
 			push(lval ^ rval, false);
-			mangle_state(lval ^ rval);
+			//mangle_state(lval ^ rval);
 			break;
 		case NODE_BITWISE_OR:
 			rval = pop();
 			lval = pop();
 			push(lval | rval, false);
-			mangle_state(lval | rval);
+			//mangle_state(lval | rval);
 			break;
 		case NODE_EQ:
 			rval = pop();
 			lval = pop();
 			push(lval == rval, false);
-			mangle_state(lval ==rval);
+			//mangle_state(lval == rval);
 			break;
 		case NODE_NE:
 			rval = pop();
 			lval = pop();
 			push(lval != rval, false);
-			mangle_state(lval != rval);
+			//mangle_state(lval != rval);
 			break;
 		case NODE_GT:
 			rval = pop();
 			lval = pop();
 			push(lval > rval, false);
-//			mangle_state(lval > rval);
+			//			//mangle_state(lval > rval);
 			break;
 		case NODE_LT:
 			rval = pop();
 			lval = pop();
 			push(lval < rval, false);
-//			mangle_state(lval < rval);
+			//			//mangle_state(lval < rval);
 			break;
 		case NODE_GE:
 			rval = pop();
 			lval = pop();
 			push(lval >= rval, false);
-//			mangle_state(lval >= rval);
+			//			//mangle_state(lval >= rval);
 			break;
 		case NODE_LE:
 			rval = pop();
 			lval = pop();
 			push(lval <= rval, false);
-//			mangle_state(lval <= rval);
+			//			//mangle_state(lval <= rval);
 			break;
 		case NODE_NEG:
 			rval = pop();
 			push(-rval, false);
-			mangle_state(-rval);
+			//mangle_state(-rval);
 			break;
 		case NODE_POS:
 			rval = pop();
 			push(+rval, false);
-			mangle_state(+rval);
+			//mangle_state(+rval);
 			break;
 		case NODE_SHA256:
 			rval = pop();
 			lval = pop();
 
-//
-// Never crash!
-//
+			//
+			// Never crash!
+			//
 
 			if (((rval % 4) != 0) || ((lval + rval) > VM_MEMORY_SIZE)) {
 				applog(LOG_ERR, "ERROR: VM Runtime - Invalid SHA256 byte length\n");
 				return false;
 			}
 			sha256_epl((unsigned char*)&vm_mem[lval], rval, (unsigned char*)&vm_mem[lval]);
-//
-// Add mangle state logic
-//
+			//
+			// Add mangle state logic
+			//
 			break;
 		case NODE_MD5:
 			applog(LOG_ERR, "ERROR: VM Runtime - MD5 Not Implemented");
@@ -364,7 +322,7 @@ extern bool interpret(ast* exp) {
 		case NODE_VERIFY:
 			rval = pop();
 			vm_bounty = (rval != 0);
-			mangle_state(vm_bounty);
+			//mangle_state(vm_bounty);
 			break;
 		default:
 			applog(LOG_ERR, "ERROR: VM Runtime - Unsupported Operation (%d)", exp->type);
@@ -380,121 +338,189 @@ extern bool interpret(ast* exp) {
 	return true;
 }
 
+
+char* append_strings(char * old, char * new)
+{
+	if (new == NULL && old != NULL) return old;
+	if (old == NULL && new != NULL) return new;
+	if (new == NULL && old == NULL) return NULL;
+
+	// find the size of the string to allocate
+	const size_t old_len = strlen(old), new_len = strlen(new);
+	const size_t out_len = old_len + new_len + 1;
+
+	// allocate a pointer to the new string
+	char *out = malloc(out_len);
+
+	// concat both strings and return
+	memcpy(out, old, old_len);
+	memcpy(out + old_len, new, new_len + 1);
+
+	// Free here
+	free(old);
+	free(new);
+
+	return out;
+}
+
+char blk_new[4096];
+char blk_old[4096];
+
+extern char* c_compile_ast() {
+	blk_new[0] = 0;
+	blk_old[0] = 0;
+
+	char* ret = NULL;
+	int i;
+	for (i = 0; i < vm_ast_cnt; i++) {
+		ret = append_strings(ret, compile(vm_ast[i]));
+	}
+	return ret;
+}
+
 // Use Post Order Traversal To Translate The Expressions In The AST to C
 extern char* compile(ast* exp) {
 	char* lval = 0;
 	char* rval = 0;
-	char *result = malloc(sizeof(char)*256);
+	char* cond = 0;
+	char *result = malloc(sizeof(char) * 256);
 	result[0] = 0;
 
 	if (exp != NULL) {
-		if(exp->left != NULL){
+
+		// Reset Temp Block Strings
+		if (exp->type != NODE_BLOCK) {
+			blk_new[0] = 0;
+			blk_old[0] = 0;
+		}
+
+		if (exp->left != NULL) {
 			lval = compile(exp->left);
 		}
-		if (exp->right != NULL){
+
+		// Check For If Statement As Right Side Is Conditional
+		if (exp->type != NODE_IF)
 			rval = compile(exp->right);
-		}
-				
+
+		//if (exp->right != NULL) {
+		//	rval = compile(exp->right);
+		//}
+
 		switch (exp->type) {
 		case NODE_CONSTANT:
-			sprintf(result,"%d",exp->value);
+			sprintf(result, "m(%d)", exp->value);
 			break;
 		case NODE_VAR_CONST:
-			sprintf(result,"mem[%d]",exp->value);
+			sprintf(result, "mem[m(%d)]", exp->value);
 			break;
 		case NODE_VAR_EXP:
-			
-			break;
-		case NODE_ASSIGN:
-			sprintf(result,"%s = %s;\n",lval,rval);
-			break;
-		case NODE_IF:
-			sprintf(result,"if( %s ) %s\n",lval,rval);
 
 			break;
+		case NODE_ASSIGN:
+			sprintf(result, "%s = %s;\n", lval, rval);
+			break;
+		case NODE_IF:
+			if (exp->right->type != NODE_ELSE) {
+				rval = compile(exp->right->right);		// If Body (No Else Condition)
+				sprintf(result, "if( %s ) %s\n", lval, rval);
+			}
+			else {
+				cond = lval;
+				lval = compile(exp->right->left);		// If Body
+				rval = compile(exp->right->right);		// Else Body
+				sprintf(result, "if( %s ) %selse %s\n", cond, lval, rval);
+			}
+			break;
+		case NODE_ELSE:
+			break;
 		case NODE_BLOCK:
-			sprintf(result,"{\n%s\n}\n",lval);
+			if (!blk_old[0])
+				sprintf(blk_new, "%s}\n", lval);
+			else
+				sprintf(blk_new, "%s%s", lval, blk_old);
+			sprintf(result, "{\n%s", blk_new);
+			strcpy(blk_old, blk_new);
 			break;
 		case NODE_ADD:
-			
+
 			break;
 		case NODE_SUB:
-			
+
 			break;
 		case NODE_MUL:
-			
+
 			break;
 		case NODE_DIV:
-		
+
 			break;
 		case NODE_MOD:
-			
+
 			break;
 		case NODE_LSHIFT:
-			
+
 			break;
 		case NODE_LROT:
-		
+
 			break;
 		case NODE_RSHIFT:
-			
+
 			break;
 		case NODE_RROT:
-		
+
 			break;
 		case NODE_NOT:
-			
+
 			break;
 		case NODE_COMPL:
-			
+
 			break;
 		case NODE_AND:
-			
+
 			break;
 		case NODE_OR:
-			
+
 			break;
 		case NODE_BITWISE_AND:
-			
+
 			break;
 		case NODE_BITWISE_XOR:
-			
+
 			break;
 		case NODE_BITWISE_OR:
-	
+
 			break;
 		case NODE_EQ:
-			sprintf(result,"((%s) == (%s))",lval,rval);
+			sprintf(result, "(%s == %s)", lval, rval);
 			break;
 		case NODE_NE:
-			
+
 			break;
 		case NODE_GT:
-		
+
 			break;
 		case NODE_LT:
-			
+
 			break;
 		case NODE_GE:
-		
+
 			break;
 		case NODE_LE:
-			
+
 			break;
 		case NODE_NEG:
-			
+
 			break;
 		case NODE_POS:
 
 			break;
 		case NODE_SHA256:
-			
+
 			break;
 		case NODE_MD5:
 			applog(LOG_ERR, "ERROR: VM Runtime - MD5 Not Implemented");
 			return NULL;
 		case NODE_VERIFY:
-			sprintf(result,"return %s;\n",lval);
+			sprintf(result, "return (%s != 0 ? 1 : 0);\n", lval);
 			break;
 		default:
 			applog(LOG_ERR, "ERROR: VM Runtime - Unsupported Operation (%d)", exp->type);
@@ -505,42 +531,28 @@ extern char* compile(ast* exp) {
 	return result;
 }
 
-static void mangle_state(int x) {
-	int mod = x%64;
-	if (x % 2 == 0) {
-		//		internal_state = internal_state << (x % 64);
-		vm_state1 = rotl64(vm_state1,mod);
-		vm_state1 = vm_state1 ^ x;
-	}
-	else {
-		//		internal_state2 = internal_state2 >> (x % 64);
-		vm_state2 = rotr64(vm_state2,mod);
-		vm_state2 = vm_state2 ^ x;
-	}
-}
-
 extern void dump_statement(int stmnt_num, NODE_TYPE stmnt_type) {
 	switch (stmnt_type) {
-		case NODE_ASSIGN:
-			applog(LOG_DEBUG, "DEBUG: Process VM Statement: %d (Assignment)", stmnt_num);
-			break;
-		case NODE_IF:
-			applog(LOG_DEBUG, "DEBUG: Process VM Statement: %d (If)", stmnt_num);
-			break;
-		case NODE_REPEAT:
-			applog(LOG_DEBUG, "DEBUG: Process VM Statement: %d (Repeat)", stmnt_num);
-			break;
-		case NODE_VERIFY:
-			applog(LOG_DEBUG, "DEBUG: Process VM Statement: %d (Verify)", stmnt_num);
-			break;
-		case NODE_SHA256:
-			applog(LOG_DEBUG, "DEBUG: Process VM Statement: %d (SHA256)", stmnt_num);
-			break;
-		case NODE_MD5:
-			applog(LOG_DEBUG, "DEBUG: Process VM Statement: %d (MD5)", stmnt_num);
-			break;
-		default:
-			applog(LOG_DEBUG, "DEBUG: Process VM Statement: %d (Unknown - %d)", stmnt_num, stmnt_type);
-			break;
+	case NODE_ASSIGN:
+		applog(LOG_DEBUG, "DEBUG: Process VM Statement: %d (Assignment)", stmnt_num);
+		break;
+	case NODE_IF:
+		applog(LOG_DEBUG, "DEBUG: Process VM Statement: %d (If)", stmnt_num);
+		break;
+	case NODE_REPEAT:
+		applog(LOG_DEBUG, "DEBUG: Process VM Statement: %d (Repeat)", stmnt_num);
+		break;
+	case NODE_VERIFY:
+		applog(LOG_DEBUG, "DEBUG: Process VM Statement: %d (Verify)", stmnt_num);
+		break;
+	case NODE_SHA256:
+		applog(LOG_DEBUG, "DEBUG: Process VM Statement: %d (SHA256)", stmnt_num);
+		break;
+	case NODE_MD5:
+		applog(LOG_DEBUG, "DEBUG: Process VM Statement: %d (MD5)", stmnt_num);
+		break;
+	default:
+		applog(LOG_DEBUG, "DEBUG: Process VM Statement: %d (Unknown - %d)", stmnt_num, stmnt_type);
+		break;
 	}
 }
