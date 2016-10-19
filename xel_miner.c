@@ -25,11 +25,6 @@
 
 #ifdef WIN32
 #include "compat/winansi.h"
-
-//HINSTANCE hLib = NULL;
-//typedef int(__cdecl* cfunc)();
-//cfunc run_spl;
-#else
 #endif
 
 enum prefs {
@@ -47,8 +42,8 @@ static const char *pref_type[] = {
 };
 
 bool opt_debug = false;
-bool opt_debug_epl = false;
-bool opt_debug_vm = false;
+bool opt_debug_epl = true;
+bool opt_debug_vm = true;
 bool opt_quiet = false;
 bool opt_protocol = false;
 bool use_colors = true;
@@ -70,6 +65,11 @@ unsigned char g_pow_target[65];
 pthread_mutex_t applog_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t work_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t submit_lock = PTHREAD_MUTEX_INITIALIZER;
+
+__thread long *vm_mem;
+__thread vm_stack_item *vm_stack;
+__thread int vm_stack_idx;
+__thread bool vm_bounty;
 
 char *rpc_url = NULL;
 char *rpc_user = NULL;
@@ -498,8 +498,8 @@ static int scanhash(int thr_id, struct work *work, long *hashes_done) {
 		rc = inst->execute();
 
 		// Hee, we have found a bounty, exit immediately
-		if (rc == 1)
-			return rc;
+		//if (rc == 1)
+		//	return rc;
 
 		// Check For POW Result
 		memcpy(&msg[0], inst->vm_state1, 4);
@@ -517,9 +517,9 @@ static int scanhash(int thr_id, struct work *work, long *hashes_done) {
 		sha256(msg, 64, hash);
 
 		// POW Solution Found
-		if (swap32(hash32[0]) <= work->pow_target[0])
-			rc = 2;
-		else
+		//if (swap32(hash32[0]) <= work->pow_target[0])
+		//	rc = 2;
+		//else
 			rc = 0;
 
 		(*hashes_done)++;
@@ -673,6 +673,11 @@ static int get_upstream_work(CURL *curl, struct work *work) {
 
 		if (opt_debug_epl)
 			applog(LOG_DEBUG, "DEBUG: ElasticPL Source Code -\n%s", source_code);
+
+		if (!create_epl_vm(source_code)) {
+			blacklist_work(g_work_id, BLST_SYNTAX_ERROR);
+			return 0;
+		}
 
 		// Convert The ElasticPL Source Into A C Program Library
 		if (!compile_and_link(source_code)) {
