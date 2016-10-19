@@ -174,11 +174,6 @@ extern bool use_colors;
 extern struct thr_info *thr_info;
 extern pthread_mutex_t applog_lock;
 
-extern __thread long *vm_mem;
-extern __thread vm_stack_item *vm_stack;
-extern __thread int vm_stack_idx;
-extern __thread bool vm_bounty;
-
 enum {
 	LOG_ERR,
 	LOG_WARNING,

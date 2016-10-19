@@ -66,11 +66,6 @@ pthread_mutex_t applog_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t work_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t submit_lock = PTHREAD_MUTEX_INITIALIZER;
 
-__thread long *vm_mem;
-__thread vm_stack_item *vm_stack;
-__thread int vm_stack_idx;
-__thread bool vm_bounty;
-
 char *rpc_url = NULL;
 char *rpc_user = NULL;
 char *rpc_pass = NULL;
