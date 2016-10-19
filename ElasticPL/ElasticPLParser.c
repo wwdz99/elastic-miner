@@ -12,9 +12,6 @@
 
 #include "ElasticPL.h"
 
-int debug_stack_op[100];
-ast* debug_stack_exp[100];
-
 ast* add_exp(NODE_TYPE node_type, TOKEN_EXP exp_type, long value, int token_num, int line_num, ast* left, ast* right) {
 	ast* e = calloc(1, sizeof(ast));
 	if (e) {
@@ -32,13 +29,6 @@ ast* add_exp(NODE_TYPE node_type, TOKEN_EXP exp_type, long value, int token_num,
 static void push_op(int token_id) {
 	stack_op[++stack_op_idx] = token_id;
 	top_op = token_id;
-
-//
-//
-memcpy(debug_stack_op, stack_op, 100 * sizeof(int));
-//
-//
-
 }
 
 static int pop_op() {
@@ -53,29 +43,11 @@ static int pop_op() {
 	else
 		top_op = -1;
 
-
-//
-//
-memcpy(debug_stack_op, stack_op, 100 * sizeof(int));
-//
-//
 	return op;
 }
 
 static void push_exp(ast* exp) {
 	stack_exp[++stack_exp_idx] = exp;
-
-
-//
-//
-	//int i;
-	//for (i = 0; i < 10; i++)
-	//	debug_stack_exp[i] = stack_exp[i];
-	memcpy(&debug_stack_exp[0], &stack_exp[0], 100 * sizeof(struct ast*));
-//
-//
-
-
 }
 
 static ast* pop_exp() {
@@ -85,17 +57,6 @@ static ast* pop_exp() {
 		exp = stack_exp[stack_exp_idx];
 		stack_exp[stack_exp_idx--] = NULL;
 	}
-
-
-//
-//
-	//int i;
-	//for (i = 0; i < 10; i++)
-	//	debug_stack_exp[i] = stack_exp[i];
-	memcpy(&debug_stack_exp[0], &stack_exp[0], 100 * sizeof(struct ast*));
-//
-//
-
 	return exp;
 }
 
@@ -246,6 +207,8 @@ static NODE_TYPE validate_unary_exp(SOURCE_TOKEN *token, int token_num) {
 	case TOKEN_POS:		node_type = NODE_POS;	break;
 	case TOKEN_NEG:		node_type = NODE_NEG;	break;
 	case TOKEN_LITERAL:	return NODE_CONSTANT;
+	case TOKEN_TRUE:	return NODE_CONSTANT;
+	case TOKEN_FALSE:	return NODE_CONSTANT;
 	default: return NODE_ERROR;
 	}
 
@@ -357,7 +320,11 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 			return false;
 		}
 		else {
-			if (node_type == NODE_CONSTANT)	// Constants Have Values Not Leafs
+			if (token->type == TOKEN_TRUE)
+				value = 1;
+			else if (token->type == TOKEN_FALSE)
+				value = 0;
+			else if (node_type == NODE_CONSTANT)	// Constants Have Values Not Leafs
 				value = (long long)strtod(token->literal, NULL);
 			else {
 				left = pop_exp();
@@ -449,6 +416,8 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 		switch (token_list->token[i].type) {
 
 		case TOKEN_LITERAL:
+		case TOKEN_TRUE:
+		case TOKEN_FALSE:
 			if (!create_exp(&token_list->token[i], i)) return false;
 			break;
 
