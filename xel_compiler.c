@@ -28,14 +28,18 @@ bool create_c_source() {
 	fprintf(f, "#include <mm_malloc.h>\n\n");
 #endif
 	fprintf(f, "int32_t* mem = 0;\n");
+#ifdef WIN32
+	fprintf(f, "__declspec(dllexport) uint32_t vm_state1 = 0;\n");
+	fprintf(f, "__declspec(dllexport) uint32_t vm_state2 = 0;\n");
+	fprintf(f, "__declspec(dllexport) uint32_t vm_state3 = 0;\n");
+	fprintf(f, "__declspec(dllexport) uint32_t vm_state4 = 0;\n\n");
+	fprintf(f, "#define ALLOC_ALIGNED_BUFFER(_numBytes) ((int *)_aligned_malloc (_numBytes, 64))\n");
+	fprintf(f, "#define FREE_ALIGNED_BUFFER(_buffer) _aligned_free(_buffer)\n\n");
+#else
 	fprintf(f, "uint32_t vm_state1 = 0;\n");
 	fprintf(f, "uint32_t vm_state2 = 0;\n");
 	fprintf(f, "uint32_t vm_state3 = 0;\n");
 	fprintf(f, "uint32_t vm_state4 = 0;\n\n");
-#ifdef WIN32
-	fprintf(f, "#define ALLOC_ALIGNED_BUFFER(_numBytes) ((int *)_aligned_malloc (_numBytes, 64))\n");
-	fprintf(f, "#define FREE_ALIGNED_BUFFER(_buffer) _aligned_free(_buffer)\n\n");
-#else
 	fprintf(f, "#define ALLOC_ALIGNED_BUFFER(_numBytes) (int *) _mm_malloc(_numBytes, 64)\n");
 	fprintf(f, "#define FREE_ALIGNED_BUFFER(_buffer) _mm_free(_buffer)\n");
 #endif
@@ -69,7 +73,11 @@ bool create_c_source() {
 	fprintf(f, "\t}\n");
 	fprintf(f, "\treturn x;\n");
 	fprintf(f, "}\n\n");
+#ifdef WIN32
+	fprintf(f, "__declspec(dllexport) void fill_ints(int input[]) {\n");
+#else
 	fprintf(f, "void fill_ints(int input[]) {\n");
+#endif
 	fprintf(f, "\nint i;\n");
 	fprintf(f, "\tif (mem == 0)\n");
 	fprintf(f, "\t\tmem = ALLOC_ALIGNED_BUFFER(64000 * sizeof(int));\n");
@@ -80,7 +88,11 @@ bool create_c_source() {
 	fprintf(f, "\tvm_state3=0;\n");
 	fprintf(f,"\tvm_state4=0;\n" );
 	fprintf(f, "}\n\n");
+#ifdef WIN32
+	fprintf(f, "__declspec(dllexport) int execute() {\n");
+#else
 	fprintf(f, "int execute() {\n");
+#endif
 	fprintf(f, "\tvm_state1=0;\n");
 	fprintf(f, "\tvm_state2=0;\n");
 	fprintf(f, "\tvm_state3=0;\n");
