@@ -193,8 +193,8 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list);
 extern char* get_node_str(NODE_TYPE node_type);
 extern void dump_vm_ast(ast* root);
 
-extern int interpret_ast();
-extern char* c_compile_ast();
-extern char* compile(ast* exp);
+extern char* convert_ast_to_c();
+static char* convert(ast* exp);
+static char* append_strings(char * old, char * new);
 
 #endif // ELASTICPL_H_

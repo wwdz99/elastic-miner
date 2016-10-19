@@ -54,7 +54,7 @@ extern bool create_epl_vm(char *source) {
 
 	vm_ast = calloc(vm_ast_cnt, sizeof(ast*));
 	memcpy(vm_ast, stack_exp, vm_ast_cnt * sizeof(ast*));
-	
+
 	free(stack_op);
 	free(stack_exp);
 
@@ -65,25 +65,13 @@ extern bool create_epl_vm(char *source) {
 
 	if (opt_debug_epl) {
 		fprintf(stdout, "--------------------------------\n");
-		for (i=0; i<vm_ast_cnt; i++) {
+		for (i = 0; i<vm_ast_cnt; i++) {
 			dump_vm_ast(vm_ast[i]);
 			fprintf(stdout, "--------------------------------\n");
 		}
 	}
 
 	return true;
-}
-
-extern int run_epl_vm() {
-	// Reset Remaing VM Memory To Zero
-	memset(&vm_mem[12], 0, (VM_MEMORY_SIZE - 12) * sizeof(long));
-
-	return interpret_ast();
-}
-
-extern void delete_epl_vm() {
-	vm_ast_cnt = -1;
-	free(vm_ast);
 }
 
 // Temporary - For Debugging Only
