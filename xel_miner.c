@@ -493,8 +493,8 @@ static int scanhash(int thr_id, struct work *work, long *hashes_done) {
 		rc = inst->execute();
 
 		// Hee, we have found a bounty, exit immediately
-		//if (rc == 1)
-		//	return rc;
+		if (rc == 1)
+			return rc;
 
 		// Check For POW Result
 		memcpy(&msg[0], inst->vm_state1, 4);
@@ -512,9 +512,9 @@ static int scanhash(int thr_id, struct work *work, long *hashes_done) {
 		sha256(msg, 64, hash);
 
 		// POW Solution Found
-		//if (swap32(hash32[0]) <= work->pow_target[0])
-		//	rc = 2;
-		//else
+		if (swap32(hash32[0]) <= work->pow_target[0])
+			rc = 2;
+		else
 			rc = 0;
 
 		(*hashes_done)++;
