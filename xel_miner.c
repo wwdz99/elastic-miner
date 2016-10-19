@@ -42,8 +42,8 @@ static const char *pref_type[] = {
 };
 
 bool opt_debug = false;
-bool opt_debug_epl = true;
-bool opt_debug_vm = true;
+bool opt_debug_epl = false;
+bool opt_debug_vm = false;
 bool opt_quiet = false;
 bool opt_protocol = false;
 bool use_colors = true;
@@ -51,6 +51,7 @@ static int opt_retries = -1;
 static int opt_fail_pause = 10;
 static int opt_scantime = 60;  // Get New Work From Server At Least Every 60s
 bool opt_test_miner = false;
+bool opt_test_compiler = false;
 int opt_timeout = 30;
 int opt_n_threads = 0;
 static enum prefs opt_pref = PREF_WCET;
@@ -122,6 +123,7 @@ Options:\n\
   -R, --retry-pause <n>       Time to pause between retries (Default: 10 sec)\n\
   -s, --scan-time <n>         Max time to scan work before requesting new work (Default: 60 sec)\n\
       --test-miner <file>     Run the Miner using JSON formatted work in <file>\n\
+      --test-compiler <file>  Run the Parser / Compiler using the ElasticPL source code in <file>\n\
   -t, --threads <n>           Number of miner threads (Default: Number of CPUs)\n\
   -u, --user <username>       Username for mining server\n\
   -T, --timeout <n>           Timeout for rpc calls (Default: 30 sec)\n\
@@ -149,6 +151,7 @@ static struct option const options[] = {
 	{ "retry-pause",	1, NULL, 'R' },
 	{ "scan-time",		1, NULL, 's' },
 	{ "test-miner",		1, NULL, 1003 },
+	{ "test-compiler",	1, NULL, 1004 },
 	{ "threads",		1, NULL, 't' },
 	{ "timeout",		1, NULL, 'T' },
 	{ "url",			1, NULL, 'o' },
@@ -316,6 +319,16 @@ void parse_arg(int key, char *arg)
 		strcpy(test_filename, arg);
 		opt_test_miner = true;
 		break;
+	case 1004:
+		if (!arg)
+			show_usage_and_exit(1);
+		test_filename = malloc(strlen(arg) + 1);
+		strcpy(test_filename, arg);
+		opt_test_compiler = true;
+		opt_debug = true;
+		opt_debug_epl = true;
+		opt_debug_vm = true;
+		break;
 	default:
 		show_usage_and_exit(1);
 	}
@@ -390,7 +403,7 @@ static void show_version_and_exit(void)
 }
 
 static bool load_test_file(char *buf) {
-	int len, bytes;
+	int i, len, bytes;
 	FILE *fp;
 
 	fp = fopen(test_filename, "r");
@@ -423,7 +436,45 @@ static bool load_test_file(char *buf) {
 
 	buf[bytes] = 0;
 
+	for (i = 0; i < strlen(buf); i++)
+		buf[i] = tolower(buf[i]);
+
 	return true;
+}
+
+static void *test_compiler_thread(void *userdata) {
+	struct thr_info *mythr = (struct thr_info *) userdata;
+	int rc, thr_id = mythr->id;
+	long cnt;
+	char test_code[MAX_SOURCE_SIZE];
+
+	applog(LOG_DEBUG, "DEBUG: Loading Test File");
+	if (!load_test_file(test_code))
+		return NULL;
+
+	fprintf(stdout, "%s\n\n", test_code);
+
+	// Convert The Source Code Into ElasticPL AST
+	if (!create_epl_vm(test_code)) {
+		applog(LOG_ERR, "ERROR: Exiting 'test_compiler'");
+		return NULL;
+	}
+
+	// Convert The ElasticPL Source Into A C Program Library
+	if (!compile_and_link(test_code)) {
+		applog(LOG_ERR, "ERROR: Exiting 'test_compiler'");
+		return NULL;
+	}
+
+	// Link To The C Program Library
+	if (inst)
+		free_compiler(inst);
+	inst = calloc(1, sizeof(struct instance));
+	create_instance(inst);
+	free_compiler(inst);
+
+	applog(LOG_DEBUG, "DEBUG: Compiler Test Complete");
+	return NULL;
 }
 
 static bool get_vm_input(struct work *work) {
@@ -1414,7 +1465,7 @@ int main(int argc, char **argv) {
 		sprintf(rpc_userpass, "%s:%s", rpc_user, rpc_pass);
 	}
 
-	if (!publickey) {
+	if (!opt_test_compiler && !publickey) {
 		applog(LOG_ERR, "ERROR: Public Key (option -k) is required");
 		return 1;
 	}
@@ -1454,7 +1505,22 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
+	// In Test Compiler Mode, Run Parser / Complier Using Source Code From Test File
+	if (opt_test_compiler) {
+		thr = &thr_info[0];
+		thr->id = 0;
+		thr->q = tq_new();
+		if (!thr->q)
+			return 1;
+		if (thread_create(thr, test_compiler_thread)) {
+			applog(LOG_ERR, "Test VM thread create failed!");
+			return 1;
+		}
 
+		pthread_join(thr_info[work_thr_id].pth, NULL);
+		free(test_filename);
+		return 0;
+	}
 
 	applog(LOG_INFO, "Attempting to start %d miner threads", opt_n_threads);
 	thr_idx = 0;

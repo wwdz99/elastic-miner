@@ -107,6 +107,12 @@ bool create_c_source() {
 	fprintf(f, &code[0]);
 	fprintf(f, "}\n");
 
+	if (opt_test_compiler) {
+		fprintf(stdout, "\n********************************************************************************\n");
+		fprintf(stdout, code);
+		fprintf(stdout, "\n********************************************************************************\n");
+	}
+
 	fclose(f);
 	free(code);
 	return true;

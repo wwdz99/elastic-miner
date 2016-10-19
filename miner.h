@@ -53,6 +53,7 @@ extern bool opt_protocol;
 extern bool opt_quiet;
 extern int opt_timeout;
 extern int opt_n_threads;
+extern bool opt_test_compiler;
 
 extern struct work_restart *work_restart;
 
