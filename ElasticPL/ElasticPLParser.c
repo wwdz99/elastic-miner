@@ -12,6 +12,9 @@
 
 #include "ElasticPL.h"
 
+int debug_stack_op[100];
+ast* debug_stack_exp[100];
+
 ast* add_exp(NODE_TYPE node_type, TOKEN_EXP exp_type, long value, int token_num, int line_num, ast* left, ast* right) {
 	ast* e = calloc(1, sizeof(ast));
 	if (e) {
@@ -29,6 +32,13 @@ ast* add_exp(NODE_TYPE node_type, TOKEN_EXP exp_type, long value, int token_num,
 static void push_op(int token_id) {
 	stack_op[++stack_op_idx] = token_id;
 	top_op = token_id;
+
+//
+//
+memcpy(debug_stack_op, stack_op, 100 * sizeof(int));
+//
+//
+
 }
 
 static int pop_op() {
@@ -43,11 +53,29 @@ static int pop_op() {
 	else
 		top_op = -1;
 
+
+//
+//
+memcpy(debug_stack_op, stack_op, 100 * sizeof(int));
+//
+//
 	return op;
 }
 
 static void push_exp(ast* exp) {
 	stack_exp[++stack_exp_idx] = exp;
+
+
+//
+//
+	//int i;
+	//for (i = 0; i < 10; i++)
+	//	debug_stack_exp[i] = stack_exp[i];
+	memcpy(&debug_stack_exp[0], &stack_exp[0], 100 * sizeof(struct ast*));
+//
+//
+
+
 }
 
 static ast* pop_exp() {
@@ -57,6 +85,17 @@ static ast* pop_exp() {
 		exp = stack_exp[stack_exp_idx];
 		stack_exp[stack_exp_idx--] = NULL;
 	}
+
+
+//
+//
+	//int i;
+	//for (i = 0; i < 10; i++)
+	//	debug_stack_exp[i] = stack_exp[i];
+	memcpy(&debug_stack_exp[0], &stack_exp[0], 100 * sizeof(struct ast*));
+//
+//
+
 	return exp;
 }
 
@@ -451,6 +490,13 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 				if (!create_exp(&token_list->token[i], top_op)) return false;
 			}
 			pop_op();
+
+			// Process "If" And "Repeat" Expressions Opperator Than Owns The Block
+			if ((top_op >= 0) && (token_list->token[top_op].type == TOKEN_IF || token_list->token[top_op].type == TOKEN_REPEAT)) {
+				token_id = pop_op();
+				if (!create_exp(&token_list->token[token_id], token_id))
+					return false;
+			}
 			break;
 
 		case TOKEN_ELSE:
