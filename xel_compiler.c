@@ -87,7 +87,7 @@ bool create_c_source() {
 	fprintf(f, "\tvm_state4=0;\n\n");
 	fprintf(f, "//The following code created by ElasticPL to C parser\n");
 
-	code = c_compile_ast();
+	code = convert_ast_to_c();
 
 	if (!code)
 		return false;
@@ -110,10 +110,6 @@ bool compile_and_link(char* source_code) {
 	}
 
 	system("compile_dll.bat");
-//
-//
-//
-//
 #else
 	FILE* tempfile2 = fopen("work_lib.c", "w+");
 	char partialcode[600000];
