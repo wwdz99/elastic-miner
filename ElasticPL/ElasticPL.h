@@ -195,13 +195,6 @@ extern void dump_vm_ast(ast* root);
 
 extern int interpret_ast();
 extern char* c_compile_ast();
-extern bool interpret(ast* exp);
 extern char* compile(ast* exp);
-//static void mangle_state(int x);
-//static void mangle_state_verify(int x);
-static void push(long l, bool memory);
-static vm_stack_item pop_item(void);
-static long pop(void);
-extern void dump_statement(int stmnt_num, NODE_TYPE stmnt_type);
 
 #endif // ELASTICPL_H_
