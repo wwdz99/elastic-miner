@@ -65,7 +65,7 @@ static NODE_TYPE validate_unary_stmnt(SOURCE_TOKEN *token) {
 	TOKEN_EXP l_exp;
 
 	switch (token->type) {
-		case TOKEN_VERIFY:		node_type = NODE_VERIFY;	break;
+	case TOKEN_VERIFY:		node_type = NODE_VERIFY;	break;
 	default: return NODE_ERROR;
 	}
 
@@ -91,13 +91,74 @@ static NODE_TYPE validate_binary_stmnt(SOURCE_TOKEN *token) {
 	TOKEN_EXP l_exp, r_exp;
 
 	switch (token->type) {
-		case TOKEN_BLOCK_END:	node_type = NODE_BLOCK;		break;
-		case TOKEN_IF:		node_type = NODE_IF;	break;
-		case TOKEN_ELSE:	node_type = NODE_ELSE;	break;
-		case TOKEN_REPEAT:	node_type = NODE_REPEAT;	break;
-		case TOKEN_ASSIGN:	node_type = NODE_ASSIGN; break;
-		case TOKEN_SHA256:	node_type = NODE_SHA256;break;
-		default: return NODE_ERROR;
+	case TOKEN_BLOCK_END:		node_type = NODE_BLOCK;			break;
+	case TOKEN_IF:				node_type = NODE_IF;			break;
+	case TOKEN_ELSE:			node_type = NODE_ELSE;			break;
+	case TOKEN_REPEAT:			node_type = NODE_REPEAT;		break;
+	case TOKEN_ASSIGN:			node_type = NODE_ASSIGN;		break;
+	case TOKEN_SHA256:			node_type = NODE_SHA256;		break;
+	case TOKEN_SHA512:			node_type = NODE_SHA512;		break;
+	case TOKEN_WHIRLPOOL:	   	node_type = NODE_WHIRLPOOL;		break;
+	case TOKEN_MD5:	           	node_type = NODE_MD5;			break;
+	case TOKEN_SECP192K_PTP:	node_type = NODE_SECP192K_PTP;	break;
+	case TOKEN_SECP192K_PA:	   	node_type = NODE_SECP192K_PA;	break;
+	case TOKEN_SECP192K_PS:	   	node_type = NODE_SECP192K_PS;	break;
+	case TOKEN_SECP192K_PSM:	node_type = NODE_SECP192K_PSM;	break;
+	case TOKEN_SECP192K_PN:	    node_type = NODE_SECP192K_PN;	break;
+	case TOKEN_SECP192R_PTP:	node_type = NODE_SECP192R_PTP;	break;
+	case TOKEN_SECP192R_PA:	    node_type = NODE_SECP192R_PA;	break;
+	case TOKEN_SECP192R_PS:	    node_type = NODE_SECP192R_PS;	break;
+	case TOKEN_SECP192R_PSM:	node_type = NODE_SECP192R_PSM;	break;
+	case TOKEN_SECP192R_PN:	    node_type = NODE_SECP192R_PN;	break;
+	case TOKEN_SECP224K_PTP:	node_type = NODE_SECP224K_PTP;	break;
+	case TOKEN_SECP224K_PA:	    node_type = NODE_SECP224K_PA;	break;
+	case TOKEN_SECP224K_PS:	    node_type = NODE_SECP224K_PS;	break;
+	case TOKEN_SECP224K_PSM:	node_type = NODE_SECP224K_PSM;	break;
+	case TOKEN_SECP224K_PN:	    node_type = NODE_SECP224K_PN;	break;
+	case TOKEN_SECP224R_PTP:	node_type = NODE_SECP224R_PTP;	break;
+	case TOKEN_SECP224R_PA:	    node_type = NODE_SECP224R_PA;	break;
+	case TOKEN_SECP224R_PS:	    node_type = NODE_SECP224R_PS;	break;
+	case TOKEN_SECP224R_PSM:	node_type = NODE_SECP224R_PSM;	break;
+	case TOKEN_SECP224R_PN:	    node_type = NODE_SECP224R_PN;	break;
+	case TOKEN_SECP256K_PTP:	node_type = NODE_SECP256K_PTP;	break;
+	case TOKEN_SECP256K_PA:	    node_type = NODE_SECP256K_PA;	break;
+	case TOKEN_SECP256K_PS:	    node_type = NODE_SECP256K_PS;	break;
+	case TOKEN_SECP256K_PSM:	node_type = NODE_SECP256K_PSM;	break;
+	case TOKEN_SECP256K_PN:	    node_type = NODE_SECP256K_PN;	break;
+	case TOKEN_SECP256R_PTP:	node_type = NODE_SECP256R_PTP;	break;
+	case TOKEN_SECP256R_PA:	    node_type = NODE_SECP256R_PA;	break;
+	case TOKEN_SECP256R_PS:	    node_type = NODE_SECP256R_PS;	break;
+	case TOKEN_SECP256R_PSM:	node_type = NODE_SECP256R_PSM;	break;
+	case TOKEN_SECP256R_PN:	    node_type = NODE_SECP256R_PN;	break;
+	case TOKEN_SECP384R_PTP:	node_type = NODE_SECP384R_PTP;	break;
+	case TOKEN_SECP384R_PA:	    node_type = NODE_SECP384R_PA;	break;
+	case TOKEN_SECP384R_PS:	    node_type = NODE_SECP384R_PS;	break;
+	case TOKEN_SECP384R_PSM:	node_type = NODE_SECP384R_PSM;	break;
+	case TOKEN_SECP384R_PN:	    node_type = NODE_SECP384R_PN;	break;
+	case TOKEN_PRM192V1_PTP:	node_type = NODE_PRM192V1_PTP;	break;
+	case TOKEN_PRM192V1_PA:	    node_type = NODE_PRM192V1_PA;	break;
+	case TOKEN_PRM192V1_PS:	    node_type = NODE_PRM192V1_PS;	break;
+	case TOKEN_PRM192V1_PSM:	node_type = NODE_PRM192V1_PSM;	break;
+	case TOKEN_PRM192V1_PN:	    node_type = NODE_PRM192V1_PN;	break;
+	case TOKEN_PRM192V2_PTP:	node_type = NODE_PRM192V2_PTP;	break;
+	case TOKEN_PRM192V2_PA:	    node_type = NODE_PRM192V2_PA;	break;
+	case TOKEN_PRM192V2_PS:	    node_type = NODE_PRM192V2_PS;	break;
+	case TOKEN_PRM192V2_PSM:	node_type = NODE_PRM192V2_PSM;	break;
+	case TOKEN_PRM192V2_PN:	    node_type = NODE_PRM192V2_PN;	break;
+	case TOKEN_PRM192V3_PTP:	node_type = NODE_PRM192V3_PTP;	break;
+	case TOKEN_PRM192V3_PA:	    node_type = NODE_PRM192V3_PA;	break;
+	case TOKEN_PRM192V3_PS:	    node_type = NODE_PRM192V3_PS;	break;
+	case TOKEN_PRM192V3_PSM:	node_type = NODE_PRM192V3_PSM;	break;
+	case TOKEN_PRM192V3_PN:	    node_type = NODE_PRM192V3_PN;	break;
+	case TOKEN_PRM256V1_PTP:	node_type = NODE_PRM256V1_PTP;	break;
+	case TOKEN_PRM256V1_PA:	    node_type = NODE_PRM256V1_PA;	break;
+	case TOKEN_PRM256V1_PS:	    node_type = NODE_PRM256V1_PS;	break;
+	case TOKEN_PRM256V1_PSM:	node_type = NODE_PRM256V1_PSM;	break;
+	case TOKEN_PRM256V1_PN:	    node_type = NODE_PRM256V1_PN;	break;
+	case TOKEN_TIGER:	        node_type = NODE_TIGER;			break;
+	case TOKEN_RIPEMD160:	    node_type = NODE_RIPEMD160;		break;
+	case TOKEN_RIPEMD128:      	node_type = NODE_RIPEMD128;		break;
+	default: return NODE_ERROR;
 	}
 
 	// Validate That There Are At Least 2 Expressions On The Stack
@@ -186,27 +247,27 @@ static NODE_TYPE validate_binary_exp(SOURCE_TOKEN *token) {
 	TOKEN_EXP l_exp, r_exp;
 
 	switch (token->type) {
-		case TOKEN_MUL:		node_type = NODE_MUL;	break;
-		case TOKEN_DIV:		node_type = NODE_DIV;	break;
-		case TOKEN_MOD:		node_type = NODE_MOD;	break;
-		case TOKEN_ADD:		node_type = NODE_ADD;	break;
-		case TOKEN_SUB:		node_type = NODE_SUB;	break;
-		case TOKEN_LROT:	node_type = NODE_LROT;	break;
-		case TOKEN_LSHIFT:	node_type = NODE_LSHIFT; break;
-		case TOKEN_RROT:	node_type = NODE_RROT;	break;
-		case TOKEN_RSHIFT:	node_type = NODE_RSHIFT; break;
-		case TOKEN_LE:		node_type = NODE_LE;	break;
-		case TOKEN_GE:		node_type = NODE_GE;	break;
-		case TOKEN_LT:		node_type = NODE_LT;	break;
-		case TOKEN_GT:		node_type = NODE_GT;	break;
-		case TOKEN_EQ:		node_type = NODE_EQ;	break;
-		case TOKEN_NE:		node_type = NODE_NE;	break;
-		case TOKEN_BITWISE_AND: node_type = NODE_BITWISE_AND; break;
-		case TOKEN_BITWISE_XOR: node_type = NODE_BITWISE_XOR; break;
-		case TOKEN_BITWISE_OR: node_type = NODE_BITWISE_OR; break;
-		case TOKEN_AND:		node_type = NODE_AND;	break;
-		case TOKEN_OR:		node_type = NODE_OR;	break;
-		default: return NODE_ERROR;
+	case TOKEN_MUL:		node_type = NODE_MUL;	break;
+	case TOKEN_DIV:		node_type = NODE_DIV;	break;
+	case TOKEN_MOD:		node_type = NODE_MOD;	break;
+	case TOKEN_ADD:		node_type = NODE_ADD;	break;
+	case TOKEN_SUB:		node_type = NODE_SUB;	break;
+	case TOKEN_LROT:	node_type = NODE_LROT;	break;
+	case TOKEN_LSHIFT:	node_type = NODE_LSHIFT; break;
+	case TOKEN_RROT:	node_type = NODE_RROT;	break;
+	case TOKEN_RSHIFT:	node_type = NODE_RSHIFT; break;
+	case TOKEN_LE:		node_type = NODE_LE;	break;
+	case TOKEN_GE:		node_type = NODE_GE;	break;
+	case TOKEN_LT:		node_type = NODE_LT;	break;
+	case TOKEN_GT:		node_type = NODE_GT;	break;
+	case TOKEN_EQ:		node_type = NODE_EQ;	break;
+	case TOKEN_NE:		node_type = NODE_NE;	break;
+	case TOKEN_BITWISE_AND: node_type = NODE_BITWISE_AND; break;
+	case TOKEN_BITWISE_XOR: node_type = NODE_BITWISE_XOR; break;
+	case TOKEN_BITWISE_OR: node_type = NODE_BITWISE_OR; break;
+	case TOKEN_AND:		node_type = NODE_AND;	break;
+	case TOKEN_OR:		node_type = NODE_OR;	break;
+	default: return NODE_ERROR;
 	}
 
 	// Validate That There Are At Least 2 Expressions On The Stack
@@ -235,63 +296,63 @@ static NODE_TYPE validate_binary_exp(SOURCE_TOKEN *token) {
 
 static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 	long long value = 0;
-	NODE_TYPE node_type=NODE_ERROR;
+	NODE_TYPE node_type = NODE_ERROR;
 	ast *exp, *left = NULL, *right = NULL;
 
 	switch (token->exp) {
 
-		case BINARY_EXPRESSION:
-			node_type = validate_binary_exp(token);
-			if (node_type == NODE_ERROR) {
-				return false;
-			}
-			else {
-				right = pop_exp();
-				left = pop_exp();
-			}
-			break;
+	case BINARY_EXPRESSION:
+		node_type = validate_binary_exp(token);
+		if (node_type == NODE_ERROR) {
+			return false;
+		}
+		else {
+			right = pop_exp();
+			left = pop_exp();
+		}
+		break;
 
-		case UNARY_EXPRESSION:
-			node_type = validate_unary_exp(token, token_num);
-			if (node_type == NODE_ERROR) {
-				return false;
-			}
+	case UNARY_EXPRESSION:
+		node_type = validate_unary_exp(token, token_num);
+		if (node_type == NODE_ERROR) {
+			return false;
+		}
+		else {
+			if (node_type == NODE_CONSTANT)	// Constants Have Values Not Leafs
+				value = (long long)strtod(token->literal, NULL);
 			else {
-				if (node_type == NODE_CONSTANT)	// Constants Have Values Not Leafs
-					value = (long long)strtod(token->literal, NULL);
-				else {
-					left = pop_exp();
-					if (node_type == NODE_VAR_CONST) { // Remove Expression For Variables w/ Constant ID
-						value = left->value;
-						left = NULL;
-					}
+				left = pop_exp();
+				if (node_type == NODE_VAR_CONST) { // Remove Expression For Variables w/ Constant ID
+					value = left->value;
+					left = NULL;
 				}
 			}
-			break;
+		}
+		break;
 
-		case BINARY_STATEMENT:
-		case BINARY_STMNT_EXP:
-			node_type = validate_binary_stmnt(token);
-			if (node_type == NODE_ERROR) {
-				return false;
-			}
-			else {
-				if (node_type == NODE_BLOCK && stack_exp[stack_exp_idx]->type != NODE_BLOCK)
-					right = NULL;
-				else
-					right = pop_exp();
-				left = pop_exp();
-			}
-			break;
-
-		case UNARY_STATEMENT:
-		case UNARY_STMNT_EXP:
-			node_type = validate_unary_stmnt(token);
-			if (node_type == NODE_ERROR)
-				return false;
+	case BINARY_STATEMENT:
+	case BINARY_STMNT_EXP:
+		node_type = validate_binary_stmnt(token);
+		if (node_type == NODE_ERROR) {
+			return false;
+		}
+		else {
+			if (node_type == NODE_BLOCK && stack_exp[stack_exp_idx]->type != NODE_BLOCK)
+				right = NULL;
 			else
-				left = pop_exp();
-			break;
+				right = pop_exp();
+			left = pop_exp();
+		}
+		break;
+
+	case UNARY_STATEMENT:
+	case UNARY_STMNT_EXP:
+		node_type = validate_unary_stmnt(token);
+		if (node_type == NODE_ERROR)
+			return false;
+		else
+			left = pop_exp();
+		break;
 	}
 
 	exp = add_exp(node_type, token->exp, (long)value, token_num, token->line_num, left, right);
@@ -327,13 +388,13 @@ static bool validate_exp_list() {
 	for (i = 0; i < stack_exp_idx; i++) {
 		if (stack_exp[i]->exp != BINARY_STATEMENT && stack_exp[i]->exp != UNARY_STATEMENT && stack_exp[i]->exp != BINARY_STMNT_EXP) {
 			printf("Syntax Error - Line: %d  Invalid Statement\n", stack_exp[i]->line_num);
-//			return false;
+			//			return false;
 		}
 	}
 
 	if (stack_op_idx >= 0) {
 		printf("Syntax Error - Unable To Clear Operator Stack\n");
-	return false;
+		return false;
 	}
 
 	return true;
