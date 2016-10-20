@@ -1,4 +1,4 @@
-# xel_miner 0.2
+# xel_miner 0.3
 
 This is a prototype of a miner for solving XEL work packages.  This was put together as a tool to learn more about AST parsing & interpreting and is not a complete miner at this time...it is still in the earliest stages of developement and may have numerous bugs.  The funcational gaps are:
 
@@ -6,8 +6,6 @@ This is a prototype of a miner for solving XEL work packages.  This was put toge
 <li>The only ElasticPL crypto function supported right now is SHA256 (however mangle_state needs to be fixed for this algo)</li>
 <li>The blacklist work logic needs to be redone</li>
 </ul>
-
-#Note:  The VM logic is still being tweaked / tested.  It may not submit POW results correctly at this time.
 
 Below are the steps I used to get the miner running on my Raspberry Pi.
 <ul>
