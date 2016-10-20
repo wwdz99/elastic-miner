@@ -95,6 +95,7 @@ static char* convert(ast* exp) {
 				sprintf(blk_new, "%s}\n", lval);
 			else
 				sprintf(blk_new, "%s%s", lval, blk_old);
+			result = realloc(result, strlen(blk_new) + 1);
 			sprintf(result, "{\n%s", blk_new);
 			strcpy(blk_old, blk_new);
 			break;
