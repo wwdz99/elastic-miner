@@ -82,7 +82,7 @@ static char* convert(ast* exp) {
 				cond = lval;
 				lval = convert(exp->right->left);		// If Body
 				rval = convert(exp->right->right);		// Else Body
-				sprintf(result, "if( %s ) %selse %s\n", cond, lval, rval);
+				sprintf(result, "if( %s )\n\t%selse\n\t%s\n", cond, lval, rval);
 			}
 			break;
 		case NODE_ELSE:
@@ -94,7 +94,7 @@ static char* convert(ast* exp) {
 			if (!blk_old[0])
 				sprintf(blk_new, "%s}\n", lval);
 			else
-				sprintf(blk_new, "%s%s", lval, blk_old);
+				sprintf(blk_new, "\t%s\t%s", lval, blk_old);
 			result = realloc(result, strlen(blk_new) + 1);
 			sprintf(result, "{\n%s", blk_new);
 			strcpy(blk_old, blk_new);
