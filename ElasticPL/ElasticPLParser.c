@@ -60,7 +60,7 @@ static ast* pop_exp() {
 	return exp;
 }
 
-static bool validate_unary_stmnt(SOURCE_TOKEN *token, enum NODE_TYPE node_type) {
+static bool validate_unary_stmnt(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 	TOKEN_EXP l_exp;
 
 	// Validate That There Is At Least 1 Expressions On The Stack
@@ -80,7 +80,7 @@ static bool validate_unary_stmnt(SOURCE_TOKEN *token, enum NODE_TYPE node_type) 
 	return true;
 }
 
-static bool validate_binary_stmnt(SOURCE_TOKEN *token, enum NODE_TYPE node_type) {
+static bool validate_binary_stmnt(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 
 	// Validate That There Are At Least 2 Expressions On The Stack
 	if (stack_exp_idx < 1) {
@@ -92,7 +92,7 @@ static bool validate_binary_stmnt(SOURCE_TOKEN *token, enum NODE_TYPE node_type)
 }
 
 // Validate Unary Operations Have 1 Valid Expression
-static bool validate_unary_exp(SOURCE_TOKEN *token, int token_num, enum NODE_TYPE node_type) {
+static bool validate_unary_exp(SOURCE_TOKEN *token, int token_num, NODE_TYPE node_type) {
 
 	if (node_type == NODE_CONSTANT)
 		return true;
@@ -129,8 +129,8 @@ static bool validate_unary_exp(SOURCE_TOKEN *token, int token_num, enum NODE_TYP
 	return true;
 }
 
-static bool validate_binary_exp(SOURCE_TOKEN *token, enum NODE_TYPE node_type) {
-	enum TOKEN_EXP l_exp, r_exp;
+static bool validate_binary_exp(SOURCE_TOKEN *token, NODE_TYPE node_type) {
+	TOKEN_EXP l_exp, r_exp;
 
 	// Validate That There Are At Least 2 Expressions On The Stack
 	if (stack_exp_idx < 1) {
@@ -156,7 +156,7 @@ static bool validate_binary_exp(SOURCE_TOKEN *token, enum NODE_TYPE node_type) {
 	return true;
 }
 
-static enum NODE_TYPE get_node_type(SOURCE_TOKEN *token) {
+static NODE_TYPE get_node_type(SOURCE_TOKEN *token) {
 	NODE_TYPE node_type;
 
 	switch (token->type) {

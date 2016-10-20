@@ -266,7 +266,7 @@ extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 			}
 
 			// Increment Line Number Counter
-			if (c == '\r') {
+			if (c == '\n') {
 				line_num++;
 			}
 
