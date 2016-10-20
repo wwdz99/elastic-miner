@@ -24,10 +24,14 @@ add_subdirectory(compat/jansson)
 include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/algo ${PROJECT_SOURCE_DIR}/compat/jansson ${CURL_INCLUDE_DIR})
 
 set(SRC_LIST	xel_miner.c
-		xel_compiler.c
-		util.c
-		./crypto/md5.c
-		./crypto/sha2.c
+				xel_compiler.c
+				util.c
+				./ElasticPL/ElasticPL.c
+				./ElasticPL/ElasticPLTokenManager.c
+				./ElasticPL/ElasticPLParser.c
+				./ElasticPL/ElasticPLInterpreter.c
+				./crypto/md5.c
+				./crypto/sha2.c
 )
 			
 set(TARGET_NAME xel_miner)

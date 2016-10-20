@@ -444,8 +444,7 @@ static bool load_test_file(char *buf) {
 
 static void *test_compiler_thread(void *userdata) {
 	struct thr_info *mythr = (struct thr_info *) userdata;
-	int rc, thr_id = mythr->id;
-	long cnt;
+	int thr_id = mythr->id;
 	char test_code[MAX_SOURCE_SIZE];
 
 	applog(LOG_DEBUG, "DEBUG: Loading Test File");

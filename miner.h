@@ -24,7 +24,7 @@
 #endif
 
 #include "elist.h"
-#include "ElasticPL\ElasticPL.h"
+#include "ElasticPL/ElasticPL.h"
 #include "crypto/md5.h"
 #include "crypto/sha2.h"
 
