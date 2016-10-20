@@ -10,6 +10,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <string.h>
 #include <limits.h>
 
 #include "ElasticPL.h"
@@ -34,7 +35,7 @@ extern char* convert_ast_to_c() {
 static char* convert(ast* exp) {
 	char* lval = 0;
 	char* rval = 0;
-	char* cond = 0;
+	char* tmp = 0;
 	char *result = malloc(sizeof(char) * 256);
 	result[0] = 0;
 
@@ -63,31 +64,38 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_VAR_CONST:
 			if (exp->value < 0 || exp->value > VM_MEMORY_SIZE)
-				sprintf(result, "mem[m(0)]");
+				sprintf(result, "mem[0]");
 			else
-				sprintf(result, "mem[m(%d)]", exp->value);
+				sprintf(result, "mem[%d]", exp->value);
 			break;
 		case NODE_VAR_EXP:
-			sprintf(result, "mem[m(%s)]", lval);
+			sprintf(result, "mem[%s]", lval);
 			break;
 		case NODE_ASSIGN:
+			tmp = replace(lval, "mem[", "mem[m(");
+			free(lval);
+			lval = replace(tmp, "]", ")]");
+			free(tmp);
 			sprintf(result, "%s = m(%s);\n", lval, rval);
 			break;
 		case NODE_IF:
 			if (exp->right->type != NODE_ELSE) {
 				rval = convert(exp->right);				// If Body (No Else Condition)
+				result = realloc(result, strlen(lval) + strlen(rval) + 256);
 				sprintf(result, "if( %s )\n\t%s", lval, rval);
 			}
 			else {
-				cond = lval;
+				tmp = lval;
 				lval = convert(exp->right->left);		// If Body
 				rval = convert(exp->right->right);		// Else Body
-				sprintf(result, "if( %s )\n\t%selse\n\t%s\n", cond, lval, rval);
+				result = realloc(result, strlen(lval) + strlen(rval) + 256);
+				sprintf(result, "if( %s )\n\t%selse\n\t%s\n", tmp, lval, rval);
 			}
 			break;
 		case NODE_ELSE:
 			break;
 		case NODE_REPEAT:
+			result = realloc(result, (2 * strlen(lval)) + strlen(rval) + 256);
 			sprintf(result, "if ( %s > 0 ) {\n\tint loop%d;\n\tfor (loop%d = 0; loop%d < ( %s ); loop%d++)\n\t\t%s}\n", lval, exp->token_num, exp->token_num, exp->token_num, lval, exp->token_num, rval);
 			break;
 		case NODE_BLOCK:
@@ -389,4 +397,27 @@ static char* append_strings(char * old, char * new) {
 	free(new);
 
 	return out;
+}
+
+static char *replace(char* old, char* a, char* b) {
+	int idx = 0;
+	char *str = calloc(2, strlen(old));
+	char *ptr1, *ptr2;
+
+	ptr1 = old;
+	ptr2 = old;
+
+	while (ptr2) {
+		ptr2 = strstr(ptr1, a);
+		if (ptr2) {
+			strncpy(str + idx, ptr1, ptr2 - ptr1);
+			strcat(str, b);
+			ptr1 = ptr2 + strlen(a);
+			idx += strlen(str + idx);
+		}
+	}
+
+	strcat(str, ptr1);
+
+	return str;
 }

@@ -325,5 +325,6 @@ extern void dump_vm_ast(ast* root);
 extern char* convert_ast_to_c();
 static char* convert(ast* exp);
 static char* append_strings(char * old, char * new);
+static char *replace(char* old, char* a, char* b);
 
 #endif // ELASTICPL_H_
