@@ -460,8 +460,8 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 			}
 			pop_op();
 
-			// Process "If" And "Repeat" Expressions Opperator Than Owns The Block
-			if ((top_op >= 0) && (token_list->token[top_op].type == TOKEN_IF || token_list->token[top_op].type == TOKEN_REPEAT)) {
+			// Link Block To If/Repeat Operator
+			while ((top_op >= 0) && (token_list->token[top_op].type == TOKEN_IF || token_list->token[top_op].type == TOKEN_ELSE || token_list->token[top_op].type == TOKEN_REPEAT)) {
 				token_id = pop_op();
 				if (!create_exp(&token_list->token[token_id], token_id))
 					return false;
