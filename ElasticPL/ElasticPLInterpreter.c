@@ -57,9 +57,9 @@ static char* convert(ast* exp) {
 		switch (exp->type) {
 		case NODE_CONSTANT:
 			if (exp->value < 0 || exp->value > VM_MEMORY_SIZE)
-				sprintf(result, "m(0)");
+				sprintf(result, "0");
 			else
-				sprintf(result, "m(%d)", exp->value);
+				sprintf(result, "%d", exp->value);
 			break;
 		case NODE_VAR_CONST:
 			if (exp->value < 0 || exp->value > VM_MEMORY_SIZE)
@@ -71,12 +71,12 @@ static char* convert(ast* exp) {
 			sprintf(result, "mem[m(%s)]", lval);
 			break;
 		case NODE_ASSIGN:
-			sprintf(result, "%s = %s;\n", lval, rval);
+			sprintf(result, "%s = m(%s);\n", lval, rval);
 			break;
 		case NODE_IF:
 			if (exp->right->type != NODE_ELSE) {
 				rval = convert(exp->right);				// If Body (No Else Condition)
-				sprintf(result, "if( %s ) %s\n", lval, rval);
+				sprintf(result, "if( %s )\n\t%s", lval, rval);
 			}
 			else {
 				cond = lval;
@@ -88,7 +88,7 @@ static char* convert(ast* exp) {
 		case NODE_ELSE:
 			break;
 		case NODE_REPEAT:
-			sprintf(result, "for (int ii = 0; ii < %s; ii++) %s", lval, rval);
+			sprintf(result, "if ( %s > 0 ) {\n\tint loop%d;\n\tfor (loop%d = 0; loop%d < ( %s ); loop%d++)\n\t\t%s}\n", lval, exp->token_num, exp->token_num, exp->token_num, lval, exp->token_num, rval);
 			break;
 		case NODE_BLOCK:
 			if (!blk_old[0])
@@ -99,79 +99,79 @@ static char* convert(ast* exp) {
 			strcpy(blk_old, blk_new);
 			break;
 		case NODE_ADD:
-			sprintf(result, "(%s + %s)", lval, rval);
+			sprintf(result, "m(%s + %s)", lval, rval);
 			break;
 		case NODE_SUB:
-			sprintf(result, "(%s - %s)", lval, rval);
+			sprintf(result, "m(%s - %s)", lval, rval);
 			break;
 		case NODE_MUL:
-			sprintf(result, "(%s * %s)", lval, rval);
+			sprintf(result, "m(%s * %s)", lval, rval);
 			break;
 		case NODE_DIV:
-			sprintf(result, "((%s > 0) ? %s / %s : 0)", rval, lval, rval);
+			sprintf(result, "((%s > 0) ? m(%s / %s) : m(0))", rval, lval, rval);
 			break;
 		case NODE_MOD:
-			sprintf(result, "((%s > 0) ? %s %%%% %s : 0)", rval, lval, rval);
+			sprintf(result, "((%s > 0) ? m(%s %%%% %s) : m(0))", rval, lval, rval);
 			break;
 		case NODE_LSHIFT:
-			sprintf(result, "(%s << %s)", lval, rval);
+			sprintf(result, "m(%s << %s)", lval, rval);
 			break;
 		case NODE_LROT:
-			sprintf(result, "(rotl32( %s, %s %%%% 32))", lval, rval);
+			sprintf(result, "m(rotl32( %s, %s %%%% 32))", lval, rval);
 			break;
 		case NODE_RSHIFT:
-			sprintf(result, "(%s >> %s)", lval, rval);
+			sprintf(result, "m(%s >> %s)", lval, rval);
 			break;
 		case NODE_RROT:
-			sprintf(result, "(rotr32( %s, %s %%%% 32))", lval, rval);
+			sprintf(result, "m(rotr32( %s, %s %%%% 32))", lval, rval);
 			break;
 		case NODE_NOT:
-			sprintf(result, "!%s", lval);
+			sprintf(result, "m(!%s)", lval);
 			break;
 		case NODE_COMPL:
-			sprintf(result, "~%s", lval);
+			sprintf(result, "m(~%s)", lval);
 			break;
 		case NODE_AND:
-			sprintf(result, "(%s && %s)", lval, rval);
+			sprintf(result, "m(%s && %s)", lval, rval);
 			break;
 		case NODE_OR:
-			sprintf(result, "(%s || %s)", lval, rval);
+			sprintf(result, "m(%s || %s)", lval, rval);
 			break;
 		case NODE_BITWISE_AND:
-			sprintf(result, "(%s & %s)", lval, rval);
+			sprintf(result, "m(%s & %s)", lval, rval);
 			break;
 		case NODE_BITWISE_XOR:
-			sprintf(result, "(%s ^ %s)", lval, rval);
+			sprintf(result, "m(%s ^ %s)", lval, rval);
 			break;
 		case NODE_BITWISE_OR:
-			sprintf(result, "(%s | %s)", lval, rval);
+			sprintf(result, "m(%s | %s)", lval, rval);
 			break;
 		case NODE_EQ:
-			sprintf(result, "(%s == %s)", lval, rval);
+			sprintf(result, "m(%s == %s)", lval, rval);
 			break;
 		case NODE_NE:
-			sprintf(result, "(%s != %s)", lval, rval);
+			sprintf(result, "m(%s != %s)", lval, rval);
 			break;
 		case NODE_GT:
-			sprintf(result, "(%s > %s)", lval, rval);
+			sprintf(result, "m(%s > %s)", lval, rval);
 			break;
 		case NODE_LT:
-			sprintf(result, "(%s < %s)", lval, rval);
+			sprintf(result, "m(%s < %s)", lval, rval);
 			break;
 		case NODE_GE:
-			sprintf(result, "(%s >= %s)", lval, rval);
+			sprintf(result, "m(%s >= %s)", lval, rval);
 			break;
 		case NODE_LE:
-			sprintf(result, "(%s <= %s)", lval, rval);
+			sprintf(result, "m(%s <= %s)", lval, rval);
 			break;
 		case NODE_NEG:
-			sprintf(result, "-%s", lval);
+			sprintf(result, "m(-%s)", lval);
 			break;
 		case NODE_POS:
-			sprintf(result, "+%s", rval);
+			sprintf(result, "m(+%s)", rval);
 			break;
 		case NODE_VERIFY:
-			sprintf(result, "return (%s != 0 ? 1 : 0);\n", lval);
+			sprintf(result, "return m(%s != 0 ? 1 : 0);\n", lval);
 			break;
 		case NODE_SHA256:
 			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'sha256' not supported by this miner\\n\");\n");
