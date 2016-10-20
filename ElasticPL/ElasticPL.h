@@ -299,8 +299,6 @@ ast **vm_ast;		// Final AST List For VM
 
 					// Function Declarations
 extern bool create_epl_vm(char *source);
-extern int run_epl_vm();
-extern void delete_epl_vm();
 
 extern bool init_token_list(SOURCE_TOKEN_LIST *token_list, size_t size);
 static bool add_token(SOURCE_TOKEN_LIST *token_list, int token_id, char *literal, int line_num);
@@ -310,6 +308,17 @@ extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list);
 static void dump_token_list(SOURCE_TOKEN_LIST *token_list);
 
 extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list);
+static bool create_exp(SOURCE_TOKEN *token, int token_num);
+static enum NODE_TYPE get_node_type(SOURCE_TOKEN *token);
+static bool validate_binary_exp(SOURCE_TOKEN *token, enum NODE_TYPE node_type);
+static bool validate_unary_exp(SOURCE_TOKEN *token, int token_num, enum NODE_TYPE node_type);
+static bool validate_binary_stmnt(SOURCE_TOKEN *token, enum NODE_TYPE node_type);
+static bool validate_unary_stmnt(SOURCE_TOKEN *token, enum NODE_TYPE node_type);
+static ast* pop_exp();
+static void push_exp(ast* exp);
+static int pop_op();
+static void push_op(int token_id);
+static ast* add_exp(NODE_TYPE node_type, TOKEN_EXP exp_type, long value, int token_num, int line_num, ast* left, ast* right);
 extern char* get_node_str(NODE_TYPE node_type);
 extern void dump_vm_ast(ast* root);
 

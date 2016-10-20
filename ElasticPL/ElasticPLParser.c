@@ -12,7 +12,7 @@
 
 #include "ElasticPL.h"
 
-ast* add_exp(NODE_TYPE node_type, TOKEN_EXP exp_type, long value, int token_num, int line_num, ast* left, ast* right) {
+static ast* add_exp(NODE_TYPE node_type, TOKEN_EXP exp_type, long value, int token_num, int line_num, ast* left, ast* right) {
 	ast* e = calloc(1, sizeof(ast));
 	if (e) {
 		e->type = node_type;
@@ -60,19 +60,13 @@ static ast* pop_exp() {
 	return exp;
 }
 
-static NODE_TYPE validate_unary_stmnt(SOURCE_TOKEN *token) {
-	NODE_TYPE node_type;
+static bool validate_unary_stmnt(SOURCE_TOKEN *token, enum NODE_TYPE node_type) {
 	TOKEN_EXP l_exp;
-
-	switch (token->type) {
-	case TOKEN_VERIFY:		node_type = NODE_VERIFY;	break;
-	default: return NODE_ERROR;
-	}
 
 	// Validate That There Is At Least 1 Expressions On The Stack
 	if (stack_exp_idx < 0) {
 		printf("Syntax Error - Line: %d  Missing Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
-		return NODE_ERROR;
+		return false;
 	}
 
 	l_exp = stack_exp[stack_exp_idx]->exp;
@@ -80,22 +74,131 @@ static NODE_TYPE validate_unary_stmnt(SOURCE_TOKEN *token) {
 	// Validate Left Item Is Not A Statement
 	if (l_exp == UNARY_STATEMENT || l_exp == BINARY_STATEMENT) {
 		printf("Syntax Error - Line: %d  Invalid Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
+		return false;
+	}
+
+	return true;
+}
+
+static bool validate_binary_stmnt(SOURCE_TOKEN *token, enum NODE_TYPE node_type) {
+
+	// Validate That There Are At Least 2 Expressions On The Stack
+	if (stack_exp_idx < 1) {
+		printf("Syntax Error - Line: %d  Missing Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
+		return false;
+	}
+
+	return true;
+}
+
+// Validate Unary Operations Have 1 Valid Expression
+static bool validate_unary_exp(SOURCE_TOKEN *token, int token_num, enum NODE_TYPE node_type) {
+
+	if (node_type == NODE_CONSTANT)
+		return true;
+
+	// Validate That There Is At Least 1 Expression On The Stack
+	if (stack_exp_idx < 0) {
+		printf("Syntax Error - Line: %d  Invalid Use Of: \"%s\"\n", token->line_num, get_node_str(node_type));
+		return false;
+	}
+
+	//
+	// Add Check That Unary Operator Can't Be First Token On New Statement
+	//
+
+	// Validate Expression Is Not A Statement (Left For Variables, Right For Other Unary Expressions)
+	if (stack_exp[stack_exp_idx]->exp != UNARY_STATEMENT && stack_exp[stack_exp_idx]->exp != BINARY_STATEMENT) {
+
+		// Check Left Expression For Variables
+		if (node_type == NODE_VAR_CONST || node_type == NODE_VAR_EXP) {
+			if (stack_exp[stack_exp_idx]->token_num >= token_num) {
+				printf("Syntax Error - Line: %d  Invalid Operand For: \"%s\"\n", token->line_num, get_node_str(node_type));
+				return false;
+			}
+		}
+		// Check Right Expression For Other Unary Operators
+		else {
+			if (stack_exp[stack_exp_idx]->token_num <= token_num) {
+				printf("Syntax Error - Line: %d  Invalid Operand For: \"%s\"\n", token->line_num, get_node_str(node_type));
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+
+static bool validate_binary_exp(SOURCE_TOKEN *token, enum NODE_TYPE node_type) {
+	enum TOKEN_EXP l_exp, r_exp;
+
+	// Validate That There Are At Least 2 Expressions On The Stack
+	if (stack_exp_idx < 1) {
+		printf("Syntax Error - Line: %d  Missing Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
 		return NODE_ERROR;
 	}
 
-	return node_type;
+	l_exp = stack_exp[stack_exp_idx - 1]->exp;
+	r_exp = stack_exp[stack_exp_idx]->exp;
+
+	// Validate Left Item Is Not A Statement
+	if (l_exp == UNARY_STATEMENT || l_exp == BINARY_STATEMENT) {
+		printf("Syntax Error - Line: %d  Invalid Left Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
+		return false;
+	}
+
+	// Validate Right Item Is Not A Statement
+	if (r_exp == UNARY_STATEMENT || r_exp == BINARY_STATEMENT) {
+		printf("Syntax Error - Line: %d  Invalid Right Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
+		return false;
+	}
+
+	return true;
 }
 
-static NODE_TYPE validate_binary_stmnt(SOURCE_TOKEN *token) {
+static enum NODE_TYPE get_node_type(SOURCE_TOKEN *token) {
 	NODE_TYPE node_type;
-	TOKEN_EXP l_exp, r_exp;
 
 	switch (token->type) {
+	case TOKEN_VAR_END:
+		if (stack_exp_idx >= 0 && stack_exp[stack_exp_idx]->type == NODE_CONSTANT)
+			node_type = NODE_VAR_CONST;
+		else
+			node_type = NODE_VAR_EXP;
+		break;
+	case TOKEN_COMPL:			node_type = NODE_COMPL;			break;
+	case TOKEN_NOT:				node_type = NODE_NOT;			break;
+	case TOKEN_POS:				node_type = NODE_POS;			break;
+	case TOKEN_NEG:				node_type = NODE_NEG;			break;
+	case TOKEN_LITERAL:			node_type = NODE_CONSTANT;		break;
+	case TOKEN_TRUE:			node_type = NODE_CONSTANT;		break;
+	case TOKEN_FALSE:			node_type = NODE_CONSTANT;		break;
+	case TOKEN_MUL:				node_type = NODE_MUL;			break;
+	case TOKEN_DIV:				node_type = NODE_DIV;			break;
+	case TOKEN_MOD:				node_type = NODE_MOD;			break;
+	case TOKEN_ADD:				node_type = NODE_ADD;			break;
+	case TOKEN_SUB:				node_type = NODE_SUB;			break;
+	case TOKEN_LROT:			node_type = NODE_LROT;			break;
+	case TOKEN_LSHIFT:			node_type = NODE_LSHIFT;		break;
+	case TOKEN_RROT:			node_type = NODE_RROT;			break;
+	case TOKEN_RSHIFT:			node_type = NODE_RSHIFT;		break;
+	case TOKEN_LE:				node_type = NODE_LE;			break;
+	case TOKEN_GE:				node_type = NODE_GE;			break;
+	case TOKEN_LT:				node_type = NODE_LT;			break;
+	case TOKEN_GT:				node_type = NODE_GT;			break;
+	case TOKEN_EQ:				node_type = NODE_EQ;			break;
+	case TOKEN_NE:				node_type = NODE_NE;			break;
+	case TOKEN_BITWISE_AND:		node_type = NODE_BITWISE_AND;	break;
+	case TOKEN_BITWISE_XOR:		node_type = NODE_BITWISE_XOR;	break;
+	case TOKEN_BITWISE_OR:		node_type = NODE_BITWISE_OR;	break;
+	case TOKEN_AND:				node_type = NODE_AND;			break;
+	case TOKEN_OR:				node_type = NODE_OR;			break;
 	case TOKEN_BLOCK_END:		node_type = NODE_BLOCK;			break;
 	case TOKEN_IF:				node_type = NODE_IF;			break;
 	case TOKEN_ELSE:			node_type = NODE_ELSE;			break;
 	case TOKEN_REPEAT:			node_type = NODE_REPEAT;		break;
 	case TOKEN_ASSIGN:			node_type = NODE_ASSIGN;		break;
+	case TOKEN_VERIFY:			node_type = NODE_VERIFY;		break;
 	case TOKEN_SHA256:			node_type = NODE_SHA256;		break;
 	case TOKEN_SHA512:			node_type = NODE_SHA512;		break;
 	case TOKEN_WHIRLPOOL:	   	node_type = NODE_WHIRLPOOL;		break;
@@ -161,138 +264,6 @@ static NODE_TYPE validate_binary_stmnt(SOURCE_TOKEN *token) {
 	default: return NODE_ERROR;
 	}
 
-	// Validate That There Are At Least 2 Expressions On The Stack
-	if (stack_exp_idx < 1) {
-		printf("Syntax Error - Line: %d  Missing Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
-		return NODE_ERROR;
-	}
-
-	l_exp = stack_exp[stack_exp_idx - 1]->exp;
-	r_exp = stack_exp[stack_exp_idx]->exp;
-
-
-	//
-	// Fix For Blocks
-	//
-
-	// Validate Left Item Is Not A Statement
-	//if (l_exp == UNARY_STATEMENT || l_exp == BINARY_STATEMENT) {
-	//	printf("Syntax Error - Line: %d  Invalid Left Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
-	//	return NODE_ERROR;
-	//}
-
-	// Validate Right Item Is Not A Statement
-	//if (r_exp == UNARY_STATEMENT || r_exp == BINARY_STATEMENT) {
-	//	printf("Syntax Error - Line: %d  Invalid Right Operand: \"%s\"\n", token->line_num, node_str2[node_type]);
-	//	return NODE_ERROR;
-	//}
-
-	return node_type;
-}
-
-// Validate Unary Operations Have 1 Valid Expression
-static NODE_TYPE validate_unary_exp(SOURCE_TOKEN *token, int token_num) {
-	NODE_TYPE node_type;
-
-	// Convert Token Type To Node Type
-	switch (token->type) {
-	case TOKEN_VAR_END:
-		if (stack_exp_idx >= 0 && stack_exp[stack_exp_idx]->type == NODE_CONSTANT)
-			node_type = NODE_VAR_CONST;
-		else
-			node_type = NODE_VAR_EXP;
-		break;
-	case TOKEN_COMPL:	node_type = NODE_COMPL;	break;
-	case TOKEN_NOT:		node_type = NODE_NOT;	break;
-	case TOKEN_POS:		node_type = NODE_POS;	break;
-	case TOKEN_NEG:		node_type = NODE_NEG;	break;
-	case TOKEN_LITERAL:	return NODE_CONSTANT;
-	case TOKEN_TRUE:	return NODE_CONSTANT;
-	case TOKEN_FALSE:	return NODE_CONSTANT;
-	default: return NODE_ERROR;
-	}
-
-	// Validate That There Is At Least 1 Expression On The Stack
-	if (stack_exp_idx < 0) {
-		printf("Syntax Error - Line: %d  Invalid Use Of: \"%s\"\n", token->line_num, get_node_str(node_type));
-		return NODE_ERROR;
-	}
-
-	//
-	// Add Check That Unary Operator Can't Be First Token On New Statement
-	//
-
-	// Validate Expression Is Not A Statement (Left For Variables, Right For Other Unary Expressions)
-	if (stack_exp[stack_exp_idx]->exp != UNARY_STATEMENT && stack_exp[stack_exp_idx]->exp != BINARY_STATEMENT) {
-
-		// Check Left Expression For Variables
-		if (node_type == NODE_VAR_CONST || node_type == NODE_VAR_EXP) {
-			if (stack_exp[stack_exp_idx]->token_num >= token_num) {
-				printf("Syntax Error - Line: %d  Invalid Operand For: \"%s\"\n", token->line_num, get_node_str(node_type));
-				return NODE_ERROR;
-			}
-		}
-		// Check Right Expression For Other Unary Operators
-		else {
-			if (stack_exp[stack_exp_idx]->token_num <= token_num) {
-				printf("Syntax Error - Line: %d  Invalid Operand For: \"%s\"\n", token->line_num, get_node_str(node_type));
-				return NODE_ERROR;
-			}
-		}
-	}
-
-	return node_type;
-}
-
-static NODE_TYPE validate_binary_exp(SOURCE_TOKEN *token) {
-	NODE_TYPE node_type;
-	TOKEN_EXP l_exp, r_exp;
-
-	switch (token->type) {
-	case TOKEN_MUL:		node_type = NODE_MUL;	break;
-	case TOKEN_DIV:		node_type = NODE_DIV;	break;
-	case TOKEN_MOD:		node_type = NODE_MOD;	break;
-	case TOKEN_ADD:		node_type = NODE_ADD;	break;
-	case TOKEN_SUB:		node_type = NODE_SUB;	break;
-	case TOKEN_LROT:	node_type = NODE_LROT;	break;
-	case TOKEN_LSHIFT:	node_type = NODE_LSHIFT; break;
-	case TOKEN_RROT:	node_type = NODE_RROT;	break;
-	case TOKEN_RSHIFT:	node_type = NODE_RSHIFT; break;
-	case TOKEN_LE:		node_type = NODE_LE;	break;
-	case TOKEN_GE:		node_type = NODE_GE;	break;
-	case TOKEN_LT:		node_type = NODE_LT;	break;
-	case TOKEN_GT:		node_type = NODE_GT;	break;
-	case TOKEN_EQ:		node_type = NODE_EQ;	break;
-	case TOKEN_NE:		node_type = NODE_NE;	break;
-	case TOKEN_BITWISE_AND: node_type = NODE_BITWISE_AND; break;
-	case TOKEN_BITWISE_XOR: node_type = NODE_BITWISE_XOR; break;
-	case TOKEN_BITWISE_OR: node_type = NODE_BITWISE_OR; break;
-	case TOKEN_AND:		node_type = NODE_AND;	break;
-	case TOKEN_OR:		node_type = NODE_OR;	break;
-	default: return NODE_ERROR;
-	}
-
-	// Validate That There Are At Least 2 Expressions On The Stack
-	if (stack_exp_idx < 1) {
-		printf("Syntax Error - Line: %d  Missing Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
-		return NODE_ERROR;
-	}
-
-	l_exp = stack_exp[stack_exp_idx - 1]->exp;
-	r_exp = stack_exp[stack_exp_idx]->exp;
-
-	// Validate Left Item Is Not A Statement
-	if (l_exp == UNARY_STATEMENT || l_exp == BINARY_STATEMENT) {
-		printf("Syntax Error - Line: %d  Invalid Left Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
-		return NODE_ERROR;
-	}
-
-	// Validate Right Item Is Not A Statement
-	if (r_exp == UNARY_STATEMENT || r_exp == BINARY_STATEMENT) {
-		printf("Syntax Error - Line: %d  Invalid Right Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
-		return NODE_ERROR;
-	}
-
 	return node_type;
 }
 
@@ -301,63 +272,58 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 	NODE_TYPE node_type = NODE_ERROR;
 	ast *exp, *left = NULL, *right = NULL;
 
+	node_type = get_node_type(token);
+
+	if (node_type == NODE_ERROR)
+		return false;
+
 	switch (token->exp) {
 
 	case BINARY_EXPRESSION:
-		node_type = validate_binary_exp(token);
-		if (node_type == NODE_ERROR) {
+		if (!validate_binary_exp(token, node_type))
 			return false;
-		}
-		else {
-			right = pop_exp();
-			left = pop_exp();
-		}
+
+		right = pop_exp();
+		left = pop_exp();
 		break;
 
 	case UNARY_EXPRESSION:
-		node_type = validate_unary_exp(token, token_num);
-		if (node_type == NODE_ERROR) {
+		if (!validate_unary_exp(token, token_num, node_type))
 			return false;
-		}
+
+		if (token->type == TOKEN_TRUE)
+			value = 1;
+		else if (token->type == TOKEN_FALSE)
+			value = 0;
+		else if (node_type == NODE_CONSTANT)	// Constants Have Values Not Leafs
+			value = (long long)strtod(token->literal, NULL);
 		else {
-			if (token->type == TOKEN_TRUE)
-				value = 1;
-			else if (token->type == TOKEN_FALSE)
-				value = 0;
-			else if (node_type == NODE_CONSTANT)	// Constants Have Values Not Leafs
-				value = (long long)strtod(token->literal, NULL);
-			else {
-				left = pop_exp();
-				if (node_type == NODE_VAR_CONST) { // Remove Expression For Variables w/ Constant ID
-					value = left->value;
-					left = NULL;
-				}
+			left = pop_exp();
+			if (node_type == NODE_VAR_CONST) { // Remove Expression For Variables w/ Constant ID
+				value = left->value;
+				left = NULL;
 			}
 		}
 		break;
 
 	case BINARY_STATEMENT:
 	case BINARY_STMNT_EXP:
-		node_type = validate_binary_stmnt(token);
-		if (node_type == NODE_ERROR) {
+		if (!validate_binary_stmnt(token, node_type))
 			return false;
-		}
-		else {
-			if (node_type == NODE_BLOCK && stack_exp[stack_exp_idx]->type != NODE_BLOCK)
-				right = NULL;
-			else
-				right = pop_exp();
-			left = pop_exp();
-		}
+
+		if (node_type == NODE_BLOCK && stack_exp[stack_exp_idx]->type != NODE_BLOCK)
+			right = NULL;
+		else
+			right = pop_exp();
+		left = pop_exp();
 		break;
 
 	case UNARY_STATEMENT:
 	case UNARY_STMNT_EXP:
-		node_type = validate_unary_stmnt(token);
-		if (node_type == NODE_ERROR)
+		if (!validate_unary_stmnt(token, node_type))
 			return false;
-		else
-			left = pop_exp();
+
+		left = pop_exp();
 		break;
 	}
 
