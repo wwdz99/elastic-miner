@@ -82,29 +82,29 @@ static char* convert(ast* exp) {
 			if (exp->right->type != NODE_ELSE) {
 				rval = convert(exp->right);				// If Body (No Else Condition)
 				result = realloc(result, strlen(lval) + strlen(rval) + 256);
-				sprintf(result, "if( %s )\n\t%s", lval, rval);
+				sprintf(result, "if( %s ) {\n\t%s}\n", lval, rval);
 			}
 			else {
 				tmp = lval;
 				lval = convert(exp->right->left);		// If Body
 				rval = convert(exp->right->right);		// Else Body
 				result = realloc(result, strlen(lval) + strlen(rval) + 256);
-				sprintf(result, "if( %s )\n\t%selse\n\t%s\n", tmp, lval, rval);
+				sprintf(result, "if( %s ) {\n\t%s}\nelse {\n\t%s}\n", tmp, lval, rval);
 			}
 			break;
 		case NODE_ELSE:
 			break;
 		case NODE_REPEAT:
 			result = realloc(result, (2 * strlen(lval)) + strlen(rval) + 256);
-			sprintf(result, "if ( %s > 0 ) {\n\tint loop%d;\n\tfor (loop%d = 0; loop%d < ( %s ); loop%d++)\n\t\t%s}\n", lval, exp->token_num, exp->token_num, exp->token_num, lval, exp->token_num, rval);
+			sprintf(result, "if ( %s > 0 ) {\n\tint loop%d;\n\tfor (loop%d = 0; loop%d < ( %s ); loop%d++) {\n\t%s\t}\n}\n", lval, exp->token_num, exp->token_num, exp->token_num, lval, exp->token_num, rval);
 			break;
 		case NODE_BLOCK:
 			if (!blk_old[0])
-				sprintf(blk_new, "%s}\n", lval);
+				sprintf(blk_new, "%s", lval);
 			else
-				sprintf(blk_new, "\t%s\t%s", lval, blk_old);
+				sprintf(blk_new, "%s\t%s", lval, blk_old);
 			result = realloc(result, strlen(blk_new) + 1);
-			sprintf(result, "{\n%s", blk_new);
+			sprintf(result, "%s", blk_new);
 			strcpy(blk_old, blk_new);
 			break;
 		case NODE_ADD:
@@ -176,197 +176,203 @@ static char* convert(ast* exp) {
 		case NODE_NEG:
 			sprintf(result, "m(-%s)", lval);
 			break;
-		case NODE_POS:
-			sprintf(result, "m(+%s)", rval);
-			break;
 		case NODE_VERIFY:
 			sprintf(result, "return m(%s != 0 ? 1 : 0);\n", lval);
 			break;
+		case NODE_PARAM:
+			if (!blk_old[0])
+				sprintf(blk_new, "%s", lval);
+			else
+				sprintf(blk_new, "%s, %s", lval, blk_old);
+			result = realloc(result, strlen(blk_new) + 1);
+			sprintf(result, "%s", blk_new);
+			strcpy(blk_old, blk_new);
+			break;
 		case NODE_SHA256:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'sha256' not supported by this miner\\n\");\n");
+			sprintf(result, "sha256( %s );\n", rval);
 			break;
 		case NODE_SHA512:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'sha512' not supported by this miner\\n\");\n");
+			sprintf(result, "sha512( %s );\n", rval);
 			break;
 		case NODE_WHIRLPOOL:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'whirlpool' not supported by this miner\\n\");\n");
+			sprintf(result, "whirlpool( %s );\n", rval);
 			break;
 		case NODE_MD5:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'md5' not supported by this miner\\n\");\n");
+			sprintf(result, "md5( %s );\n", rval);
 			break;
 		case NODE_SECP192K_PTP:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP192K1PrivToPub' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP192K1PrivToPub( %s );\n", rval);
 			break;
 		case NODE_SECP192K_PA:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP192K1PointAdd' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP192K1PointAdd( %s );\n", rval);
 			break;
 		case NODE_SECP192K_PS:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP192K1PointSub' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP192K1PointSub( %s );\n", rval);
 			break;
 		case NODE_SECP192K_PSM:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP192K1PointScalarMult' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP192K1PointScalarMult( %s );\n", rval);
 			break;
 		case NODE_SECP192K_PN:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP192K1PointNegate' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP192K1PointNegate( %s );\n", rval);
 			break;
 		case NODE_SECP192R_PTP:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP192R1PrivToPub' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP192R1PrivToPub( %s );\n", rval);
 			break;
 		case NODE_SECP192R_PA:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP192R1PointAdd' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP192R1PointAdd( %s );\n", rval);
 			break;
 		case NODE_SECP192R_PS:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP192R1PointSub' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP192R1PointSub( %s );\n", rval);
 			break;
 		case NODE_SECP192R_PSM:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP192R1PointScalarMult' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP192R1PointScalarMult( %s );\n", rval);
 			break;
 		case NODE_SECP192R_PN:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP192R1PointNegate' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP192R1PointNegate( %s );\n", rval);
 			break;
 		case NODE_SECP224K_PTP:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP224K1PrivToPub' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP224K1PrivToPub( %s );\n", rval);
 			break;
 		case NODE_SECP224K_PA:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP224K1PointAdd' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP224K1PointAdd( %s );\n", rval);
 			break;
 		case NODE_SECP224K_PS:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP224K1PointSub' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP224K1PointSub( %s );\n", rval);
 			break;
 		case NODE_SECP224K_PSM:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP224K1PointScalarMult' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP224K1PointScalarMult( %s );\n", rval);
 			break;
 		case NODE_SECP224K_PN:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP224K1PointNegate' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP224K1PointNegate( %s );\n", rval);
 			break;
 		case NODE_SECP224R_PTP:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP224R1PrivToPub' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP224R1PrivToPub( %s );\n", rval);
 			break;
 		case NODE_SECP224R_PA:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP224R1PointAdd' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP224R1PointAdd( %s );\n", rval);
 			break;
 		case NODE_SECP224R_PS:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP224R1PointSub' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP224R1PointSub( %s );\n", rval);
 			break;
 		case NODE_SECP224R_PSM:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP224R1PointScalarMult' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP224R1PointScalarMult( %s );\n", rval);
 			break;
 		case NODE_SECP224R_PN:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP224R1PointNegate' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP224R1PointNegate( %s );\n", rval);
 			break;
 		case NODE_SECP256K_PTP:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP256K1PrivToPub' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP256K1PrivToPub( %s );\n", rval);
 			break;
 		case NODE_SECP256K_PA:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP256K1PointAdd' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP256K1PointAdd( %s );\n", rval);
 			break;
 		case NODE_SECP256K_PS:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP256K1PointSub' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP256K1PointSub( %s );\n", rval);
 			break;
 		case NODE_SECP256K_PSM:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP256K1PointScalarMult' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP256K1PointScalarMult( %s );\n", rval);
 			break;
 		case NODE_SECP256K_PN:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP256K1PointNegate' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP256K1PointNegate( %s );\n", rval);
 			break;
 		case NODE_SECP256R_PTP:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP256R1PrivToPub' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP256R1PrivToPub( %s );\n", rval);
 			break;
 		case NODE_SECP256R_PA:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP256R1PointAdd' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP256R1PointAdd( %s );\n", rval);
 			break;
 		case NODE_SECP256R_PS:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP256R1PointSub' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP256R1PointSub( %s );\n", rval);
 			break;
 		case NODE_SECP256R_PSM:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP256R1PointScalarMult' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP256R1PointScalarMult( %s );\n", rval);
 			break;
 		case NODE_SECP256R_PN:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP256R1PointNegate' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP256R1PointNegate( %s );\n", rval);
 			break;
 		case NODE_SECP384R_PTP:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP384R1PrivToPub' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP384R1PrivToPub( %s );\n", rval);
 			break;
 		case NODE_SECP384R_PA:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP384R1PointAdd' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP384R1PointAdd( %s );\n", rval);
 			break;
 		case NODE_SECP384R_PS:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP384R1PointSub' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP384R1PointSub( %s );\n", rval);
 			break;
 		case NODE_SECP384R_PSM:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP384R1PointScalarMult' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP384R1PointScalarMult( %s );\n", rval);
 			break;
 		case NODE_SECP384R_PN:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'SECP384R1PointNegate' not supported by this miner\\n\");\n");
+			sprintf(result, "SECP384R1PointNegate( %s );\n", rval);
 			break;
 		case NODE_PRM192V1_PTP:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'PRIME192V1PrivToPub' not supported by this miner\\n\");\n");
+			sprintf(result, "PRIME192V1PrivToPub( %s );\n", rval);
 			break;
 		case NODE_PRM192V1_PA:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'PRIME192V1PointAdd' not supported by this miner\\n\");\n");
+			sprintf(result, "PRIME192V1PointAdd( %s );\n", rval);
 			break;
 		case NODE_PRM192V1_PS:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'PRIME192V1PointSub' not supported by this miner\\n\");\n");
+			sprintf(result, "PRIME192V1PointSub( %s );\n", rval);
 			break;
 		case NODE_PRM192V1_PSM:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'PRIME192V1PointScalarMult' not supported by this miner\\n\");\n");
+			sprintf(result, "PRIME192V1PointScalarMult( %s );\n", rval);
 			break;
 		case NODE_PRM192V1_PN:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'PRIME192V1PointNegate' not supported by this miner\\n\");\n");
+			sprintf(result, "PRIME192V1PointNegate( %s );\n", rval);
 			break;
 		case NODE_PRM192V2_PTP:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'PRIME192V2PrivToPub' not supported by this miner\\n\");\n");
+			sprintf(result, "PRIME192V2PrivToPub( %s );\n", rval);
 			break;
 		case NODE_PRM192V2_PA:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'PRIME192V2PointAdd' not supported by this miner\\n\");\n");
+			sprintf(result, "PRIME192V2PointAdd( %s );\n", rval);
 			break;
 		case NODE_PRM192V2_PS:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'PRIME192V2PointSub' not supported by this miner\\n\");\n");
+			sprintf(result, "PRIME192V2PointSub( %s );\n", rval);
 			break;
 		case NODE_PRM192V2_PSM:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'PRIME192V2PointScalarMult' not supported by this miner\\n\");\n");
+			sprintf(result, "PRIME192V2PointScalarMult( %s );\n", rval);
 			break;
 		case NODE_PRM192V2_PN:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'PRIME192V2PointNegate' not supported by this miner\\n\");\n");
+			sprintf(result, "PRIME192V2PointNegate( %s );\n", rval);
 			break;
 		case NODE_PRM192V3_PTP:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'PRIME192V3PrivToPub' not supported by this miner\\n\");\n");
+			sprintf(result, "PRIME192V3PrivToPub( %s );\n", rval);
 			break;
 		case NODE_PRM192V3_PA:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'PRIME192V3PointAdd' not supported by this miner\\n\");\n");
+			sprintf(result, "PRIME192V3PointAdd( %s );\n", rval);
 			break;
 		case NODE_PRM192V3_PS:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'PRIME192V3PointSub' not supported by this miner\\n\");\n");
+			sprintf(result, "PRIME192V3PointSub( %s );\n", rval);
 			break;
 		case NODE_PRM192V3_PSM:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'PRIME192V3PointScalarMult' not supported by this miner\\n\");\n");
+			sprintf(result, "PRIME192V3PointScalarMult( %s );\n", rval);
 			break;
 		case NODE_PRM192V3_PN:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'PRIME192V3PointNegate' not supported by this miner\\n\");\n");
+			sprintf(result, "PRIME192V3PointNegate( %s );\n", rval);
 			break;
 		case NODE_PRM256V1_PTP:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'PRIME256V1PrivToPub' not supported by this miner\\n\");\n");
+			sprintf(result, "PRIME256V1PrivToPub( %s );\n", rval);
 			break;
 		case NODE_PRM256V1_PA:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'PRIME256V1PointAdd' not supported by this miner\\n\");\n");
+			sprintf(result, "PRIME256V1PointAdd( %s );\n", rval);
 			break;
 		case NODE_PRM256V1_PS:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'PRIME256V1PointSub' not supported by this miner\\n\");\n");
+			sprintf(result, "PRIME256V1PointSub( %s );\n", rval);
 			break;
 		case NODE_PRM256V1_PSM:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'PRIME256V1PointScalarMult' not supported by this miner\\n\");\n");
+			sprintf(result, "PRIME256V1PointScalarMult( %s );\n", rval);
 			break;
 		case NODE_PRM256V1_PN:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'PRIME256V1PointNegate' not supported by this miner\\n\");\n");
+			sprintf(result, "PRIME256V1PointNegate( %s );\n", rval);
 			break;
 		case NODE_TIGER:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'Tiger' not supported by this miner\\n\");\n");
+			sprintf(result, "Tiger( %s );\n", rval);
 			break;
 		case NODE_RIPEMD160:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'RIPEMD160' not supported by this miner\\n\");\n");
+			sprintf(result, "RIPEMD160( %s );\n", rval);
 			break;
 		case NODE_RIPEMD128:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - 'RIPEMD128' not supported by this miner\\n\");\n");
+			sprintf(result, "RIPEMD128( %s );\n", rval);
 			break;
 		default:
 			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - Unsupported Operation (%d)\n\");\n", exp->type);

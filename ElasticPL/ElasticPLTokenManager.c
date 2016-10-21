@@ -21,124 +21,124 @@ Str:	Token String
 Len:	String Length Used For "memcmp"
 Type:	Enumerated Token Type
 Exp:	Enumerated Num Of Expressions To Link To Node
+Inputs: Number Of Required Inputs To Operator / Function
 Prec:	(Precedence) Determines Parsing Order
 ******************************************************************************/
 struct EPL_TOKEN_LIST epl_token[] = {
-	{ "<eof>",	5,	TOKEN_EOF,			EXP_NONE,				0 },
-	{ "{",		1,	TOKEN_BLOCK_BEGIN,	BINARY_STATEMENT,		1 },
-	{ "}",		1,	TOKEN_BLOCK_END,	BINARY_STATEMENT,		1 },
-	{ "(",		1,	TOKEN_OPEN_PAREN,	EXP_NONE,				1 },
-	{ ")",		1,	TOKEN_CLOSE_PAREN,	EXP_NONE,				1 },
-	{ ";",		1,	TOKEN_END_STATEMENT,EXP_NONE,				2 },
-	{ "verify",	6,	TOKEN_VERIFY,		UNARY_STATEMENT,		2 },
-	{ "repeat",	6,	TOKEN_REPEAT,		BINARY_STATEMENT,		2 },
-	{ "if",		2,	TOKEN_IF,			BINARY_STATEMENT,		2 },
-	{ "else",	4,	TOKEN_ELSE,			BINARY_STATEMENT,		2 },
+	{ "<eof>",						5,	TOKEN_EOF,			EXP_NONE,		0,	0 },
+	{ "{",							1,	TOKEN_BLOCK_BEGIN,	EXP_STATEMENT,	2,	1 },
+	{ "}",							1,	TOKEN_BLOCK_END,	EXP_STATEMENT,	2,	1 },
+	{ "(",							1,	TOKEN_OPEN_PAREN,	EXP_NONE,		0,	1 },
+	{ ")",							1,	TOKEN_CLOSE_PAREN,	EXP_NONE,		0,	1 },
+	{ ";",							1,	TOKEN_END_STATEMENT,EXP_NONE,		0,	2 },
+	{ "verify",						6,	TOKEN_VERIFY,		EXP_STATEMENT,	1,	2 },
+	{ "repeat",						6,	TOKEN_REPEAT,		EXP_STATEMENT,	2,	2 },
+	{ "if",							2,	TOKEN_IF,			EXP_STATEMENT,	2,	2 },
+	{ "else",						4,	TOKEN_ELSE,			EXP_STATEMENT,	2,	2 },
 
-	{ "m[",		2,	TOKEN_VAR_BEGIN,	EXP_NONE,				4 },
-	{ "]",		1,	TOKEN_VAR_END,		UNARY_EXPRESSION,		4 },
+	{ "m[",							2,	TOKEN_VAR_BEGIN,	EXP_EXPRESSION,	1,	4 },
+	{ "]",							1,	TOKEN_VAR_END,		EXP_EXPRESSION,	1,	4 },
 
-	{ "*",		1,	TOKEN_MUL,			BINARY_EXPRESSION,		14 },	// Multiplicative
-	{ "/",		1,	TOKEN_DIV,			BINARY_EXPRESSION,		14 },	// Multiplicative
-	{ "%",		1,	TOKEN_MOD,			BINARY_EXPRESSION,		14 },	// Multiplicative
+	{ "*",							1,	TOKEN_MUL,			EXP_EXPRESSION,	2,	14 },	// Multiplicative
+	{ "/",							1,	TOKEN_DIV,			EXP_EXPRESSION,	2,	14 },	// Multiplicative
+	{ "%",							1,	TOKEN_MOD,			EXP_EXPRESSION,	2,	14 },	// Multiplicative
 
-	{ "+",		1,	TOKEN_ADD,			BINARY_EXPRESSION,		13 },	// Additive
-	{ "+",		1,	TOKEN_POS,			UNARY_EXPRESSION,		15 },	// Additive
-	{ "-",		1,	TOKEN_SUB,			BINARY_EXPRESSION,		13 },	// Additive
-	{ "-",		1,	TOKEN_NEG,			UNARY_EXPRESSION,		15 },	// Additive
+	{ "+",							1,	TOKEN_ADD,			EXP_EXPRESSION,	2,	13 },	// Additive
+	{ "-",							1,	TOKEN_SUB,			EXP_EXPRESSION,	2,	13 },	// Additive
+	{ "-",							1,	TOKEN_NEG,			EXP_EXPRESSION,	1,	15 },	// Additive
 
-	{ "<<<",	3,	TOKEN_LROT,			BINARY_EXPRESSION,		12 },	// Shift
-	{ "<<",		2,	TOKEN_LSHIFT,		BINARY_EXPRESSION,		12 },	// Shift
-	{ ">>>",	3,	TOKEN_RROT,			BINARY_EXPRESSION,		12 },	// Shift
-	{ ">>",		2,	TOKEN_RSHIFT,		BINARY_EXPRESSION,		12 },	// Shift
+	{ "<<<",						3,	TOKEN_LROT,			EXP_EXPRESSION,	2,	12 },	// Shift
+	{ "<<",							2,	TOKEN_LSHIFT,		EXP_EXPRESSION,	2,	12 },	// Shift
+	{ ">>>",						3,	TOKEN_RROT,			EXP_EXPRESSION,	2,	12 },	// Shift
+	{ ">>",							2,	TOKEN_RSHIFT,		EXP_EXPRESSION,	2,	12 },	// Shift
 
-	{ "<=",		2,	TOKEN_LE,			BINARY_EXPRESSION,		11 },	// Relational
-	{ ">=",		2,	TOKEN_GE,			BINARY_EXPRESSION,		11 },	// Relational
-	{ "<",		1,	TOKEN_LT,			BINARY_EXPRESSION,		11 },	// Relational
-	{ ">",		1,	TOKEN_GT,			BINARY_EXPRESSION,		11 },	// Relational
+	{ "<=",							2,	TOKEN_LE,			EXP_EXPRESSION,	2,	11 },	// Relational
+	{ ">=",							2,	TOKEN_GE,			EXP_EXPRESSION,	2,	11 },	// Relational
+	{ "<",							1,	TOKEN_LT,			EXP_EXPRESSION,	2,	11 },	// Relational
+	{ ">",							1,	TOKEN_GT,			EXP_EXPRESSION,	2,	11 },	// Relational
 
-	{ "==",		2,	TOKEN_EQ,			BINARY_EXPRESSION,		10 },	// Equality
-	{ "!=",		2,	TOKEN_NE,			BINARY_EXPRESSION,		10 },	// Equality
+	{ "==",							2,	TOKEN_EQ,			EXP_EXPRESSION,	2,	10 },	// Equality
+	{ "!=",							2,	TOKEN_NE,			EXP_EXPRESSION,	2,	10 },	// Equality
 
-	{ "&&",		2,	TOKEN_AND,			BINARY_EXPRESSION,		6 },	// Logical AND
-	{ "||",		2,	TOKEN_OR,			BINARY_EXPRESSION,		5 },	// Logical OR
+	{ "&&",							2,	TOKEN_AND,			EXP_EXPRESSION,	2,	6 },	// Logical AND
+	{ "||",							2,	TOKEN_OR,			EXP_EXPRESSION,	2,	5 },	// Logical OR
 
-	{ "&",		1,	TOKEN_BITWISE_AND,	BINARY_EXPRESSION,		9 },	// Bitwise AND
-	{ "and",	3,	TOKEN_BITWISE_AND,	BINARY_EXPRESSION,		9 },	// Bitwise AND
-	{ "^",		1,	TOKEN_BITWISE_XOR,	BINARY_EXPRESSION,		8 },	// Bitwise XOR
-	{ "xor",	3,	TOKEN_BITWISE_XOR,	BINARY_EXPRESSION,		8 },	// Bitwise XOR
-	{ "|",		1,	TOKEN_BITWISE_OR,	BINARY_EXPRESSION,		7 },	// Bitwise OR
-	{ "or",		2,	TOKEN_BITWISE_OR,	BINARY_EXPRESSION,		7 },	// Bitwise OR
+	{ "&",							1,	TOKEN_BITWISE_AND,	EXP_EXPRESSION,	2,	9 },	// Bitwise AND
+	{ "and",						3,	TOKEN_BITWISE_AND,	EXP_EXPRESSION,	2,	9 },	// Bitwise AND
+	{ "^",							1,	TOKEN_BITWISE_XOR,	EXP_EXPRESSION,	2,	8 },	// Bitwise XOR
+	{ "xor",						3,	TOKEN_BITWISE_XOR,	EXP_EXPRESSION,	2,	8 },	// Bitwise XOR
+	{ "|",							1,	TOKEN_BITWISE_OR,	EXP_EXPRESSION,	2,	7 },	// Bitwise OR
+	{ "or",							2,	TOKEN_BITWISE_OR,	EXP_EXPRESSION,	2,	7 },	// Bitwise OR
 
-	{ "=",		1,	TOKEN_ASSIGN,		BINARY_STMNT_EXP,		3 },	// Assignment
+	{ "=",							1,	TOKEN_ASSIGN,		EXP_STATEMENT,	2,	3 },	// Assignment
 
-	{ "~",		1,	TOKEN_COMPL,		UNARY_EXPRESSION,		15 },	// Unary Operator
-	{ "!",		1,	TOKEN_NOT,			UNARY_EXPRESSION,		15 },	// Unary Operator
-	{ "true",	4,	TOKEN_TRUE,			UNARY_EXPRESSION,		15 },	// Unary Operator
-	{ "false",	5,	TOKEN_FALSE,		UNARY_EXPRESSION,		15 },	// Unary Operator
+	{ "~",							1,	TOKEN_COMPL,		EXP_EXPRESSION,	1,	15 },	// Unary Operator
+	{ "!",							1,	TOKEN_NOT,			EXP_EXPRESSION,	1,	15 },	// Unary Operator
+	{ "true",						4,	TOKEN_TRUE,			EXP_EXPRESSION,	0,	15 },	// Unary Operator
+	{ "false",						5,	TOKEN_FALSE,		EXP_EXPRESSION,	0,	15 },	// Unary Operator
 
-	{ "sha256",						6,	TOKEN_SHA256,		BINARY_STATEMENT,	60 },	// Built In Functions
-	{ "sha512",						6,	TOKEN_SHA512,		BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "whirlpool",					9,	TOKEN_WHIRLPOOL,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "md5",						3,	TOKEN_MD5,			BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp192k1privtopub",			18,	TOKEN_SECP192K_PTP,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp192k1pointadd",			17,	TOKEN_SECP192K_PA,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp192k1pointsub",			17,	TOKEN_SECP192K_PS,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp192k1pointscalarmult",	24,	TOKEN_SECP192K_PSM,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp192k1pointnegate",		20,	TOKEN_SECP192K_PN,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp192r1privtopub",			18,	TOKEN_SECP192R_PTP,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp192r1pointadd",			17,	TOKEN_SECP192R_PA,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp192r1pointsub",			17,	TOKEN_SECP192R_PS,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp192r1pointscalarmult",	24,	TOKEN_SECP192R_PSM,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp192r1pointnegate",		20,	TOKEN_SECP192R_PN,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp224k1privtopub",			18,	TOKEN_SECP224K_PTP,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp224k1pointadd",			17,	TOKEN_SECP224K_PA,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp224k1pointsub",			17,	TOKEN_SECP224K_PS,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp224k1pointscalarmult",	24,	TOKEN_SECP224K_PSM,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp224k1pointnegate",		20,	TOKEN_SECP224K_PN,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp224r1privtopub",			18,	TOKEN_SECP224R_PTP,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp224r1pointadd",			17,	TOKEN_SECP224R_PA,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp224r1pointsub",			17,	TOKEN_SECP224R_PS,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp224r1pointscalarmult",	24,	TOKEN_SECP224R_PSM,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp224r1pointnegate",		20,	TOKEN_SECP224R_PN,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp256k1privtopub",			18,	TOKEN_SECP256K_PTP,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp256k1pointadd",			17,	TOKEN_SECP256K_PA,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp256k1pointsub",			17,	TOKEN_SECP256K_PS,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp256k1pointscalarmult",	24,	TOKEN_SECP256K_PSM,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp256k1pointnegate",		20,	TOKEN_SECP256K_PN,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp256r1privtopub",			18,	TOKEN_SECP256R_PTP,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp256r1pointadd",			17,	TOKEN_SECP256R_PA,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp256r1pointsub",			17,	TOKEN_SECP256R_PS,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp256r1pointscalarmult",	24,	TOKEN_SECP256R_PSM,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp256r1pointnegate",		20,	TOKEN_SECP256R_PN,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp384r1privtopub",			18,	TOKEN_SECP384R_PTP,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp384r1pointadd",			17,	TOKEN_SECP384R_PA,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp384r1pointsub",			17,	TOKEN_SECP384R_PS,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp384r1pointscalarmult",	24,	TOKEN_SECP384R_PSM,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "secp384r1pointnegate",		20,	TOKEN_SECP384R_PN,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "prime192v1privtopub",		18,	TOKEN_PRM192V1_PTP,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "prime192v1pointadd",			17,	TOKEN_PRM192V1_PA,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "prime192v1pointsub",			17,	TOKEN_PRM192V1_PS,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "prime192v1pointscalarmult",	24,	TOKEN_PRM192V1_PSM,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "prime192v1pointnegate",		20,	TOKEN_PRM192V1_PN,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "prime192v2privtopub",		18,	TOKEN_PRM192V2_PTP,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "prime192v2pointadd",			17,	TOKEN_PRM192V2_PA,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "prime192v2pointsub",			17,	TOKEN_PRM192V2_PS,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "prime192v2pointscalarmult",	24,	TOKEN_PRM192V2_PSM,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "prime192v2pointnegate",		20,	TOKEN_PRM192V2_PN,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "prime192v3privtopub",		18,	TOKEN_PRM192V3_PTP,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "prime192v3pointadd",			17,	TOKEN_PRM192V3_PA,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "prime192v3pointsub",			17,	TOKEN_PRM192V3_PS,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "prime192v3pointscalarmult",	24,	TOKEN_PRM192V3_PSM,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "prime192v3pointnegate",		20,	TOKEN_PRM192V3_PN,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "prime256v1privtopub",		18,	TOKEN_PRM256V1_PTP,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "prime256v1pointadd",			17,	TOKEN_PRM256V1_PA,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "prime256v1pointsub",			17,	TOKEN_PRM256V1_PS,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "prime256v1pointscalarmult",	24,	TOKEN_PRM256V1_PSM,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "prime256v1pointnegate",		20,	TOKEN_PRM256V1_PN,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "tiger",						5,	TOKEN_TIGER,		BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "ripemd160",					9,	TOKEN_RIPEMD160,	BINARY_STATEMENT,	60 },	// Built In Functions,
-	{ "ripemd128",					9,	TOKEN_RIPEMD128,	BINARY_STATEMENT,	60 }	// Built In Functions,
+	{ "sha256",						6,	TOKEN_SHA256,		EXP_FUNCTION,	2,	60 },	// Built In Functions
+	{ "sha512",						6,	TOKEN_SHA512,		EXP_FUNCTION,	2,	60 },	// Built In functions
+	{ "whirlpool",					9,	TOKEN_WHIRLPOOL,	EXP_FUNCTION,	2,	60 },	// Built In functions
+	{ "md5",						3,	TOKEN_MD5,			EXP_FUNCTION,	2,	60 },	// Built In functions
+	{ "secp192k1privtopub",			18,	TOKEN_SECP192K_PTP,	EXP_FUNCTION,	2,	60 },	// Built In functions
+	{ "secp192k1pointadd",			17,	TOKEN_SECP192K_PA,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "secp192k1pointsub",			17,	TOKEN_SECP192K_PS,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "secp192k1pointscalarmult",	24,	TOKEN_SECP192K_PSM,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "secp192k1pointnegate",		20,	TOKEN_SECP192K_PN,	EXP_FUNCTION,	3,	60 },	// Built In functions
+	{ "secp192r1privtopub",			18,	TOKEN_SECP192R_PTP,	EXP_FUNCTION,	2,	60 },	// Built In functions
+	{ "secp192r1pointadd",			17,	TOKEN_SECP192R_PA,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "secp192r1pointsub",			17,	TOKEN_SECP192R_PS,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "secp192r1pointscalarmult",	24,	TOKEN_SECP192R_PSM,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "secp192r1pointnegate",		20,	TOKEN_SECP192R_PN,	EXP_FUNCTION,	3,	60 },	// Built In functions
+	{ "secp224k1privtopub",			18,	TOKEN_SECP224K_PTP,	EXP_FUNCTION,	2,	60 },	// Built In functions
+	{ "secp224k1pointadd",			17,	TOKEN_SECP224K_PA,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "secp224k1pointsub",			17,	TOKEN_SECP224K_PS,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "secp224k1pointscalarmult",	24,	TOKEN_SECP224K_PSM,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "secp224k1pointnegate",		20,	TOKEN_SECP224K_PN,	EXP_FUNCTION,	3,	60 },	// Built In functions
+	{ "secp224r1privtopub",			18,	TOKEN_SECP224R_PTP,	EXP_FUNCTION,	2,	60 },	// Built In functions
+	{ "secp224r1pointadd",			17,	TOKEN_SECP224R_PA,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "secp224r1pointsub",			17,	TOKEN_SECP224R_PS,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "secp224r1pointscalarmult",	24,	TOKEN_SECP224R_PSM,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "secp224r1pointnegate",		20,	TOKEN_SECP224R_PN,	EXP_FUNCTION,	3,	60 },	// Built In functions
+	{ "secp256k1privtopub",			18,	TOKEN_SECP256K_PTP,	EXP_FUNCTION,	2,	60 },	// Built In functions
+	{ "secp256k1pointadd",			17,	TOKEN_SECP256K_PA,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "secp256k1pointsub",			17,	TOKEN_SECP256K_PS,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "secp256k1pointscalarmult",	24,	TOKEN_SECP256K_PSM,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "secp256k1pointnegate",		20,	TOKEN_SECP256K_PN,	EXP_FUNCTION,	3,	60 },	// Built In functions
+	{ "secp256r1privtopub",			18,	TOKEN_SECP256R_PTP,	EXP_FUNCTION,	2,	60 },	// Built In functions
+	{ "secp256r1pointadd",			17,	TOKEN_SECP256R_PA,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "secp256r1pointsub",			17,	TOKEN_SECP256R_PS,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "secp256r1pointscalarmult",	24,	TOKEN_SECP256R_PSM,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "secp256r1pointnegate",		20,	TOKEN_SECP256R_PN,	EXP_FUNCTION,	3,	60 },	// Built In functions
+	{ "secp384r1privtopub",			18,	TOKEN_SECP384R_PTP,	EXP_FUNCTION,	2,	60 },	// Built In functions
+	{ "secp384r1pointadd",			17,	TOKEN_SECP384R_PA,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "secp384r1pointsub",			17,	TOKEN_SECP384R_PS,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "secp384r1pointscalarmult",	24,	TOKEN_SECP384R_PSM,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "secp384r1pointnegate",		20,	TOKEN_SECP384R_PN,	EXP_FUNCTION,	3,	60 },	// Built In functions
+	{ "prime192v1privtopub",		18,	TOKEN_PRM192V1_PTP,	EXP_FUNCTION,	2,	60 },	// Built In functions
+	{ "prime192v1pointadd",			17,	TOKEN_PRM192V1_PA,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "prime192v1pointsub",			17,	TOKEN_PRM192V1_PS,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "prime192v1pointscalarmult",	24,	TOKEN_PRM192V1_PSM,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "prime192v1pointnegate",		20,	TOKEN_PRM192V1_PN,	EXP_FUNCTION,	3,	60 },	// Built In functions
+	{ "prime192v2privtopub",		18,	TOKEN_PRM192V2_PTP,	EXP_FUNCTION,	2,	60 },	// Built In functions
+	{ "prime192v2pointadd",			17,	TOKEN_PRM192V2_PA,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "prime192v2pointsub",			17,	TOKEN_PRM192V2_PS,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "prime192v2pointscalarmult",	24,	TOKEN_PRM192V2_PSM,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "prime192v2pointnegate",		20,	TOKEN_PRM192V2_PN,	EXP_FUNCTION,	3,	60 },	// Built In functions
+	{ "prime192v3privtopub",		18,	TOKEN_PRM192V3_PTP,	EXP_FUNCTION,	2,	60 },	// Built In functions
+	{ "prime192v3pointadd",			17,	TOKEN_PRM192V3_PA,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "prime192v3pointsub",			17,	TOKEN_PRM192V3_PS,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "prime192v3pointscalarmult",	24,	TOKEN_PRM192V3_PSM,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "prime192v3pointnegate",		20,	TOKEN_PRM192V3_PN,	EXP_FUNCTION,	3,	60 },	// Built In functions
+	{ "prime256v1privtopub",		18,	TOKEN_PRM256V1_PTP,	EXP_FUNCTION,	2,	60 },	// Built In functions
+	{ "prime256v1pointadd",			17,	TOKEN_PRM256V1_PA,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "prime256v1pointsub",			17,	TOKEN_PRM256V1_PS,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "prime256v1pointscalarmult",	24,	TOKEN_PRM256V1_PSM,	EXP_FUNCTION,	5,	60 },	// Built In functions
+	{ "prime256v1pointnegate",		20,	TOKEN_PRM256V1_PN,	EXP_FUNCTION,	3,	60 },	// Built In functions
+	{ "tiger",						5,	TOKEN_TIGER,		EXP_FUNCTION,	2,	60 },	// Built In functions
+	{ "ripemd160",					9,	TOKEN_RIPEMD160,	EXP_FUNCTION,	2,	60 },	// Built In functions
+	{ "ripemd128",					9,	TOKEN_RIPEMD128,	EXP_FUNCTION,	2,	60 }	// Built In functions
 };
 
 extern bool init_token_list(SOURCE_TOKEN_LIST *token_list, size_t size) {
@@ -167,9 +167,9 @@ static bool add_token(SOURCE_TOKEN_LIST *token_list, int token_id, char *literal
 	// EPL Tokens
 	if (token_id >= 0) {
 
-		// Determine If + And - Binary Or Unary
-		if (epl_token[token_id].type == TOKEN_ADD || epl_token[token_id].type == TOKEN_SUB) {
-			if (token_list->num == 0 || (token_list->token[token_list->num - 1].exp != UNARY_EXPRESSION && token_list->token[token_list->num - 1].type != TOKEN_CLOSE_PAREN)) {
+		// Determine If '-' Is Binary Or Unary
+		if (epl_token[token_id].type == TOKEN_SUB) {
+			if (token_list->num == 0 || token_list->token[token_list->num - 1].exp != EXP_EXPRESSION || token_list->token[token_list->num - 1].inputs > 1) {
 				token_id++;
 			}
 		}
@@ -177,6 +177,7 @@ static bool add_token(SOURCE_TOKEN_LIST *token_list, int token_id, char *literal
 		token_list->token[token_list->num].type = epl_token[token_id].type;
 		token_list->token[token_list->num].exp = epl_token[token_id].exp;
 		token_list->token[token_list->num].literal = NULL;
+		token_list->token[token_list->num].inputs = epl_token[token_id].inputs;
 		token_list->token[token_list->num].prec = epl_token[token_id].prec;
 	}
 	// Literals
@@ -188,7 +189,8 @@ static bool add_token(SOURCE_TOKEN_LIST *token_list, int token_id, char *literal
 		strcpy(str, literal);
 		token_list->token[token_list->num].literal = str;
 		token_list->token[token_list->num].type = TOKEN_LITERAL;
-		token_list->token[token_list->num].exp = UNARY_EXPRESSION;
+		token_list->token[token_list->num].exp = EXP_EXPRESSION;
+		token_list->token[token_list->num].inputs = 0;
 		token_list->token[token_list->num].prec = -1;
 	}
 	// Error

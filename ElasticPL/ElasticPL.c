@@ -39,7 +39,6 @@ extern bool create_epl_vm(char *source) {
 
 	// Parse EPL Source Code Into Tokens
 	if (!get_token_list(source, &token_list)) {
-		applog(LOG_ERR, "ERROR: Unable To Parse ElasticPL Source Code!");
 		return false;
 	}
 
@@ -110,7 +109,6 @@ extern char* get_node_str(NODE_TYPE node_type) {
 	case NODE_LE:			return "<=";
 	case NODE_GE:			return ">=";
 	case NODE_ADD:			return "+";
-	case NODE_POS:			return "'+'";
 	case NODE_SUB:			return "-";
 	case NODE_NEG:			return "'-'";
 	case NODE_MUL:			return "*";
@@ -128,6 +126,7 @@ extern char* get_node_str(NODE_TYPE node_type) {
 	case NODE_IF:			return "if";
 	case NODE_ELSE:			return "else";
 	case NODE_REPEAT:		return "repeat";
+	case NODE_PARAM:		return "param";
 	case NODE_SHA256:		return "sha256";
 	case NODE_SHA512:		return "sha512";
 	case NODE_WHIRLPOOL:    return "whirlpool";

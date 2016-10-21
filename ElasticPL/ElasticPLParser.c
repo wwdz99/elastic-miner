@@ -11,6 +11,7 @@
 #include <stdlib.h>
 
 #include "ElasticPL.h"
+#include "../miner.h"
 
 static ast* add_exp(NODE_TYPE node_type, TOKEN_EXP exp_type, long value, int token_num, int line_num, ast* left, ast* right) {
 	ast* e = calloc(1, sizeof(ast));
@@ -60,19 +61,25 @@ static ast* pop_exp() {
 	return exp;
 }
 
-static bool validate_unary_stmnt(SOURCE_TOKEN *token, NODE_TYPE node_type) {
-	TOKEN_EXP l_exp;
+static bool validate_input_num(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 
-	// Validate That There Is At Least 1 Expressions On The Stack
-	if (stack_exp_idx < 0) {
-		printf("Syntax Error - Line: %d  Missing Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
+	// Validate That There Are Enough Expressions On The Stack
+	if (stack_exp_idx < (token->inputs - 1)) {
+		applog(LOG_ERR, "Syntax Error - Line: %d  Invalid parameters for '%s'", token->line_num, get_node_str(node_type));
 		return false;
 	}
+
+	return true;
+}
+
+
+static bool validate_unary_stmnt(SOURCE_TOKEN *token, NODE_TYPE node_type) {
+	TOKEN_EXP l_exp;
 
 	l_exp = stack_exp[stack_exp_idx]->exp;
 
 	// Validate Left Item Is Not A Statement
-	if (l_exp == UNARY_STATEMENT || l_exp == BINARY_STATEMENT) {
+	if ((l_exp == EXP_STATEMENT) || (l_exp == EXP_FUNCTION)) {
 		printf("Syntax Error - Line: %d  Invalid Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
 		return false;
 	}
@@ -81,13 +88,6 @@ static bool validate_unary_stmnt(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 }
 
 static bool validate_binary_stmnt(SOURCE_TOKEN *token, NODE_TYPE node_type) {
-
-	// Validate That There Are At Least 2 Expressions On The Stack
-	if (stack_exp_idx < 1) {
-		printf("Syntax Error - Line: %d  Missing Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
-		return false;
-	}
-
 	return true;
 }
 
@@ -97,21 +97,11 @@ static bool validate_unary_exp(SOURCE_TOKEN *token, int token_num, NODE_TYPE nod
 	if (node_type == NODE_CONSTANT)
 		return true;
 
-	// Validate That There Is At Least 1 Expression On The Stack
-	if (stack_exp_idx < 0) {
-		printf("Syntax Error - Line: %d  Invalid Use Of: \"%s\"\n", token->line_num, get_node_str(node_type));
-		return false;
-	}
-
-	//
-	// Add Check That Unary Operator Can't Be First Token On New Statement
-	//
-
 	// Validate Expression Is Not A Statement (Left For Variables, Right For Other Unary Expressions)
-	if (stack_exp[stack_exp_idx]->exp != UNARY_STATEMENT && stack_exp[stack_exp_idx]->exp != BINARY_STATEMENT) {
+	if (stack_exp[stack_exp_idx]->exp != EXP_STATEMENT && stack_exp[stack_exp_idx]->exp != EXP_FUNCTION) {
 
 		// Check Left Expression For Variables
-		if (node_type == NODE_VAR_CONST || node_type == NODE_VAR_EXP) {
+		if ((node_type == NODE_VAR_CONST) || (node_type == NODE_VAR_EXP)) {
 			if (stack_exp[stack_exp_idx]->token_num >= token_num) {
 				printf("Syntax Error - Line: %d  Invalid Operand For: \"%s\"\n", token->line_num, get_node_str(node_type));
 				return false;
@@ -132,23 +122,17 @@ static bool validate_unary_exp(SOURCE_TOKEN *token, int token_num, NODE_TYPE nod
 static bool validate_binary_exp(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 	TOKEN_EXP l_exp, r_exp;
 
-	// Validate That There Are At Least 2 Expressions On The Stack
-	if (stack_exp_idx < 1) {
-		printf("Syntax Error - Line: %d  Missing Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
-		return NODE_ERROR;
-	}
-
 	l_exp = stack_exp[stack_exp_idx - 1]->exp;
 	r_exp = stack_exp[stack_exp_idx]->exp;
 
 	// Validate Left Item Is Not A Statement
-	if (l_exp == UNARY_STATEMENT || l_exp == BINARY_STATEMENT) {
+	if ((l_exp == EXP_STATEMENT) || (l_exp == EXP_FUNCTION)) {
 		printf("Syntax Error - Line: %d  Invalid Left Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
 		return false;
 	}
 
 	// Validate Right Item Is Not A Statement
-	if (r_exp == UNARY_STATEMENT || r_exp == BINARY_STATEMENT) {
+	if ((r_exp == EXP_STATEMENT) || (r_exp == EXP_FUNCTION)) {
 		printf("Syntax Error - Line: %d  Invalid Right Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
 		return false;
 	}
@@ -168,7 +152,6 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token) {
 		break;
 	case TOKEN_COMPL:			node_type = NODE_COMPL;			break;
 	case TOKEN_NOT:				node_type = NODE_NOT;			break;
-	case TOKEN_POS:				node_type = NODE_POS;			break;
 	case TOKEN_NEG:				node_type = NODE_NEG;			break;
 	case TOKEN_LITERAL:			node_type = NODE_CONSTANT;		break;
 	case TOKEN_TRUE:			node_type = NODE_CONSTANT;		break;
@@ -268,63 +251,103 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token) {
 }
 
 static bool create_exp(SOURCE_TOKEN *token, int token_num) {
+	int i;
 	long long value = 0;
 	NODE_TYPE node_type = NODE_ERROR;
 	ast *exp, *left = NULL, *right = NULL;
 
 	node_type = get_node_type(token);
-
+	
+	// Map Token To Node Type
 	if (node_type == NODE_ERROR)
+		return false;
+
+	// Confirm Required Number Of Expressions Are On Stack
+	if (!validate_input_num(token, node_type))
 		return false;
 
 	switch (token->exp) {
 
-	case BINARY_EXPRESSION:
-		if (!validate_binary_exp(token, node_type))
-			return false;
+	case EXP_EXPRESSION:
 
-		right = pop_exp();
-		left = pop_exp();
-		break;
+		// Unary Expressions
+		if (token->inputs <= 1) {
 
-	case UNARY_EXPRESSION:
-		if (!validate_unary_exp(token, token_num, node_type))
-			return false;
+			if (!validate_unary_exp(token, token_num, node_type))
+				return false;
 
-		if (token->type == TOKEN_TRUE)
-			value = 1;
-		else if (token->type == TOKEN_FALSE)
-			value = 0;
-		else if (node_type == NODE_CONSTANT)	// Constants Have Values Not Leafs
-			value = (long long)strtod(token->literal, NULL);
-		else {
-			left = pop_exp();
-			if (node_type == NODE_VAR_CONST) { // Remove Expression For Variables w/ Constant ID
-				value = left->value;
-				left = NULL;
+			if (token->type == TOKEN_TRUE)
+				value = 1;
+			else if (token->type == TOKEN_FALSE)
+				value = 0;
+			else if (node_type == NODE_CONSTANT)	// Constants Have Values Not Leafs
+				value = (long long)strtod(token->literal, NULL);
+			else {
+				left = pop_exp();
+				if (node_type == NODE_VAR_CONST) {	// Remove Expression For Variables w/ Constant ID
+					value = left->value;
+					left = NULL;
+				}
 			}
+		}
+		// Binary Expressions
+		else {
+
+			if (!validate_binary_exp(token, node_type))
+				return false;
+
+			right = pop_exp();
+			left = pop_exp();
 		}
 		break;
 
-	case BINARY_STATEMENT:
-	case BINARY_STMNT_EXP:
-		if (!validate_binary_stmnt(token, node_type))
-			return false;
+	case EXP_STATEMENT:
 
-		if (node_type == NODE_BLOCK && stack_exp[stack_exp_idx]->type != NODE_BLOCK)
-			right = NULL;
-		else
+		// Unary Statements
+		if (token->inputs <= 1) {
+
+			if (!validate_unary_stmnt(token, node_type))
+				return false;
+
+			left = pop_exp();
+		}
+		// Binary Statements
+		else {
+
+			if (!validate_binary_stmnt(token, node_type))
+				return false;
+
+			if (node_type == NODE_BLOCK && stack_exp[stack_exp_idx]->type != NODE_BLOCK)
+				right = NULL;
+			else
+				right = pop_exp();
+			left = pop_exp();
+
+		}
+		break;
+
+	case EXP_FUNCTION:
+
+		if (token->inputs > 0) {
+			// First Paramater
+			left = pop_exp();
+			exp = add_exp(NODE_PARAM, EXP_EXPRESSION, 0, 0, 0, left, NULL);
+			push_exp(exp);
+
+			// Remaining Paramaters
+			for (i = 1; i < token->inputs; i++) {
+				right = pop_exp();
+				left = pop_exp();
+				exp = add_exp(NODE_PARAM, EXP_EXPRESSION, 0, 0, 0, left, right);
+				push_exp(exp);
+			}
+			left = NULL;
 			right = pop_exp();
-		left = pop_exp();
-		break;
-
-	case UNARY_STATEMENT:
-	case UNARY_STMNT_EXP:
-		if (!validate_unary_stmnt(token, node_type))
-			return false;
-
-		left = pop_exp();
-		break;
+		}
+		else {
+			left = NULL;
+			right = NULL;
+		}
 	}
 
 	exp = add_exp(node_type, token->exp, (long)value, token_num, token->line_num, left, right);
@@ -341,31 +364,31 @@ static bool validate_exp_list() {
 	int i;
 
 	if (stack_exp_idx < 0) {
-		printf("Syntax Error - Invalid Source File\n");
+		applog(LOG_ERR, "Syntax Error - Invalid Source File");
 		return false;
 	}
 
 	for (i = 0; i < stack_exp_idx; i++) {
 		if (stack_exp[i]->type == NODE_VERIFY) {
-			printf("Syntax Error - Line: %d Invalid Verify Statement\n", stack_exp[i]->line_num);
+			applog(LOG_ERR, "Syntax Error - Line: %d Invalid Verify Statement", stack_exp[i]->line_num);
 			return false;
 		}
 	}
 
 	if (stack_exp[stack_exp_idx]->type != NODE_VERIFY) {
-		printf("Syntax Error - Missing Verify Statement\n");
+		applog(LOG_ERR, "Syntax Error - Missing Verify Statement");
 		return false;
 	}
 
 	for (i = 0; i < stack_exp_idx; i++) {
-		if (stack_exp[i]->exp != BINARY_STATEMENT && stack_exp[i]->exp != UNARY_STATEMENT && stack_exp[i]->exp != BINARY_STMNT_EXP) {
-			printf("Syntax Error - Line: %d  Invalid Statement\n", stack_exp[i]->line_num);
-			//			return false;
+		if (stack_exp[i]->exp != EXP_STATEMENT && stack_exp[i]->exp != EXP_FUNCTION) {
+			applog(LOG_ERR, "Syntax Error - Line: %d  Invalid Statement", stack_exp[i]->line_num);
+			return false;
 		}
 	}
 
 	if (stack_op_idx >= 0) {
-		printf("Syntax Error - Unable To Clear Operator Stack\n");
+		applog(LOG_ERR, "Syntax Error - Unable To Clear Operator Stack");
 		return false;
 	}
 
@@ -403,7 +426,7 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 			if (!create_exp(&token_list->token[i], i)) return false;
 
 			// Check For Unary Operators On The Variable
-			while ((top_op >= 0) && (token_list->token[top_op].type != TOKEN_VAR_BEGIN) && (token_list->token[top_op].exp == UNARY_EXPRESSION)) {
+			while ((top_op >= 0) && (token_list->token[top_op].type != TOKEN_VAR_BEGIN) && (token_list->token[top_op].exp == EXP_EXPRESSION) && (token_list->token[top_op].inputs <= 1)) {
 				token_id = pop_op();
 				if (!create_exp(&token_list->token[token_id], token_id)) return false;
 			}

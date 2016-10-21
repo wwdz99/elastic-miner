@@ -42,7 +42,6 @@ typedef enum {
 	NODE_LE,
 	NODE_GE,
 	NODE_ADD,
-	NODE_POS,
 	NODE_SUB,
 	NODE_NEG,
 	NODE_MUL,
@@ -60,6 +59,7 @@ typedef enum {
 	NODE_IF,
 	NODE_ELSE,
 	NODE_REPEAT,
+	NODE_PARAM,
 	NODE_SHA256,
 	NODE_SHA512,
 	NODE_WHIRLPOOL,
@@ -139,7 +139,6 @@ typedef enum {
 	TOKEN_LE,
 	TOKEN_GE,
 	TOKEN_ADD,
-	TOKEN_POS,
 	TOKEN_SUB,
 	TOKEN_NEG,
 	TOKEN_MUL,
@@ -234,12 +233,9 @@ typedef enum {
 
 typedef enum {
 	EXP_NONE,
-	UNARY_STATEMENT,
-	UNARY_EXPRESSION,
-	UNARY_STMNT_EXP,
-	BINARY_STATEMENT,
-	BINARY_EXPRESSION,
-	BINARY_STMNT_EXP
+	EXP_STATEMENT,
+	EXP_EXPRESSION,
+	EXP_FUNCTION
 } TOKEN_EXP;
 
 
@@ -249,6 +245,7 @@ typedef struct {
 	EPL_TOKEN_TYPE type;
 	char *literal;
 	TOKEN_EXP exp;
+	int inputs;
 	int prec;
 	int line_num;
 } SOURCE_TOKEN;
@@ -267,6 +264,7 @@ struct EPL_TOKEN_LIST {
 	int len;
 	EPL_TOKEN_TYPE type;
 	TOKEN_EXP exp;
+	int inputs;
 	int prec;
 };
 
