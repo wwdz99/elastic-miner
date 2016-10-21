@@ -543,8 +543,8 @@ static int scanhash(int thr_id, struct work *work, long *hashes_done) {
 		rc = inst->execute();
 
 		// Hee, we have found a bounty, exit immediately
-		//if (rc == 1)
-		//	return rc;
+		if (rc == 1)
+			return rc;
 
 		// Check For POW Result
 		memcpy(&msg[0], inst->vm_state1, 4);
@@ -569,9 +569,9 @@ static int scanhash(int thr_id, struct work *work, long *hashes_done) {
 
 		(*hashes_done)++;
 
-		//if (rc == 2) {
-		//	return rc;
-		//}
+		if (rc == 2) {
+			return rc;
+		}
 
 		// Only Run For 1s Before Returning To Miner Thread
 		if ((time(NULL) - t_start) >= 1)
@@ -1121,7 +1121,7 @@ static void *miner_thread(void *userdata) {
 		}
 
 		// Submit Work That Meets Bounty Criteria
-		if (rc == 11) {
+		if (rc == 1) {
 			applog(LOG_NOTICE, "CPU%d: Submitting Bounty Solution", thr_id);
 
 			// Create Announcement Message
@@ -1147,7 +1147,7 @@ static void *miner_thread(void *userdata) {
 		}
 
 		// Submit Work That Meets POW Target
-		if (rc == 21) {
+		if (rc == 2) {
 			applog(LOG_NOTICE, "CPU%d: Submitting POW Solution", thr_id);
 			if (!add_submit_req(&work, SUBMIT_POW))
 				break;
