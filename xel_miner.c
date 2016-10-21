@@ -403,7 +403,7 @@ static void show_version_and_exit(void)
 }
 
 static bool load_test_file(char *buf) {
-	int i, len, bytes;
+	size_t i, len, bytes;
 	FILE *fp;
 
 	fp = fopen(test_filename, "r");
@@ -449,20 +449,20 @@ static void *test_compiler_thread(void *userdata) {
 
 	applog(LOG_DEBUG, "DEBUG: Loading Test File");
 	if (!load_test_file(test_code))
-		return NULL;
+				exit(EXIT_FAILURE);
 
 	fprintf(stdout, "%s\n\n", test_code);
 
 	// Convert The Source Code Into ElasticPL AST
 	if (!create_epl_vm(test_code)) {
 		applog(LOG_ERR, "ERROR: Exiting 'test_compiler'");
-		return NULL;
+		exit(EXIT_FAILURE);
 	}
 
 	// Convert The ElasticPL Source Into A C Program Library
 	if (!compile_and_link(test_code)) {
 		applog(LOG_ERR, "ERROR: Exiting 'test_compiler'");
-		return NULL;
+		exit(EXIT_FAILURE);
 	}
 
 	// Link To The C Program Library
@@ -472,8 +472,8 @@ static void *test_compiler_thread(void *userdata) {
 	create_instance(inst);
 	free_compiler(inst);
 
-	applog(LOG_DEBUG, "DEBUG: Compiler Test Complete");
-	return NULL;
+	applog(LOG_NOTICE, "DEBUG: Compiler Test Complete");
+	exit(EXIT_SUCCESS);
 }
 
 static bool get_vm_input(struct work *work) {

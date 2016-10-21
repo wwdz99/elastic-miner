@@ -121,8 +121,8 @@ bool create_c_source() {
 bool compile_and_link(char* source_code) {
 
 	if (!create_c_source()) {
-			fprintf(stderr, "Unable to convert ElasticPL to C - \n%s\n", source_code);
-			exit(EXIT_FAILURE);
+		applog(LOG_ERR, "Unable to convert ElasticPL to C - \n%s\n", source_code);
+		return false;
 	}
 
 #ifdef WIN32
