@@ -120,29 +120,14 @@ bool create_c_source() {
 
 bool compile_and_link(char* source_code) {
 
-#ifdef WIN32
-
 	if (!create_c_source()) {
-		fprintf(stderr, "Unable to convert ElasticPL to C - \n%s\n", source_code);
-		exit(EXIT_FAILURE);
+			fprintf(stderr, "Unable to convert ElasticPL to C - \n%s\n", source_code);
+			exit(EXIT_FAILURE);
 	}
 
+#ifdef WIN32
 	system("compile_dll.bat");
 #else
-	FILE* tempfile2 = fopen("work_lib.c", "w+");
-	char partialcode[600000];
-	FILE *f = popen("java -jar ElasticToCCompiler.jar work_lib.spl", "r");
-	if (f == 0) {
-		printf("Cannot open spl file");
-		exit(1);
-	}
-	while (fgets(partialcode, 600000, f) != NULL) {
-		fprintf(tempfile2, "%s", partialcode);
-	}
-	fclose(tempfile2);
-
-	pclose(f);
-
 	system("gcc -c -march=native -Ofast -fPIC work_lib.c -o work_lib.o");
 	system("gcc -shared -Wl,-soname,work_lib.so.1 -o work_lib.so work_lib.o");
 #endif
