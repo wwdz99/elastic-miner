@@ -14,7 +14,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
-#include <string.h> /* memset */
+#include <string.h>
 
 #ifdef WIN32
 #include <windows.h>
@@ -73,12 +73,24 @@ enum submit_commands {
 	SUBMIT_COMPLETE
 };
 
-struct work {
-	int thr_id;
+struct work_package {
 	uint64_t block_id;
 	uint64_t work_id;
+	char work_str[22];
+	char work_nm[50];
+	uint64_t WCET;
+	uint64_t bounty_limit;
+	uint64_t pow_reward;
+	uint64_t bty_reward;
+	int pending_bty_cnt;
+	bool blacklisted;
+};
+
+struct work {
+	int thr_id;
+	struct work_package *wrk_pkg;
 	uint32_t pow_target[8];
-	int32_t vm_input[12];					// Value Of Random VM Inputs
+	int32_t vm_input[12];
 	unsigned char multiplicator[32];
 	unsigned char announcement_hash[32];
 };
@@ -116,9 +128,9 @@ struct submit_req {
 	time_t start_tm;	// Time Request Was Submitted
 	time_t delay_tm;	// If Populated, Time When Next Request Can Be Sent
 	int retries;
-	char work_id[22];	// Work ID As A String
 	char hash[65];		// Announcment Hash In Hex
 	char mult[65];		// Multiplicator In Hex
+	struct work_package *wrk_pkg;
 };
 
 struct workio_cmd {
@@ -156,19 +168,6 @@ struct thread_q {
 
 	pthread_mutex_t		mutex;
 	pthread_cond_t		cond;
-};
-
-enum blacklist_reason {
-	BLST_UNSUPORTED_FUNCTION,
-	BLST_SYNTAX_ERROR,
-	BLST_RUNTIME_ERROR,
-	BLST_INVALID_PACKAGE,
-	BLST_NO_BOUNTIES
-};
-
-struct blacklisted_work {
-	char work_id[22];
-	enum blacklist_reason reason;
 };
 
 extern bool use_colors;
@@ -246,7 +245,7 @@ static int scanhash(int thr_id, struct work *work, long *hashes_done);
 static bool get_work(struct thr_info *thr, struct work *work);
 static int work_decode(const json_t *val, struct work *work, char *source_code);
 static int get_upstream_work(CURL *curl, struct work *work);
-static bool blacklist_work(char *work_id, enum blacklist_reason reason);
+static bool add_work_package(struct work_package *work_package);
 
 static bool submit_work(struct thr_info *thr, struct submit_req *req);
 static bool submit_upstream_work(CURL *curl, struct submit_req *req);
