@@ -24,11 +24,7 @@ bool create_c_source() {
 	fprintf(f, "#include <time.h>\n");
 #ifdef WIN32
 	fprintf(f, "#include <malloc.h>\n\n");
-#else
-	fprintf(f, "#include <mm_malloc.h>\n\n");
-#endif
-	fprintf(f, "int32_t* mem = 0;\n");
-#ifdef WIN32
+	fprintf(f, "__declspec(thread) int32_t* mem = 0;\n");
 	fprintf(f, "__declspec(dllexport) uint32_t vm_state1 = 0;\n");
 	fprintf(f, "__declspec(dllexport) uint32_t vm_state2 = 0;\n");
 	fprintf(f, "__declspec(dllexport) uint32_t vm_state3 = 0;\n");
@@ -36,6 +32,8 @@ bool create_c_source() {
 	fprintf(f, "#define ALLOC_ALIGNED_BUFFER(_numBytes) ((int *)_aligned_malloc (_numBytes, 64))\n");
 	fprintf(f, "#define FREE_ALIGNED_BUFFER(_buffer) _aligned_free(_buffer)\n\n");
 #else
+	fprintf(f, "#include <mm_malloc.h>\n\n");
+	fprintf(f, "__thread int32_t* mem = 0;\n");
 	fprintf(f, "uint32_t vm_state1 = 0;\n");
 	fprintf(f, "uint32_t vm_state2 = 0;\n");
 	fprintf(f, "uint32_t vm_state3 = 0;\n");

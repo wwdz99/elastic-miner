@@ -228,7 +228,7 @@ void tq_thaw(struct thread_q *tq);
 
 static void *submit_thread(void *userdata);
 static void *key_monitor_thread(void *userdata);
-static void *test_vm_thread(void *userdata);
+static void *test_compiler_thread(void *userdata);
 
 static void *workio_thread(void *userdata);
 static void workio_cmd_free(struct workio_cmd *wc);
@@ -240,7 +240,8 @@ static void parse_arg(int key, char *arg);
 static void show_usage_and_exit(int status);
 static void show_version_and_exit(void);
 static bool load_test_file(char *test_source);
-static int scanhash(int thr_id, struct work *work, long *hashes_done);
+static bool get_vm_input(struct work *work);
+static int execute_vm(int thr_id, struct work *work, struct instance *inst, long *hashes_done);
 
 static bool get_work(struct thr_info *thr, struct work *work);
 static int work_decode(const json_t *val, struct work *work, char *source_code);

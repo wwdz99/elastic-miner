@@ -95,7 +95,6 @@ uint32_t g_pow_rejected_cnt = 0;
 int work_thr_id;
 struct thr_info *thr_info;
 struct work_restart *work_restart = NULL;
-struct instance* inst = NULL;
 
 extern uint32_t swap32(int a) {
 	return ((a << 24) | ((a << 8) & 0x00FF0000) | ((a >> 8) & 0x0000FF00) | ((a >> 24) & 0x000000FF));
@@ -448,6 +447,7 @@ static void *test_compiler_thread(void *userdata) {
 	struct thr_info *mythr = (struct thr_info *) userdata;
 	int thr_id = mythr->id;
 	char test_code[MAX_SOURCE_SIZE];
+	struct instance *inst = NULL;
 
 	applog(LOG_DEBUG, "DEBUG: Loading Test File");
 	if (!load_test_file(test_code))
@@ -513,7 +513,7 @@ static bool get_vm_input(struct work *work) {
 	return true;
 }
 
-static int scanhash(int thr_id, struct work *work, long *hashes_done) {
+static int execute_vm(int thr_id, struct work *work, struct instance *inst, long *hashes_done) {
 	int i, rc;
 	time_t t_start = time(NULL);
 	char msg[64];
@@ -730,11 +730,11 @@ static int get_upstream_work(CURL *curl, struct work *work) {
 			return 0;
 		}
 
-		// Link To The C Program Library
-		if(inst)
-			free_compiler(inst);
-		inst = calloc(1, sizeof(struct instance));
-		create_instance(inst);
+		//// Link To The C Program Library
+		//if(inst)
+		//	free_compiler(inst);
+		//inst = calloc(1, sizeof(struct instance));
+		//create_instance(inst);
 
 		gettimeofday(&tv_end, NULL);
 		if (opt_protocol) {
@@ -753,7 +753,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 	uint64_t work_id;
 	double best_profit = 0.0;
 	uint32_t best_wcet = 0xFFFFFFFF;
-	char *block_str, *tgt, *work_str, *work_nm, *src, *str;
+	char *tgt = NULL, *src = NULL, *str = NULL;
 	json_t *wrk = NULL, *pkg = NULL;
 
 	// Reset Global Work Package Variables Used For Status Display
@@ -770,6 +770,9 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 	}
 
 	wrk = json_object_get(val, "work_packages");
+	// 
+	// Todo: move target to Work Package level Once EK makes his change
+	//
 	tgt = (char *)json_string_value(json_object_get(val, "pow_target"));
 
 	if (!wrk || !tgt) {
@@ -784,27 +787,17 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 		return -1;
 	}
 
-	// 
-	// Todo: move this to Work Package level Once EK makes his change
-	//
-	strcpy(g_pow_target, tgt);
-	rc = hex2ints(work->pow_target, 8, g_pow_target, strlen(tgt));
-	if (!rc) {
-		applog(LOG_ERR, "Invalid Target in JSON response to getwork request");
-		return 0;
-	}
-
 	best_pkg = -1;
 
 	for (i = 0; i<num_pkg; i++) {
 		pkg = json_array_get(wrk, i);
 
-		work_str = (char *)json_string_value(json_object_get(pkg, "work_id"));
-		if (!work_str) {
+		str = (char *)json_string_value(json_object_get(pkg, "work_id"));
+		if (!str) {
 			applog(LOG_ERR, "Unable to parse work package");
 			return 0;
 		}
-		work_id = strtoull(work_str, NULL, 10);
+		work_id = strtoull(str, NULL, 10);
 
 		// Check If Work Package Exists
 		work_pkg_id = -1;
@@ -816,17 +809,18 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 		// Add New Work Packages
 		if (work_pkg_id < 0) {
 			struct work_package work_package;
+			memset(&work_package, 0, sizeof(struct work_package));
 			
-			block_str = (char *)json_string_value(json_object_get(pkg, "block_id"));
-			work_package.block_id = strtoull(block_str, NULL, 10);
 			work_package.work_id = work_id;
-			strcpy(work_package.work_str, work_str);
-			work_nm = (char *)json_string_value(json_object_get(pkg, "title"));
-			strncpy(work_package.work_nm, work_nm, 49);
-			work_package.work_nm[49] = 0;
+			strncpy(work_package.work_str, str, 21);
+			str = (char *)json_string_value(json_object_get(pkg, "block_id"));
+			work_package.block_id = strtoull(str, NULL, 10);
+			str = (char *)json_string_value(json_object_get(pkg, "title"));
+			strncpy(work_package.work_nm, str, 49);
 			work_package.bounty_limit = (uint32_t)json_integer_value(json_object_get(pkg, "bounty_limit"));
 			work_package.bty_reward = (uint64_t)json_number_value(json_object_get(pkg, "xel_per_bounty"));
 			work_package.pow_reward = (uint64_t)json_number_value(json_object_get(pkg, "xel_per_pow"));
+//			work_package.pow_reward = (uint64_t)json_number_value(json_object_get(pkg, "wcet"));
 			work_package.WCET = 1;
 			work_package.pending_bty_cnt = 0;
 			work_package.blacklisted = false;
@@ -852,6 +846,8 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 		if (opt_pref == PREF_WCET && g_work_package[work_pkg_id].WCET < best_wcet) {
 			best_pkg = work_pkg_id;
 			best_wcet = g_work_package[work_pkg_id].WCET;
+//			tgt = (char *)json_string_value(json_object_get(val, "pow_target"));
+			src = (char *)json_string_value(json_object_get(pkg, "source"));
 		}
 		//
 		// TODO:  Add Bounty Reward Profitability Check
@@ -859,10 +855,14 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 		else if (opt_pref == PREF_PROFIT && ((double)g_work_package[work_pkg_id].pow_reward / (double)g_work_package[work_pkg_id].WCET) > best_profit) {
 			best_pkg = work_pkg_id;
 			best_profit = ((double)g_work_package[work_pkg_id].pow_reward / (double)g_work_package[work_pkg_id].WCET);
+//			tgt = (char *)json_string_value(json_object_get(val, "pow_target"));
+			src = (char *)json_string_value(json_object_get(pkg, "source"));
 		}
 		else if (opt_pref == PREF_WORKID && (!strcmp(g_work_package[work_pkg_id].work_str, pref_workid))) {
 			best_pkg = work_pkg_id;
 			break;
+//			tgt = (char *)json_string_value(json_object_get(val, "pow_target"));
+			src = (char *)json_string_value(json_object_get(pkg, "source"));
 		}
 	}
 
@@ -874,7 +874,6 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 	}
 
 	// Extract The ElasticPL Source Code
-	src = (char *)json_string_value(json_object_get(pkg, "source"));
 	if (!src || strlen(src) > MAX_SOURCE_SIZE) {
 		g_work_package[work_pkg_id].blacklisted = true;
 		applog(LOG_ERR, "Invalid 'source' for work_id: %s", g_work_package[work_pkg_id].work_str);
@@ -888,10 +887,18 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 		return 0;
 	}
 
+	// Copy Data From Best Package Into Global Variable
+	strcpy(g_work_id, g_work_package[work_pkg_id].work_str);
+	strcpy(g_work_nm, g_work_package[work_pkg_id].work_nm);
+	strcpy(g_pow_target, tgt);
+
 	// Copy Data From Best Package Into Work
 	work->wrk_pkg = &g_work_package[work_pkg_id];
-	strcpy(g_work_id, work->wrk_pkg->work_str);
-	strcpy(g_work_nm, work->wrk_pkg->work_nm);
+	rc = hex2ints(work->pow_target, 8, g_pow_target, strlen(tgt));
+	if (!rc) {
+		applog(LOG_ERR, "Invalid Target in JSON response to getwork request");
+		return 0;
+	}
 
 	return 1;
 }
@@ -1072,6 +1079,7 @@ static void *miner_thread(void *userdata) {
 	uint32_t *msg32 = (uint32_t *)msg;
 	uint32_t *workid32;
 	double eval_rate;
+	struct instance *inst = NULL;
 
 	hashes_done = 0;
 	memset(&work, 0, sizeof(work));
@@ -1098,14 +1106,23 @@ static void *miner_thread(void *userdata) {
 		}
 
 		// Check If We Are Mining The Most Current Work
-		if (!work.wrk_pkg || (work.wrk_pkg->work_id != g_work.wrk_pkg->work_id))
+		if (!work.wrk_pkg || (work.wrk_pkg->work_id != g_work.wrk_pkg->work_id)) {
+
+			// Copy Global Work Into Local Thread Work
 			memcpy((void *)&work, (void *)&g_work, sizeof(struct work));
+
+			// Create A VM Instance For The Thread
+			if (inst)
+				free_compiler(inst);
+			inst = calloc(1, sizeof(struct instance));
+			create_instance(inst);
+		}
 
 		pthread_mutex_unlock(&work_lock);
 		work_restart[thr_id].restart = 0;
 
-		// Scan Work For POW Hash & Bounties
-		rc = scanhash(thr_id, &work, &hashes_done);
+		// Run VM To Check For POW Hash & Bounties
+		rc = execute_vm(thr_id, &work, inst, &hashes_done);
 
 		// Record Elapsed Time
 		gettimeofday(&tv_end, NULL);
@@ -1321,7 +1338,7 @@ static void *submit_thread(void *userdata) {
 
 static void *key_monitor_thread(void *userdata)
 {
-	int ch, day, hour, min, sec, total_sec;
+	int i, ch, day, hour, min, sec, total_sec, pending_bty;
 	struct timeval now;
 
 	while (true)
@@ -1343,10 +1360,16 @@ static void *key_monitor_thread(void *userdata)
 			min = total_sec / 60 - (day * 24 + hour) * 60;
 			sec = total_sec % 60;
 
+			pending_bty = 0;
+			for (i = 0; i < g_work_package_cnt; i++) {
+				pending_bty += g_work_package[i].pending_bty_cnt;
+			}
+
 			applog(LOG_WARNING, "************************** Mining Summary **************************");
 			applog(LOG_WARNING, "Run Time: %02d Days %02d:%02d:%02d\t\tWork Name: %s", day, hour, min, sec, g_work_nm ? g_work_nm : "");
-			applog(LOG_WARNING, "Bounty Accept:\t%3d\t\tWork ID:   %s", g_bounty_accepted_cnt, g_work_id ? g_work_id : "");
-			applog(LOG_WARNING, "Bounty Reject:\t%3d\t\tTarget:    %s", g_bounty_rejected_cnt, g_pow_target);
+			applog(LOG_WARNING, "Bounty Pending:\t%3d\t\tWork ID:   %s", pending_bty, g_work_id ? g_work_id : "");
+			applog(LOG_WARNING, "Bounty Accept:\t%3d\t\tTarget:    %s", g_bounty_rejected_cnt, g_pow_target);
+			applog(LOG_WARNING, "Bounty Reject:\t%3d", g_bounty_rejected_cnt);
 			applog(LOG_WARNING, "Bounty Deprct:\t%3d", g_bounty_deprecated_cnt);
 			applog(LOG_WARNING, "Bounty Timeout:\t%3d\t\tPOW Accept:  %3d", g_bounty_timeout_cnt, g_pow_accepted_cnt);
 			applog(LOG_WARNING, "Bounty Error:\t%3d\t\tPOW Reject:  %3d", g_bounty_error_cnt, g_pow_rejected_cnt);
