@@ -24,7 +24,10 @@
 #include "miner.h"
 
 #ifdef WIN32
+#include <malloc.h>
 #include "compat/winansi.h"
+#else
+#include <mm_malloc.h>
 #endif
 
 enum prefs {
@@ -521,6 +524,7 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 	uint32_t *msg32 = (uint32_t *)msg;
 	uint32_t *hash32 = (uint32_t *)hash;
 	uint32_t *mult32 = (uint32_t *)work->multiplicator;
+	uint32_t vm_state[4];
 
 	mult32[6] = genrand_int32();
 	mult32[7] = genrand_int32();
@@ -541,18 +545,19 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 
 		// Get Values For VM Inputs
 		get_vm_input(work);
+
+		// Reset VM Memory / State
 		inst->fill_ints(work->vm_input);
-		rc = inst->execute();
+
+		// Execute The VM Logic
+		rc = inst->execute(vm_state);
 
 		// Hee, we have found a bounty, exit immediately
 		if (rc == 1)
 			return rc;
 
 		// Check For POW Result
-		memcpy(&msg[0], inst->vm_state1, 4);
-		memcpy(&msg[4], inst->vm_state2, 4);
-		memcpy(&msg[8], inst->vm_state3, 4);
-		memcpy(&msg[12], inst->vm_state4, 4);
+		memcpy(&msg[0], &vm_state[0], 16);
 		msg32[0] = swap32(msg32[0]);
 		msg32[1] = swap32(msg32[1]);
 		msg32[2] = swap32(msg32[2]);
@@ -730,12 +735,6 @@ static int get_upstream_work(CURL *curl, struct work *work) {
 			return 0;
 		}
 
-		//// Link To The C Program Library
-		//if(inst)
-		//	free_compiler(inst);
-		//inst = calloc(1, sizeof(struct instance));
-		//create_instance(inst);
-
 		gettimeofday(&tv_end, NULL);
 		if (opt_protocol) {
 			timeval_subtract(&diff, &tv_end, &tv_start);
@@ -820,7 +819,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 			work_package.bounty_limit = (uint32_t)json_integer_value(json_object_get(pkg, "bounty_limit"));
 			work_package.bty_reward = (uint64_t)json_number_value(json_object_get(pkg, "xel_per_bounty"));
 			work_package.pow_reward = (uint64_t)json_number_value(json_object_get(pkg, "xel_per_pow"));
-//			work_package.pow_reward = (uint64_t)json_number_value(json_object_get(pkg, "wcet"));
+//			work_package.WCET = (uint64_t)json_number_value(json_object_get(pkg, "wcet"));
 			work_package.WCET = 1;
 			work_package.pending_bty_cnt = 0;
 			work_package.blacklisted = false;
@@ -887,18 +886,18 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 		return 0;
 	}
 
-	// Copy Data From Best Package Into Global Variable
-	strcpy(g_work_id, g_work_package[work_pkg_id].work_str);
-	strcpy(g_work_nm, g_work_package[work_pkg_id].work_nm);
-	strcpy(g_pow_target, tgt);
-
 	// Copy Data From Best Package Into Work
 	work->wrk_pkg = &g_work_package[work_pkg_id];
-	rc = hex2ints(work->pow_target, 8, g_pow_target, strlen(tgt));
+	rc = hex2ints(work->pow_target, 8, tgt, strlen(tgt));
 	if (!rc) {
 		applog(LOG_ERR, "Invalid Target in JSON response to getwork request");
 		return 0;
 	}
+
+	// Copy Data From Best Package Into Global Variable
+	strncpy(g_work_id, work->wrk_pkg->work_str, 21);
+	strncpy(g_work_nm, work->wrk_pkg->work_nm, 49);
+	sprintf(g_pow_target, "%08X%08X%08X...", work->pow_target[0], work->pow_target[1], work->pow_target[2]);
 
 	return 1;
 }
@@ -1110,6 +1109,7 @@ static void *miner_thread(void *userdata) {
 
 			// Copy Global Work Into Local Thread Work
 			memcpy((void *)&work, (void *)&g_work, sizeof(struct work));
+			work.thr_id = thr_id;
 
 			// Create A VM Instance For The Thread
 			if (inst)
@@ -1487,7 +1487,7 @@ int main(int argc, char **argv) {
 		sprintf(rpc_userpass, "%s:%s", rpc_user, rpc_pass);
 	}
 
-	if (!opt_test_compiler && !opt_test_miner && !publickey) {
+	if (!opt_test_compiler && !publickey) {
 		applog(LOG_ERR, "ERROR: Public Key (option -k) is required");
 		return 1;
 	}

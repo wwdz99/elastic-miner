@@ -25,19 +25,19 @@ bool create_c_source() {
 #ifdef WIN32
 	fprintf(f, "#include <malloc.h>\n\n");
 	fprintf(f, "__declspec(thread) int32_t* mem = 0;\n");
-	fprintf(f, "__declspec(dllexport) uint32_t vm_state1 = 0;\n");
-	fprintf(f, "__declspec(dllexport) uint32_t vm_state2 = 0;\n");
-	fprintf(f, "__declspec(dllexport) uint32_t vm_state3 = 0;\n");
-	fprintf(f, "__declspec(dllexport) uint32_t vm_state4 = 0;\n\n");
+	fprintf(f, "__declspec(thread) uint32_t vm_state1 = 0;\n");
+	fprintf(f, "__declspec(thread) uint32_t vm_state2 = 0;\n");
+	fprintf(f, "__declspec(thread) uint32_t vm_state3 = 0;\n");
+	fprintf(f, "__declspec(thread) uint32_t vm_state4 = 0;\n\n");
 	fprintf(f, "#define ALLOC_ALIGNED_BUFFER(_numBytes) ((int *)_aligned_malloc (_numBytes, 64))\n");
 	fprintf(f, "#define FREE_ALIGNED_BUFFER(_buffer) _aligned_free(_buffer)\n\n");
 #else
 	fprintf(f, "#include <mm_malloc.h>\n\n");
 	fprintf(f, "__thread int32_t* mem = 0;\n");
-	fprintf(f, "uint32_t vm_state1 = 0;\n");
-	fprintf(f, "uint32_t vm_state2 = 0;\n");
-	fprintf(f, "uint32_t vm_state3 = 0;\n");
-	fprintf(f, "uint32_t vm_state4 = 0;\n\n");
+	fprintf(f, "__thread uint32_t vm_state1 = 0;\n");
+	fprintf(f, "__thread uint32_t vm_state2 = 0;\n");
+	fprintf(f, "__thread uint32_t vm_state3 = 0;\n");
+	fprintf(f, "__thread uint32_t vm_state4 = 0;\n\n");
 	fprintf(f, "#define ALLOC_ALIGNED_BUFFER(_numBytes) (int *) _mm_malloc(_numBytes, 64)\n");
 	fprintf(f, "#define FREE_ALIGNED_BUFFER(_buffer) _mm_free(_buffer)\n");
 #endif
@@ -76,7 +76,7 @@ bool create_c_source() {
 #else
 	fprintf(f, "void fill_ints(int input[]) {\n");
 #endif
-	fprintf(f, "\nint i;\n");
+	fprintf(f, "\n\tint i;\n");
 	fprintf(f, "\tif (mem == 0)\n");
 	fprintf(f, "\t\tmem = ALLOC_ALIGNED_BUFFER(64000 * sizeof(int));\n");
 	fprintf(f, "\tfor (i = 0; i < 12; i++)\n");
@@ -87,9 +87,18 @@ bool create_c_source() {
 	fprintf(f,"\tvm_state4=0;\n" );
 	fprintf(f, "}\n\n");
 #ifdef WIN32
-	fprintf(f, "__declspec(dllexport) int execute() {\n");
+	fprintf(f, "__declspec(dllexport) void free_mem() {\n");
 #else
-	fprintf(f, "int execute() {\n");
+	fprintf(f, "void free_mem() {\n");
+#endif
+	fprintf(f, "\tif (mem != 0) {\n");
+	fprintf(f, "\t\tFREE_ALIGNED_BUFFER(mem);\n");
+	fprintf(f, "\t\tmem = 0;\n\t}\n");
+	fprintf(f, "}\n\n");
+#ifdef WIN32
+	fprintf(f, "__declspec(dllexport) int execute(uint32_t vm_state[]) {\n");
+#else
+	fprintf(f, "int execute(uint32_t vm_state[]) {\n");
 #endif
 	fprintf(f, "\tvm_state1=0;\n");
 	fprintf(f, "\tvm_state2=0;\n");
@@ -141,13 +150,10 @@ void create_instance(struct instance* inst) {
 		exit(EXIT_FAILURE);
 	}
 	inst->fill_ints = (int(__cdecl *)(int *))GetProcAddress((HMODULE)inst->hndl, "fill_ints");
-	inst->execute = (int(__cdecl *)())GetProcAddress((HMODULE)inst->hndl, "execute");
-	inst->vm_state1 = (uint32_t *)GetProcAddress((HMODULE)inst->hndl, "vm_state1");
-	inst->vm_state2 = (uint32_t *)GetProcAddress((HMODULE)inst->hndl, "vm_state2");
-	inst->vm_state3 = (uint32_t *)GetProcAddress((HMODULE)inst->hndl, "vm_state3");
-	inst->vm_state4 = (uint32_t *)GetProcAddress((HMODULE)inst->hndl, "vm_state4");
-	if (!inst->fill_ints || !inst->execute || !inst->vm_state1 || !inst->vm_state2 || !inst->vm_state3 || !inst->vm_state4) {
-		fprintf(stderr, "Unable to find library functions / variables");
+	inst->execute = (int(__cdecl *)(uint32_t *))GetProcAddress((HMODULE)inst->hndl, "execute");
+	inst->free_mem = (int(__cdecl *)())GetProcAddress((HMODULE)inst->hndl, "execute");
+	if (!inst->fill_ints || !inst->execute || !inst->free_mem) {
+		fprintf(stderr, "Unable to find library functions");
 		FreeLibrary((HMODULE)inst->hndl);
 		exit(EXIT_FAILURE);
 	}
@@ -160,10 +166,7 @@ void create_instance(struct instance* inst) {
 	}
 	inst->fill_ints = dlsym(inst->hndl, "fill_ints");
 	inst->execute = dlsym(inst->hndl, "execute");
-	inst->vm_state1 = dlsym(inst->hndl, "vm_state1");
-	inst->vm_state2 = dlsym(inst->hndl, "vm_state2");
-	inst->vm_state3 = dlsym(inst->hndl, "vm_state3");
-	inst->vm_state4 = dlsym(inst->hndl, "vm_state4");
+	inst->free_mem = dlsym(inst->hndl, "free_mem");
 #endif
 }
 
@@ -177,9 +180,6 @@ void free_compiler(struct instance* inst) {
 		inst->hndl = 0;
 		inst->fill_ints = 0;
 		inst->execute = 0;
-		inst->vm_state1 = 0;
-		inst->vm_state2 = 0;
-		inst->vm_state3 = 0;
-		inst->vm_state4 = 0;
+		inst->free_mem = 0;
 	}
 }

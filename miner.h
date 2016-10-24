@@ -273,17 +273,16 @@ struct instance {
 #ifdef WIN32
 	HINSTANCE hndl;
 	int(__cdecl* fill_ints)(int *);
-	int(__cdecl* execute)();
+	int(__cdecl* execute)(uint32_t *);
+	int(__cdecl* free_mem)();
 #else
 	void *hndl;
 	int(*fill_ints)(int input[]);
-	int(*execute)();
+	int(*execute)(uint32_t vm_state[]);
+	int(*free_mem)();
 #endif
 
-	uint32_t* vm_state1;
-	uint32_t* vm_state2;
-	uint32_t* vm_state3;
-	uint32_t* vm_state4;
+	uint32_t vm_state[4];
 
 };
 
