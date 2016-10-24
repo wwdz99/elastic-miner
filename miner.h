@@ -170,6 +170,24 @@ struct thread_q {
 	pthread_cond_t		cond;
 };
 
+struct instance {
+
+#ifdef WIN32
+	HINSTANCE hndl;
+	int(__cdecl* fill_ints)(int *);
+	int(__cdecl* execute)(uint32_t *);
+	int(__cdecl* free_mem)();
+#else
+	void *hndl;
+	int(*fill_ints)(int input[]);
+	int(*execute)(uint32_t vm_state[]);
+	int(*free_mem)();
+#endif
+
+	uint32_t vm_state[4];
+
+};
+
 extern bool use_colors;
 extern struct thr_info *thr_info;
 extern pthread_mutex_t applog_lock;
@@ -267,24 +285,6 @@ void sha256d(unsigned char *hash, const unsigned char *data, int len);
 
 extern unsigned long genrand_int32(void);
 extern void init_genrand(unsigned long s);
-
-struct instance {
-
-#ifdef WIN32
-	HINSTANCE hndl;
-	int(__cdecl* fill_ints)(int *);
-	int(__cdecl* execute)(uint32_t *);
-	int(__cdecl* free_mem)();
-#else
-	void *hndl;
-	int(*fill_ints)(int input[]);
-	int(*execute)(uint32_t vm_state[]);
-	int(*free_mem)();
-#endif
-
-	uint32_t vm_state[4];
-
-};
 
 bool compile_and_link(char* source_code);
 void create_instance(struct instance* inst);

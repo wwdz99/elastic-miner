@@ -100,6 +100,7 @@ bool create_c_source() {
 #else
 	fprintf(f, "int execute(uint32_t vm_state[]) {\n");
 #endif
+	fprintf(f, "\tint rc;\n\n");
 	fprintf(f, "\tvm_state1=0;\n");
 	fprintf(f, "\tvm_state2=0;\n");
 	fprintf(f, "\tvm_state3=0;\n");
@@ -112,6 +113,12 @@ bool create_c_source() {
 		return false;
 
 	fprintf(f, &code[0]);
+
+	fprintf(f, "\tvm_state[0] = vm_state1;\n");
+	fprintf(f, "\tvm_state[1] = vm_state2;\n");
+	fprintf(f, "\tvm_state[2] = vm_state3;\n");
+	fprintf(f, "\tvm_state[3] = vm_state4;\n\n");
+	fprintf(f, "\treturn rc;\n");
 	fprintf(f, "}\n");
 
 	if (opt_test_compiler) {
