@@ -177,7 +177,7 @@ static char* convert(ast* exp) {
 			sprintf(result, "m(-%s)", lval);
 			break;
 		case NODE_VERIFY:
-			sprintf(result, "return m(%s != 0 ? 1 : 0);\n", lval);
+			sprintf(result, "\n\tvm_state[0] = vm_state1;\n\tvm_state[1] = vm_state2;\n\tvm_state[2] = vm_state3;\n\tvm_state[3] = vm_state4;\n\n\treturn m(%s != 0 ? 1 : 0);\n", lval);
 			break;
 		case NODE_PARAM:
 			if (!blk_old[0])
