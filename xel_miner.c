@@ -1368,7 +1368,7 @@ static void *key_monitor_thread(void *userdata)
 			applog(LOG_WARNING, "************************** Mining Summary **************************");
 			applog(LOG_WARNING, "Run Time: %02d Days %02d:%02d:%02d\t\tWork Name: %s", day, hour, min, sec, g_work_nm ? g_work_nm : "");
 			applog(LOG_WARNING, "Bounty Pending:\t%3d\t\tWork ID:   %s", pending_bty, g_work_id ? g_work_id : "");
-			applog(LOG_WARNING, "Bounty Accept:\t%3d\t\tTarget:    %s", g_bounty_rejected_cnt, g_pow_target);
+			applog(LOG_WARNING, "Bounty Accept:\t%3d\t\tTarget:    %s", g_bounty_accepted_cnt, g_pow_target);
 			applog(LOG_WARNING, "Bounty Reject:\t%3d", g_bounty_rejected_cnt);
 			applog(LOG_WARNING, "Bounty Deprct:\t%3d", g_bounty_deprecated_cnt);
 			applog(LOG_WARNING, "Bounty Timeout:\t%3d\t\tPOW Accept:  %3d", g_bounty_timeout_cnt, g_pow_accepted_cnt);
