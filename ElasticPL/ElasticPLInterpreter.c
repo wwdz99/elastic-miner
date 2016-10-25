@@ -141,7 +141,11 @@ static char* convert(ast* exp) {
 			sprintf(result, "m(~%s)", lval);
 			break;
 		case NODE_AND:
+#ifdef WIN32
+			sprintf(result, "m(%s >! %s)", lval, rval);
+#else
 			sprintf(result, "m(%s && %s)", lval, rval);
+#endif
 			break;
 		case NODE_OR:
 			sprintf(result, "m(%s || %s)", lval, rval);
