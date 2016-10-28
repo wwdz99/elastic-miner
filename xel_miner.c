@@ -481,7 +481,6 @@ static void *test_compiler_thread(void *userdata) {
 		free_compiler(inst);
 	inst = calloc(1, sizeof(struct instance));
 	create_instance(inst);
-	inst->initialize();
 	free_compiler(inst);
 
 	applog(LOG_NOTICE, "DEBUG: Compiler Test Complete");
@@ -1123,7 +1122,6 @@ static void *miner_thread(void *userdata) {
 				free_compiler(inst);
 			inst = calloc(1, sizeof(struct instance));
 			create_instance(inst);
-			inst->initialize();
 		}
 
 		pthread_mutex_unlock(&work_lock);

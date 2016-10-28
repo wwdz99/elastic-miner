@@ -187,6 +187,8 @@ void create_instance(struct instance* inst) {
 	inst->execute = dlsym(inst->hndl, "execute");
 	inst->free_mem = dlsym(inst->hndl, "free_mem");
 #endif
+
+	inst->initialize();
 }
 
 void free_compiler(struct instance* inst) {
