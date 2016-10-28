@@ -12,7 +12,7 @@
 
 bool create_c_source() {
 	char *code;
-	FILE* f = fopen("work_lib.c", "w");
+	FILE* f = fopen("./lib/work_lib.c", "w");
 
 	if (!f)
 		return false;
@@ -142,28 +142,36 @@ bool create_c_source() {
 	return true;
 }
 
-bool compile_and_link(char* source_code) {
+bool compile_and_link(char* lib_name) {
+	char file_name[1000];
 
 	if (!create_c_source()) {
-		applog(LOG_ERR, "Unable to convert ElasticPL to C - \n%s\n", source_code);
+		applog(LOG_ERR, "Unable to convert ElasticPL to C");
 		return false;
 	}
 
 #ifdef WIN32
 	system("compile_dll.bat");
+	sprintf(file_name, "./lib/%s.dll", lib_name);
+	rename("./lib/work_lib.dll", file_name);
 #else
-	system("gcc -c -march=native -Ofast -fPIC work_lib.c -o work_lib.o");
-	system("gcc -shared -Wl,-soname,work_lib.so.1 -o work_lib.so work_lib.o");
+	system("gcc -c -march=native -Ofast -fPIC ./lib/work_lib.c -o ./lib/work_lib.o");
+	system("gcc -shared -Wl,-soname,./lib/work_lib.so.1 -o ./lib/work_lib.so ./lib/work_lib.o");
+	sprintf(file_name, "./lib/%s.so", lib_name);
+	rename("./lib/work_lib.so", file_name);
 #endif
 
 	return true;
 }
 
-void create_instance(struct instance* inst) {
+void create_instance(struct instance* inst, char *lib_name) {
+	char file_name[1000];
+
 #ifdef WIN32
-	inst->hndl = LoadLibrary("work_lib.dll");
+	sprintf(file_name, "./lib/%s.dll", lib_name);
+	inst->hndl = LoadLibrary(file_name);
 	if (!inst->hndl) {
-		fprintf(stderr, "Unable to load library: 'work_lib.dll'");
+		fprintf(stderr, "Unable to load library: '%s'", file_name);
 		exit(EXIT_FAILURE);
 	}
 	inst->initialize = (int(__cdecl *)())GetProcAddress((HMODULE)inst->hndl, "initialize");
@@ -175,9 +183,10 @@ void create_instance(struct instance* inst) {
 		FreeLibrary((HMODULE)inst->hndl);
 		exit(EXIT_FAILURE);
 	}
-	applog(LOG_DEBUG, "DEBUG: 'work_lib.dll' Loaded");
+	applog(LOG_DEBUG, "DEBUG: '%s' Loaded", file_name);
 #else
-	inst->hndl = dlmopen(LM_ID_BASE, "./work_lib.so", RTLD_NOW);
+	sprintf(file_name, "./lib/%s.so", lib_name);
+	inst->hndl = dlmopen(LM_ID_BASE, file_name, RTLD_NOW);
 	if (!inst->hndl) {
 		fprintf(stderr, "%sn", dlerror());
 		exit(EXIT_FAILURE);

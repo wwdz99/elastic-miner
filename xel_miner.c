@@ -471,7 +471,7 @@ static void *test_compiler_thread(void *userdata) {
 	}
 
 	// Convert The ElasticPL Source Into A C Program Library
-	if (!compile_and_link(test_code)) {
+	if (!compile_and_link("test")) {
 		applog(LOG_ERR, "ERROR: Exiting 'test_compiler'");
 		exit(EXIT_FAILURE);
 	}
@@ -480,7 +480,7 @@ static void *test_compiler_thread(void *userdata) {
 	if (inst)
 		free_compiler(inst);
 	inst = calloc(1, sizeof(struct instance));
-	create_instance(inst);
+	create_instance(inst, "test");
 	free_compiler(inst);
 
 	applog(LOG_NOTICE, "DEBUG: Compiler Test Complete");
@@ -718,33 +718,11 @@ static int get_upstream_work(CURL *curl, struct work *work) {
 
 	if (rc < 0)
 		return -1;
-	else if (rc > 0 && source_code) {
+	else if (rc) {
 		gettimeofday(&tv_start, NULL);
 		if (opt_protocol) {
 			timeval_subtract(&diff, &tv_start, &tv_end);
 			applog(LOG_DEBUG, "DEBUG: Time to decode work: %.2f ms", (1000.0 * diff.tv_sec) + (0.001 * diff.tv_usec));
-		}
-
-		applog(LOG_DEBUG, "DEBUG: Running ElasticPL Compiler");
-
-		if (opt_debug_epl)
-			applog(LOG_DEBUG, "DEBUG: ElasticPL Source Code -\n%s", source_code);
-
-		if (!create_epl_vm(source_code)) {
-			work->wrk_pkg->blacklisted = true;
-			return 0;
-		}
-
-		// Convert The ElasticPL Source Into A C Program Library
-		if (!compile_and_link(source_code)) {
-			work->wrk_pkg->blacklisted = true;
-			return 0;
-		}
-
-		gettimeofday(&tv_end, NULL);
-		if (opt_protocol) {
-			timeval_subtract(&diff, &tv_end, &tv_start);
-			applog(LOG_DEBUG, "DEBUG: Time to parse ElasticPL code: %.2f ms", (1000.0 * diff.tv_sec) + (0.001 * diff.tv_usec));
 		}
 	}
 	else
@@ -825,10 +803,51 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 			work_package.bounty_limit = (uint32_t)json_integer_value(json_object_get(pkg, "bounty_limit"));
 			work_package.bty_reward = (uint64_t)json_number_value(json_object_get(pkg, "xel_per_bounty"));
 			work_package.pow_reward = (uint64_t)json_number_value(json_object_get(pkg, "xel_per_pow"));
-//			work_package.WCET = (uint64_t)json_number_value(json_object_get(pkg, "wcet"));
-			work_package.WCET = 1;
 			work_package.pending_bty_cnt = 0;
 			work_package.blacklisted = false;
+
+			str = (char *)json_string_value(json_object_get(pkg, "source"));
+
+			// Extract The ElasticPL Source Code
+			if (!str || strlen(str) > MAX_SOURCE_SIZE) {
+				work_package.blacklisted = true;
+				applog(LOG_ERR, "ERROR: Invalid 'source' for work_id: %s", work_package.work_str);
+				return 0;
+			}
+
+			rc = ascii85dec(source_code, MAX_SOURCE_SIZE, str);
+			if (!rc) {
+				work_package.blacklisted = true;
+				applog(LOG_ERR, "ERROR: Unable to decode 'source' for work_id: %s\n\n%s\n", work_package.work_str, str);
+				return 0;
+			}
+
+			applog(LOG_DEBUG, "DEBUG: Running ElasticPL Compiler");
+
+			if (opt_debug_epl)
+				applog(LOG_DEBUG, "DEBUG: ElasticPL Source Code -\n%s", source_code);
+
+			// Convert ElasticPL Into AST
+			if (!create_epl_vm(source_code)) {
+				work_package.blacklisted = true;
+				applog(LOG_ERR, "ERROR: Unable to convert 'source' to AST for work_id: %s\n\n%s\n", work_package.work_str, str);
+				return 0;
+			}
+
+			// Calculate WCET
+			work_package.WCET = calc_wcet();
+			if (!work_package.WCET) {
+				work_package.blacklisted = true;
+				applog(LOG_ERR, "ERROR: Unable to calculate WCET for work_id: %s\n\n%s\n", work_package.work_str, str);
+				return 0;
+			}
+
+			// Convert The ElasticPL Source Into A C Program Library
+			if (!compile_and_link(work_package.work_str)) {
+				work_package.blacklisted = true;
+				applog(LOG_ERR, "ERROR: Unable to convert 'source' to C for work_id: %s\n\n%s\n", work_package.work_str, str);
+				return 0;
+			}
 
 			add_work_package(&work_package);
 			work_pkg_id = g_work_package_cnt - 1;
@@ -852,7 +871,6 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 			best_pkg = work_pkg_id;
 			best_wcet = g_work_package[work_pkg_id].WCET;
 //			tgt = (char *)json_string_value(json_object_get(val, "pow_target"));
-			src = (char *)json_string_value(json_object_get(pkg, "source"));
 		}
 		//
 		// TODO:  Add Bounty Reward Profitability Check
@@ -861,13 +879,11 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 			best_pkg = work_pkg_id;
 			best_profit = ((double)g_work_package[work_pkg_id].pow_reward / (double)g_work_package[work_pkg_id].WCET);
 //			tgt = (char *)json_string_value(json_object_get(val, "pow_target"));
-			src = (char *)json_string_value(json_object_get(pkg, "source"));
 		}
 		else if (opt_pref == PREF_WORKID && (!strcmp(g_work_package[work_pkg_id].work_str, pref_workid))) {
 			best_pkg = work_pkg_id;
 			break;
 //			tgt = (char *)json_string_value(json_object_get(val, "pow_target"));
-			src = (char *)json_string_value(json_object_get(pkg, "source"));
 		}
 	}
 
@@ -876,20 +892,6 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 		opt_pref = PREF_PROFIT;
 		applog(LOG_INFO, "No work available that matches preference...retrying in 15s");
 		return -1;
-	}
-
-	// Extract The ElasticPL Source Code
-	if (!src || strlen(src) > MAX_SOURCE_SIZE) {
-		g_work_package[work_pkg_id].blacklisted = true;
-		applog(LOG_ERR, "Invalid 'source' for work_id: %s", g_work_package[work_pkg_id].work_str);
-		return 0;
-	}
-
-	rc = ascii85dec(source_code, MAX_SOURCE_SIZE, src);
-	if (!rc) {
-		g_work_package[work_pkg_id].blacklisted = true;
-		applog(LOG_ERR, "Unable to decode 'source' for work_id: %s\n\n%s\n", g_work_package[work_pkg_id].work_str, src);
-		return 0;
 	}
 
 	// Copy Data From Best Package Into Work
@@ -1121,7 +1123,7 @@ static void *miner_thread(void *userdata) {
 			if (inst)
 				free_compiler(inst);
 			inst = calloc(1, sizeof(struct instance));
-			create_instance(inst);
+			create_instance(inst, work.wrk_pkg->work_str);
 		}
 
 		pthread_mutex_unlock(&work_lock);

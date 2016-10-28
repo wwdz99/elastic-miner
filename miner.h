@@ -78,7 +78,7 @@ struct work_package {
 	uint64_t work_id;
 	char work_str[22];
 	char work_nm[50];
-	uint64_t WCET;
+	uint32_t WCET;
 	uint64_t bounty_limit;
 	uint64_t pow_reward;
 	uint64_t bty_reward;
@@ -287,8 +287,8 @@ void sha256d(unsigned char *hash, const unsigned char *data, int len);
 extern unsigned long genrand_int32(void);
 extern void init_genrand(unsigned long s);
 
-bool compile_and_link(char* source_code);
-void create_instance(struct instance* inst);
+bool compile_and_link(char* file_name);
+void create_instance(struct instance* inst, char *file_name);
 void free_compiler(struct instance* inst);
 
 #endif /* __MINER_H__ */
