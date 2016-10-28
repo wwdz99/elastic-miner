@@ -72,15 +72,12 @@ bool create_c_source() {
 	fprintf(f, "\treturn x;\n");
 	fprintf(f, "}\n\n");
 #ifdef WIN32
-	fprintf(f, "__declspec(dllexport) void fill_ints(int input[]) {\n");
+	fprintf(f, "__declspec(dllexport) void initialize() {\n");
 #else
-	fprintf(f, "void fill_ints(int input[]) {\n");
+	fprintf(f, "void initialize() {\n");
 #endif
-	fprintf(f, "\n\tint i;\n");
 	fprintf(f, "\tif (mem == 0)\n");
-	fprintf(f, "\t\tmem = ALLOC_ALIGNED_BUFFER(64000 * sizeof(int));\n");
-	fprintf(f, "\tfor (i = 0; i < 12; i++)\n");
-	fprintf(f, "\t\tmem[i] = input[i];\n");
+	fprintf(f, "\t\tmem = ALLOC_ALIGNED_BUFFER(64000 * sizeof(int));\n\n");
 	fprintf(f, "\tvm_state1=0;\n");
 	fprintf(f, "\tvm_state2=0;\n");
 	fprintf(f, "\tvm_state3=0;\n");
@@ -94,6 +91,19 @@ bool create_c_source() {
 	fprintf(f, "\tif (mem != 0) {\n");
 	fprintf(f, "\t\tFREE_ALIGNED_BUFFER(mem);\n");
 	fprintf(f, "\t\tmem = 0;\n\t}\n");
+	fprintf(f, "}\n\n");
+#ifdef WIN32
+	fprintf(f, "__declspec(dllexport) void reset(int input[]) {\n");
+#else
+	fprintf(f, "void reset(int input[]) {\n");
+#endif
+	fprintf(f, "\n\tint i;\n");
+	fprintf(f, "\tfor (i = 0; i < 12; i++)\n");
+	fprintf(f, "\t\tmem[i] = input[i];\n\n");
+	fprintf(f, "\tvm_state1=0;\n");
+	fprintf(f, "\tvm_state2=0;\n");
+	fprintf(f, "\tvm_state3=0;\n");
+	fprintf(f, "\tvm_state4=0;\n");
 	fprintf(f, "}\n\n");
 #ifdef WIN32
 	fprintf(f, "__declspec(dllexport) int execute(uint32_t vm_state[]) {\n");
@@ -156,10 +166,11 @@ void create_instance(struct instance* inst) {
 		fprintf(stderr, "Unable to load library: 'work_lib.dll'");
 		exit(EXIT_FAILURE);
 	}
-	inst->fill_ints = (int(__cdecl *)(int *))GetProcAddress((HMODULE)inst->hndl, "fill_ints");
+	inst->initialize = (int(__cdecl *)())GetProcAddress((HMODULE)inst->hndl, "initialize");
+	inst->reset = (int(__cdecl *)(int *))GetProcAddress((HMODULE)inst->hndl, "reset");
 	inst->execute = (int(__cdecl *)(uint32_t *))GetProcAddress((HMODULE)inst->hndl, "execute");
 	inst->free_mem = (int(__cdecl *)())GetProcAddress((HMODULE)inst->hndl, "execute");
-	if (!inst->fill_ints || !inst->execute || !inst->free_mem) {
+	if (!inst->initialize || !inst->reset || !inst->execute || !inst->free_mem) {
 		fprintf(stderr, "Unable to find library functions");
 		FreeLibrary((HMODULE)inst->hndl);
 		exit(EXIT_FAILURE);
@@ -171,7 +182,8 @@ void create_instance(struct instance* inst) {
 		fprintf(stderr, "%sn", dlerror());
 		exit(EXIT_FAILURE);
 	}
-	inst->fill_ints = dlsym(inst->hndl, "fill_ints");
+	inst->initialize = dlsym(inst->hndl, "initialize");
+	inst->reset = dlsym(inst->hndl, "reset");
 	inst->execute = dlsym(inst->hndl, "execute");
 	inst->free_mem = dlsym(inst->hndl, "free_mem");
 #endif
@@ -179,13 +191,15 @@ void create_instance(struct instance* inst) {
 
 void free_compiler(struct instance* inst) {
 	if (inst->hndl != 0) {
+		inst->free_mem();
 #ifdef WIN32
 		FreeLibrary((HMODULE)inst->hndl); 
 #else
 		dlclose(inst->hndl);
 #endif
 		inst->hndl = 0;
-		inst->fill_ints = 0;
+		inst->initialize = 0;
+		inst->reset = 0;
 		inst->execute = 0;
 		inst->free_mem = 0;
 	}

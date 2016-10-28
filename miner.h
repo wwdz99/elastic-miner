@@ -174,7 +174,8 @@ struct instance {
 
 #ifdef WIN32
 	HINSTANCE hndl;
-	int(__cdecl* fill_ints)(int *);
+	int(__cdecl* initialize)();
+	int(__cdecl* reset)(int *);
 	int(__cdecl* execute)(uint32_t *);
 	int(__cdecl* free_mem)();
 #else

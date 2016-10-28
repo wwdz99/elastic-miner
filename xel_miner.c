@@ -481,6 +481,7 @@ static void *test_compiler_thread(void *userdata) {
 		free_compiler(inst);
 	inst = calloc(1, sizeof(struct instance));
 	create_instance(inst);
+	inst->initialize();
 	free_compiler(inst);
 
 	applog(LOG_NOTICE, "DEBUG: Compiler Test Complete");
@@ -553,7 +554,7 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 		get_vm_input(work);
 
 		// Reset VM Memory / State
-		inst->fill_ints(work->vm_input);
+		inst->reset(work->vm_input);
 
 		// Execute The VM Logic
 		rc = inst->execute(vm_state);
@@ -1122,6 +1123,7 @@ static void *miner_thread(void *userdata) {
 				free_compiler(inst);
 			inst = calloc(1, sizeof(struct instance));
 			create_instance(inst);
+			inst->initialize();
 		}
 
 		pthread_mutex_unlock(&work_lock);
