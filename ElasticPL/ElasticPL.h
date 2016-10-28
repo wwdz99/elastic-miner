@@ -12,6 +12,7 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
 #define MAX_LITERAL_SIZE 100
@@ -323,5 +324,7 @@ extern char* convert_ast_to_c();
 static char* convert(ast* exp);
 static char* append_strings(char * old, char * new);
 static char *replace(char* old, char* a, char* b);
+extern uint32_t calc_wcet();
+static uint32_t get_wcet(ast* exp);
 
 #endif // ELASTICPL_H_

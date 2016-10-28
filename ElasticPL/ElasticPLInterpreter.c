@@ -19,6 +19,8 @@
 char blk_new[4096];
 char blk_old[4096];
 
+uint32_t wcet_block;
+
 extern char* convert_ast_to_c() {
 	blk_new[0] = 0;
 	blk_old[0] = 0;
@@ -430,4 +432,203 @@ static char *replace(char* old, char* a, char* b) {
 	strcat(str, ptr1);
 
 	return str;
+}
+
+extern uint32_t calc_wcet() {
+	int i;
+	uint32_t wcet, total = 0;
+
+	wcet_block = 0;
+
+	for (i = 0; i < vm_ast_cnt; i++) {
+		wcet = get_wcet(vm_ast[i]);
+		applog(LOG_DEBUG, "DEBUG: Statement WCET = %lu", wcet);
+		if (wcet > (0xFFFFFFFF - total)) {
+			total = 0xFFFFFFFF;
+			break;
+		}
+		else
+			total += wcet;
+	}
+
+	applog(LOG_DEBUG, "DEBUG: Total WCET = %lu", total);
+
+	return total;
+}
+
+// Use Post Order Traversal To Calculate WCET For Each Statement
+static uint32_t get_wcet(ast* exp) {
+	uint32_t lval = 0;
+	uint32_t rval = 0;
+	uint32_t tmp = 0;
+	uint32_t wcet = 0;
+
+	if (exp != NULL) {
+
+		// Reset Temp Block WCET Value
+		if (exp->type != NODE_BLOCK)
+			wcet_block = 0;
+
+		if (exp->left != NULL) {
+			lval = get_wcet(exp->left);
+		}
+
+		// Check For If Statement As Right Side Is Conditional
+		if (exp->type != NODE_IF)
+			rval = get_wcet(exp->right);
+
+		switch (exp->type) {
+		case NODE_CONSTANT:
+		case NODE_VAR_CONST:
+		case NODE_VAR_EXP:
+			wcet = (wcet < 0xFFFFFFFF ? 1 : 0);
+			break;
+		case NODE_ASSIGN:
+			wcet = (wcet < (0xFFFFFFFF - (lval + rval + 1)) ? (lval + rval + 1) : 0);
+			break;
+		case NODE_IF:
+			if (exp->right->type != NODE_ELSE) {
+				rval = get_wcet(exp->right);				// If Body (No Else Condition)
+				wcet = (wcet < (0xFFFFFFFF - (lval + rval + 1)) ? (lval + rval + 1) : 0);
+			}
+			else {
+				tmp = lval;									// Condition
+				lval = get_wcet(exp->right->left);			// If Body
+				rval = get_wcet(exp->right->right);			// Else Body
+				if (lval >= rval)
+					wcet = (wcet < (0xFFFFFFFF - (tmp + lval + 1)) ? (tmp + lval + 1) : 0);
+				else
+					wcet = (wcet < (0xFFFFFFFF - (tmp + rval + 1)) ? (tmp + rval + 1) : 0);
+			}
+			break;
+		case NODE_ELSE:
+			break;
+		case NODE_REPEAT:
+			tmp = exp->left->value;
+			wcet = (wcet < (0xFFFFFFFF - ((tmp * rval) + 1)) ? ((tmp * rval) + 1) : 0);
+			break;
+		case NODE_BLOCK:
+			wcet_block += lval;
+			wcet = wcet_block;
+			break;
+		case NODE_ADD:
+		case NODE_SUB:
+		case NODE_MUL:
+		case NODE_DIV:
+		case NODE_MOD:
+		case NODE_LSHIFT:
+		case NODE_LROT:
+		case NODE_RSHIFT:
+		case NODE_RROT:
+		case NODE_AND:
+		case NODE_OR:
+		case NODE_BITWISE_AND:
+		case NODE_BITWISE_XOR:
+		case NODE_BITWISE_OR:
+		case NODE_EQ:
+		case NODE_NE:
+		case NODE_GT:
+		case NODE_LT:
+		case NODE_GE:
+		case NODE_LE:
+			wcet = (wcet < (0xFFFFFFFF - (lval + rval + 1)) ? (lval + rval + 1) : 0);
+			break;
+		case NODE_NOT:
+		case NODE_COMPL:
+		case NODE_NEG:
+			wcet = (wcet < (0xFFFFFFFF - (lval + 1)) ? (lval + 1) : 0);
+			break;
+		case NODE_VERIFY:
+			wcet = (wcet < (0xFFFFFFFF - (lval + rval + 1)) ? (lval + rval + 1) : 0);
+			break;
+		case NODE_PARAM:
+			wcet_block += lval;
+			wcet = wcet_block;
+			break;
+		case NODE_SHA256:
+			wcet = (wcet < (0xFFFFFFFF - (100 + rval)) ? (100 + rval) : 0);
+			break;
+		case NODE_SHA512:
+			wcet = (wcet < (0xFFFFFFFF - (120 + rval)) ? (120 + rval) : 0);
+			break;
+		case NODE_WHIRLPOOL:
+			wcet = (wcet < (0xFFFFFFFF - (150 + rval)) ? (150 + rval) : 0);
+			break;
+		case NODE_MD5:
+			wcet = (wcet < (0xFFFFFFFF - (80 + rval)) ? (80 + rval) : 0);
+			break;
+		case NODE_SECP192K_PTP:
+		case NODE_SECP192R_PTP:
+		case NODE_SECP224K_PTP:
+		case NODE_SECP224R_PTP:
+		case NODE_SECP256K_PTP:
+		case NODE_SECP256R_PTP:
+		case NODE_SECP384R_PTP:
+		case NODE_PRM192V2_PTP:
+		case NODE_PRM192V3_PTP:
+		case NODE_PRM256V1_PTP:
+			wcet = (wcet < (0xFFFFFFFF - (5000 + rval)) ? (5000 + rval) : 0);
+			break;
+		case NODE_SECP192K_PA:
+		case NODE_SECP192K_PS:
+		case NODE_SECP192K_PSM:
+		case NODE_SECP192K_PN:
+		case NODE_SECP192R_PA:
+		case NODE_SECP192R_PS:
+		case NODE_SECP192R_PSM:
+		case NODE_SECP192R_PN:
+		case NODE_SECP224K_PA:
+		case NODE_SECP224K_PS:
+		case NODE_SECP224K_PSM:
+		case NODE_SECP224K_PN:
+		case NODE_SECP224R_PA:
+		case NODE_SECP224R_PS:
+		case NODE_SECP224R_PSM:
+		case NODE_SECP224R_PN:
+		case NODE_SECP256K_PA:
+		case NODE_SECP256K_PS:
+		case NODE_SECP256K_PSM:
+		case NODE_SECP256K_PN:
+		case NODE_SECP256R_PA:
+		case NODE_SECP256R_PS:
+		case NODE_SECP256R_PSM:
+		case NODE_SECP256R_PN:
+		case NODE_SECP384R_PA:
+		case NODE_SECP384R_PS:
+		case NODE_SECP384R_PSM:
+		case NODE_SECP384R_PN:
+		case NODE_PRM192V1_PTP:
+		case NODE_PRM192V1_PA:
+		case NODE_PRM192V1_PS:
+		case NODE_PRM192V1_PSM:
+		case NODE_PRM192V1_PN:
+		case NODE_PRM192V2_PA:
+		case NODE_PRM192V2_PS:
+		case NODE_PRM192V2_PSM:
+		case NODE_PRM192V2_PN:
+		case NODE_PRM192V3_PA:
+		case NODE_PRM192V3_PS:
+		case NODE_PRM192V3_PSM:
+		case NODE_PRM192V3_PN:
+		case NODE_PRM256V1_PA:
+		case NODE_PRM256V1_PS:
+		case NODE_PRM256V1_PSM:
+		case NODE_PRM256V1_PN:
+			wcet = (wcet < (0xFFFFFFFF - (1000 + rval)) ? (1000 + rval) : 0);
+			break;
+		case NODE_TIGER:
+			wcet = (wcet < (0xFFFFFFFF - (100 + rval)) ? (100 + rval) : 0);
+			break;
+		case NODE_RIPEMD160:
+			wcet = (wcet < (0xFFFFFFFF - (120 + rval)) ? (120 + rval) : 0);
+			break;
+		case NODE_RIPEMD128:
+			wcet = (wcet < (0xFFFFFFFF - (100 + rval)) ? (100 + rval) : 0);
+			break;
+		default:
+			break;
+		}
+	}
+
+	return wcet;
 }
