@@ -464,6 +464,12 @@ static void *test_compiler_thread(void *userdata) {
 		exit(EXIT_FAILURE);
 	}
 
+	// Calculate WCET
+	if (!calc_wcet()) {
+		applog(LOG_ERR, "ERROR: Exiting 'test_compiler'");
+		exit(EXIT_FAILURE);
+	}
+
 	// Convert The ElasticPL Source Into A C Program Library
 	if (!compile_and_link(test_code)) {
 		applog(LOG_ERR, "ERROR: Exiting 'test_compiler'");
