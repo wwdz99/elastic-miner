@@ -180,8 +180,9 @@ struct instance {
 	int(__cdecl* free_mem)();
 #else
 	void *hndl;
-	int(*fill_ints)(int input[]);
-	int(*execute)(uint32_t vm_state[]);
+	int(*initialize)();
+	int(*reset)(int *);
+	int(*execute)(uint32_t *);
 	int(*free_mem)();
 #endif
 
