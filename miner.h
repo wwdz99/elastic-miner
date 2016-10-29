@@ -248,6 +248,7 @@ void tq_thaw(struct thread_q *tq);
 static void *submit_thread(void *userdata);
 static void *key_monitor_thread(void *userdata);
 static void *test_compiler_thread(void *userdata);
+static void restart_threads(void);
 
 static void *workio_thread(void *userdata);
 static void workio_cmd_free(struct workio_cmd *wc);
