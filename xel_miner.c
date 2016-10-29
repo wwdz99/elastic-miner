@@ -1463,9 +1463,35 @@ static int thread_create(struct thr_info *thr, void* func)
 	return err;
 }
 
+
+static int mm(int x) {
+	int mod = x % 32;
+	int leaf = mod % 4;
+	if (leaf == 0) {
+		x = 0;
+	}
+	else if (leaf == 1) {
+		x = 0;
+	}
+	else if (leaf == 2) {
+		x = 0;
+	}
+	else {
+		x = 0;
+	}
+	return x;
+}
+
+
 int main(int argc, char **argv) {
 	struct thr_info *thr;
 	int i, err, thr_idx;
+
+	//mm(1);
+	//mm(0);
+	//mm(11);
+	//mm(20);
+	//mm(21);
 
 	fprintf(stdout, "** " PACKAGE_NAME " " PACKAGE_VERSION " **\n");
 
