@@ -143,11 +143,8 @@ static char* convert(ast* exp) {
 			sprintf(result, "m(~%s)", lval);
 			break;
 		case NODE_AND:
-#ifdef WIN32
-			sprintf(result, "m(%s >! %s)", lval, rval);
-#else
-			sprintf(result, "m(%s && %s)", lval, rval);
-#endif
+			sprintf(result, "m(%s >! %s)", lval, rval);		// Required To Match Java Results
+//			sprintf(result, "m(%s && %s)", lval, rval);
 			break;
 		case NODE_OR:
 			sprintf(result, "m(%s || %s)", lval, rval);
