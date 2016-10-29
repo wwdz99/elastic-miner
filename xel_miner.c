@@ -728,6 +728,9 @@ static int get_upstream_work(CURL *curl, struct work *work) {
 	else
 		return 0;
 
+	// Restart Mining Threads With New Work
+	restart_threads();
+
 	return 1;
 }
 
@@ -1196,7 +1199,7 @@ out:
 	return NULL;
 }
 
-void restart_threads(void)
+static void restart_threads(void)
 {
 	int i;
 

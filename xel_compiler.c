@@ -158,9 +158,15 @@ bool compile_and_link(char* lib_name) {
 	sprintf(str, "compile_dll.bat ./lib/%s.dll", lib_name);
 	system(str);
 #else
+#ifdef __arm__
+	sprintf(str, "gcc -std=c99 -shared -Wl,-soname,./lib/%s.so.1 -o ./lib/%s.so ./lib/work_lib.o", lib_name, lib_name);
+	system("gcc -c -std=c99 -Ofast -fPIC ./lib/work_lib.c -o ./lib/work_lib.o");
+	system(str);
+#else
 	sprintf(str, "gcc -shared -Wl,-soname,./lib/%s.so.1 -o ./lib/%s.so ./lib/work_lib.o", lib_name, lib_name);
 	system("gcc -c -march=native -Ofast -fPIC ./lib/work_lib.c -o ./lib/work_lib.o");
 	system(str);
+#endif
 #endif
 
 	return true;
@@ -204,7 +210,9 @@ void create_instance(struct instance* inst, char *lib_name) {
 
 void free_compiler(struct instance* inst) {
 	if (inst->hndl != 0) {
-//		inst->free_mem();
+#ifndef __MINGW32_VERSION	// TBD - This needs to get fixed for MINGW2
+		inst->free_mem();
+#endif
 #ifdef WIN32
 		FreeLibrary((HMODULE)inst->hndl);
 #else

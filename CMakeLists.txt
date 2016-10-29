@@ -44,17 +44,18 @@ ENDIF ( WIN32 )
 
 target_link_libraries(${TARGET_NAME} crypto pthread ${CURL_LIBRARIES} jansson)
 
-IF(WIN32)
+IF(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
+	target_link_libraries(${TARGET_NAME} m dl)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Ofast -fPIC")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -fPIC")
+ELSEIF( WIN32 )
 	target_link_libraries(${TARGET_NAME} libcurl Ws2_32)
         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Ofast -msse -msse2 -msse3 -mmmx -m3dnow")
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -msse -msse2 -msse3 -mmmx -m3dnow")
-ENDIF(WIN32)
-
-IF(UNIX)
+ELSEIF ( UNIX )
 	target_link_libraries(${TARGET_NAME} m dl)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Ofast -msse -msse2 -msse3 -mmmx -m3dnow -fPIC -fext-numeric-literals")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -msse -msse2 -msse3 -mmmx -m3dnow -fPIC -fext-numeric-literals")
-
-ENDIF(UNIX)
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Ofast -fPIC -fext-numeric-literals")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -fPIC -fext-numeric-literals")
+ENDIF()
 
 set_target_properties( ${TARGET_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR} )
