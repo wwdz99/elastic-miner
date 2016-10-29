@@ -143,22 +143,24 @@ bool create_c_source() {
 }
 
 bool compile_and_link(char* lib_name) {
-	char file_name[1000];
+	char str[1000];
+
+	applog(LOG_DEBUG, "DEBUG: Converting ElasticPL to C");
 
 	if (!create_c_source()) {
 		applog(LOG_ERR, "Unable to convert ElasticPL to C");
 		return false;
 	}
 
+	applog(LOG_DEBUG, "DEBUG: Compiling C Library: %s", lib_name);
+
 #ifdef WIN32
-	system("compile_dll.bat");
-	sprintf(file_name, "./lib/%s.dll", lib_name);
-	rename("./lib/work_lib.dll", file_name);
+	sprintf(str, "compile_dll.bat ./lib/%s.dll", lib_name);
+	system(str);
 #else
+	sprintf(str, "gcc -shared -Wl,-soname,./lib/%s.so.1 -o ./lib/%s.so ./lib/work_lib.o", lib_name, lib_name);
 	system("gcc -c -march=native -Ofast -fPIC ./lib/work_lib.c -o ./lib/work_lib.o");
-	system("gcc -shared -Wl,-soname,./lib/work_lib.so.1 -o ./lib/work_lib.so ./lib/work_lib.o");
-	sprintf(file_name, "./lib/%s.so", lib_name);
-	rename("./lib/work_lib.so", file_name);
+	system(str);
 #endif
 
 	return true;
@@ -202,9 +204,9 @@ void create_instance(struct instance* inst, char *lib_name) {
 
 void free_compiler(struct instance* inst) {
 	if (inst->hndl != 0) {
-		inst->free_mem();
+//		inst->free_mem();
 #ifdef WIN32
-		FreeLibrary((HMODULE)inst->hndl); 
+		FreeLibrary((HMODULE)inst->hndl);
 #else
 		dlclose(inst->hndl);
 #endif

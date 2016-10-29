@@ -781,12 +781,15 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 			return 0;
 		}
 		work_id = strtoull(str, NULL, 10);
+		applog(LOG_DEBUG, "DEBUG: Checking work_id: %s", str);
 
 		// Check If Work Package Exists
 		work_pkg_id = -1;
 		for (j = 0; j < g_work_package_cnt; j++) {
-			if (work_id == g_work_package[i].work_id)
+			if (work_id == g_work_package[j].work_id) {
 				work_pkg_id = j;
+				break;
+			}
 		}
 
 		// Add New Work Packages
@@ -848,6 +851,8 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 				applog(LOG_ERR, "ERROR: Unable to convert 'source' to C for work_id: %s\n\n%s\n", work_package.work_str, str);
 				return 0;
 			}
+
+			applog(LOG_DEBUG, "DEBUG: Adding work package to list, work_id: %s", work_package.work_str);
 
 			add_work_package(&work_package);
 			work_pkg_id = g_work_package_cnt - 1;
@@ -1113,7 +1118,7 @@ static void *miner_thread(void *userdata) {
 		}
 
 		// Check If We Are Mining The Most Current Work
-		if (!work.wrk_pkg || (work.wrk_pkg->work_id != g_work.wrk_pkg->work_id)) {
+		if (g_work.wrk_pkg && (!work.wrk_pkg || (work.wrk_pkg->work_id != g_work.wrk_pkg->work_id))) {
 
 			// Copy Global Work Into Local Thread Work
 			memcpy((void *)&work, (void *)&g_work, sizeof(struct work));
