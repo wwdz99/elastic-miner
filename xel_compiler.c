@@ -42,11 +42,11 @@ bool create_c_source() {
 	fprintf(f, "#define FREE_ALIGNED_BUFFER(_buffer) _mm_free(_buffer)\n");
 #endif
 	fprintf(f, "static const unsigned int mask32 = (CHAR_BIT*sizeof(uint32_t)-1);\n\n");
-	fprintf(f, "static uint32_t rotl32 (uint32_t x, int n) {\n");
+	fprintf(f, "static uint32_t rotl32 (uint32_t x, unsigned int n) {\n");
 	fprintf(f, "\tn &= mask32;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers\n");
 	fprintf(f, "\treturn (x<<n) | (x>>( (-n)&mask32 ));\n");
 	fprintf(f, "}\n\n");
-	fprintf(f, "static uint32_t rotr32 (uint32_t x, int n) {\n");
+	fprintf(f, "static uint32_t rotr32 (uint32_t x, unsigned int n) {\n");
 	fprintf(f, "\tn &= mask32;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers\n");
 	fprintf(f, "\treturn (x>>n) | (x<<( (-n)&mask32 ));\n");
 	fprintf(f, "}\n\n");

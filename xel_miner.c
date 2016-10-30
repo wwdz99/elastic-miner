@@ -871,7 +871,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 		bty_rcvd = (int)json_integer_value(json_object_get(pkg, "received_bounties"));
 		if (g_work_package[work_pkg_id].bounty_limit <= (bty_rcvd + g_work_package[work_pkg_id].pending_bty_cnt)) {
 			applog(LOG_DEBUG, "DEBUG: Skipping work_id: %s - No Bounties Left", g_work_package[work_pkg_id].work_str);
-			return -1;
+			continue;
 		}
 
 		// Select Best Work Package
@@ -1463,35 +1463,9 @@ static int thread_create(struct thr_info *thr, void* func)
 	return err;
 }
 
-
-static int mm(int x) {
-	int mod = x % 32;
-	int leaf = mod % 4;
-	if (leaf == 0) {
-		x = 0;
-	}
-	else if (leaf == 1) {
-		x = 0;
-	}
-	else if (leaf == 2) {
-		x = 0;
-	}
-	else {
-		x = 0;
-	}
-	return x;
-}
-
-
 int main(int argc, char **argv) {
 	struct thr_info *thr;
 	int i, err, thr_idx;
-
-	//mm(1);
-	//mm(0);
-	//mm(11);
-	//mm(20);
-	//mm(21);
 
 	fprintf(stdout, "** " PACKAGE_NAME " " PACKAGE_VERSION " **\n");
 
