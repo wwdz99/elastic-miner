@@ -24,22 +24,25 @@ bool create_c_source() {
 	fprintf(f, "#include <time.h>\n");
 #ifdef WIN32
 	fprintf(f, "#include <malloc.h>\n\n");
+	fprintf(f, "#define ALLOC_ALIGNED_BUFFER(_numBytes) ((int *)_aligned_malloc (_numBytes, 64))\n");
+	fprintf(f, "#define FREE_ALIGNED_BUFFER(_buffer) _aligned_free(_buffer)\n\n");
+#else
+	fprintf(f, "#include <mm_malloc.h>\n\n");
+	fprintf(f, "#define ALLOC_ALIGNED_BUFFER(_numBytes) (int *) _mm_malloc(_numBytes, 64)\n");
+	fprintf(f, "#define FREE_ALIGNED_BUFFER(_buffer) _mm_free(_buffer)\n\n");
+#endif
+#ifdef _MSC_VER
 	fprintf(f, "__declspec(thread) int32_t* mem = 0;\n");
 	fprintf(f, "__declspec(thread) uint32_t vm_state1 = 0;\n");
 	fprintf(f, "__declspec(thread) uint32_t vm_state2 = 0;\n");
 	fprintf(f, "__declspec(thread) uint32_t vm_state3 = 0;\n");
 	fprintf(f, "__declspec(thread) uint32_t vm_state4 = 0;\n\n");
-	fprintf(f, "#define ALLOC_ALIGNED_BUFFER(_numBytes) ((int *)_aligned_malloc (_numBytes, 64))\n");
-	fprintf(f, "#define FREE_ALIGNED_BUFFER(_buffer) _aligned_free(_buffer)\n\n");
 #else
-	fprintf(f, "#include <mm_malloc.h>\n\n");
 	fprintf(f, "__thread int32_t* mem = 0;\n");
 	fprintf(f, "__thread uint32_t vm_state1 = 0;\n");
 	fprintf(f, "__thread uint32_t vm_state2 = 0;\n");
 	fprintf(f, "__thread uint32_t vm_state3 = 0;\n");
 	fprintf(f, "__thread uint32_t vm_state4 = 0;\n\n");
-	fprintf(f, "#define ALLOC_ALIGNED_BUFFER(_numBytes) (int *) _mm_malloc(_numBytes, 64)\n");
-	fprintf(f, "#define FREE_ALIGNED_BUFFER(_buffer) _mm_free(_buffer)\n");
 #endif
 	fprintf(f, "static const unsigned int mask32 = (CHAR_BIT*sizeof(uint32_t)-1);\n\n");
 	fprintf(f, "static uint32_t rotl32 (uint32_t x, unsigned int n) {\n");
@@ -154,19 +157,25 @@ bool compile_and_link(char* lib_name) {
 
 	applog(LOG_DEBUG, "DEBUG: Compiling C Library: %s", lib_name);
 
-#ifdef WIN32
+#ifdef _MSC_VER
 	sprintf(str, "compile_dll.bat ./lib/%s.dll", lib_name);
 	system(str);
 #else
-#ifdef __arm__
-	sprintf(str, "gcc -std=c99 -shared -Wl,-soname,./lib/%s.so.1 -o ./lib/%s.so ./lib/work_lib.o", lib_name, lib_name);
+ #ifdef __MINGW32_VERSION
+	system("gcc -c -march=native -Ofast -msse -msse2 -msse3 -mmmx -m3dnow -DBUILDING_EXAMPLE_DLL ./lib/work_lib.c -o ./lib/work_lib.o");
+	sprintf(str, "gcc -shared -o ./lib/%s.dll ./lib/work_lib.o", lib_name);
+	system(str);
+ #else
+  #ifdef __arm__
 	system("gcc -c -std=c99 -Ofast -fPIC ./lib/work_lib.c -o ./lib/work_lib.o");
+	sprintf(str, "gcc -std=c99 -shared -Wl,-soname,./lib/%s.so.1 -o ./lib/%s.so ./lib/work_lib.o", lib_name, lib_name);
 	system(str);
-#else
-	sprintf(str, "gcc -shared -Wl,-soname,./lib/%s.so.1 -o ./lib/%s.so ./lib/work_lib.o", lib_name, lib_name);
+  #else
 	system("gcc -c -march=native -Ofast -fPIC ./lib/work_lib.c -o ./lib/work_lib.o");
+	sprintf(str, "gcc -shared -Wl,-soname,./lib/%s.so.1 -o ./lib/%s.so ./lib/work_lib.o", lib_name, lib_name);
 	system(str);
-#endif
+  #endif
+ #endif
 #endif
 
 	return true;
@@ -174,7 +183,6 @@ bool compile_and_link(char* lib_name) {
 
 void create_instance(struct instance* inst, char *lib_name) {
 	char file_name[1000];
-
 #ifdef WIN32
 	sprintf(file_name, "./lib/%s.dll", lib_name);
 	inst->hndl = LoadLibrary(file_name);
