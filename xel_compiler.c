@@ -161,7 +161,7 @@ bool compile_and_link(char* lib_name) {
 	sprintf(str, "compile_dll.bat ./lib/%s.dll", lib_name);
 	system(str);
 #else
- #ifdef __MINGW32_VERSION
+ #ifdef __MINGW32__
 	system("gcc -c -march=native -Ofast -msse -msse2 -msse3 -mmmx -m3dnow -DBUILDING_EXAMPLE_DLL ./lib/work_lib.c -o ./lib/work_lib.o");
 	sprintf(str, "gcc -shared -o ./lib/%s.dll ./lib/work_lib.o", lib_name);
 	system(str);
@@ -193,7 +193,7 @@ void create_instance(struct instance* inst, char *lib_name) {
 	inst->initialize = (int(__cdecl *)())GetProcAddress((HMODULE)inst->hndl, "initialize");
 	inst->reset = (int(__cdecl *)(int *))GetProcAddress((HMODULE)inst->hndl, "reset");
 	inst->execute = (int(__cdecl *)(uint32_t *))GetProcAddress((HMODULE)inst->hndl, "execute");
-	inst->free_mem = (int(__cdecl *)())GetProcAddress((HMODULE)inst->hndl, "execute");
+	inst->free_mem = (int(__cdecl *)())GetProcAddress((HMODULE)inst->hndl, "free_mem");
 	if (!inst->initialize || !inst->reset || !inst->execute || !inst->free_mem) {
 		fprintf(stderr, "Unable to find library functions");
 		FreeLibrary((HMODULE)inst->hndl);
@@ -218,9 +218,7 @@ void create_instance(struct instance* inst, char *lib_name) {
 
 void free_compiler(struct instance* inst) {
 	if (inst->hndl != 0) {
-#ifndef __MINGW32_VERSION	// TBD - This needs to get fixed for MINGW2
 		inst->free_mem();
-#endif
 #ifdef WIN32
 		FreeLibrary((HMODULE)inst->hndl);
 #else
