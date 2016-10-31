@@ -1268,6 +1268,7 @@ static bool add_submit_req(struct work *work, enum submit_commands req_type) {
 		return false;
 	}
 	g_submit_req[g_submit_req_cnt].thr_id = work->thr_id;
+	g_submit_req[g_submit_req_cnt].bounty = false;
 	g_submit_req[g_submit_req_cnt].req_type = req_type;
 	g_submit_req[g_submit_req_cnt].start_tm = time(NULL);
 	g_submit_req[g_submit_req_cnt].delay_tm = 0;
@@ -1275,8 +1276,11 @@ static bool add_submit_req(struct work *work, enum submit_commands req_type) {
 	g_submit_req[g_submit_req_cnt].wrk_pkg = work->wrk_pkg;
 	sprintf(g_submit_req[g_submit_req_cnt].hash, "%08X%08X%08X%08X%08X%08X%08X%08X", swap32(hash32[0]), swap32(hash32[1]), swap32(hash32[2]), swap32(hash32[3]), swap32(hash32[4]), swap32(hash32[5]), swap32(hash32[6]), swap32(hash32[7]));
 	sprintf(g_submit_req[g_submit_req_cnt].mult, "%08X%08X%08X%08X%08X%08X%08X%08X", swap32(mult32[0]), swap32(mult32[1]), swap32(mult32[2]), swap32(mult32[3]), swap32(mult32[4]), swap32(mult32[5]), swap32(mult32[6]), swap32(mult32[7]));
+	if (!req_type != SUBMIT_POW) {
+		g_submit_req[g_submit_req_cnt].bounty = true;
+		work->wrk_pkg->pending_bty_cnt++;
+	}
 	g_submit_req_cnt++;
-	work->wrk_pkg->pending_bty_cnt++;
 
 	pthread_mutex_unlock(&submit_lock);
 	return true;
@@ -1287,7 +1291,10 @@ static bool delete_submit_req(int idx) {
 	int i;
 
 	pthread_mutex_lock(&submit_lock);
-	g_submit_req[idx].wrk_pkg->pending_bty_cnt--;
+
+	if(g_submit_req[idx].bounty)
+		g_submit_req[idx].wrk_pkg->pending_bty_cnt--;
+	
 	if (g_submit_req_cnt > 0) {
 		req = malloc((g_submit_req_cnt - 1) * sizeof(struct submit_req));
 		if (!req) {

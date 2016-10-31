@@ -124,6 +124,7 @@ enum workio_commands {
 
 struct submit_req {
 	int thr_id;
+	bool bounty;
 	enum submit_commands req_type;
 	time_t start_tm;	// Time Request Was Submitted
 	time_t delay_tm;	// If Populated, Time When Next Request Can Be Sent
