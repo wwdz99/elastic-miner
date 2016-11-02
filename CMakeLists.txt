@@ -5,6 +5,7 @@ project(xel_miner)
 # Confirm CURL Has Been Installed
 FIND_PATH( CURL_INCLUDE_DIR curl/curl.h  PATHS ${PC_CURL_INCLUDEDIR} ${PC_CURL_INCLUDE_DIRS}  PATH_SUFFIXES include )
 FIND_LIBRARY( CURL_LIBRARIES NAMES curl PATHS ${PC_CURL_LIBDIR} ${PC_CURL_LIBRARY_DIRS} PATH_SUFFIXES lib )
+find_package(OpenSSL REQUIRED)
 
 IF (CURL_INCLUDE_DIR AND CURL_LIBRARIES)
 	SET(CURL_FOUND TRUE)
@@ -25,6 +26,7 @@ include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/algo ${PROJECT_S
 
 set(SRC_LIST	xel_miner.c
 				xel_compiler.c
+				curve25519-donna-c64.c
 				util.c
 				./ElasticPL/ElasticPL.c
 				./ElasticPL/ElasticPLTokenManager.c
