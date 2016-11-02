@@ -169,11 +169,11 @@ bool compile_and_link(char* lib_name) {
  #else
   #ifdef __arm__
 	system("gcc -c -std=c99 -Ofast -fPIC ./lib/work_lib.c -o ./lib/work_lib.o");
-	sprintf(str, "gcc -std=c99 -shared -Wl,-soname,./lib/%s.so.1 -o ./lib/%s.so ./lib/work_lib.o", lib_name, lib_name);
+	sprintf(str, "gcc -std=c99 -shared -Wl,-soname,./lib/%s.so.1 -o ./lib/%s.so ./lib/work_lib.o -L./lib -lelasticpl_crypto", lib_name, lib_name);
 	system(str);
   #else
 	system("gcc -c -march=native -Ofast -fPIC ./lib/work_lib.c -o ./lib/work_lib.o");
-	sprintf(str, "gcc -shared -Wl,-soname,./lib/%s.so.1 -o ./lib/%s.so ./lib/work_lib.o", lib_name, lib_name);
+	sprintf(str, "gcc -shared -Wl,-soname,./lib/%s.so.1 -o ./lib/%s.so ./lib/work_lib.o -L./lib -lelasticpl_crypto", lib_name, lib_name);
 	system(str);
   #endif
  #endif
