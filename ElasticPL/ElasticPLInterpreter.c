@@ -192,7 +192,7 @@ static char* convert(ast* exp) {
 			strcpy(blk_old, blk_new);
 			break;
 		case NODE_SHA256:
-			sprintf(result, "sha256( %s );\n", rval);
+			sprintf(result, "m(epl_sha256( %s, mem ));\n", rval);
 			break;
 		case NODE_SHA512:
 			sprintf(result, "sha512( %s );\n", rval);
