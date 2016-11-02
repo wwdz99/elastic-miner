@@ -22,6 +22,7 @@ bool create_c_source() {
 	fprintf(f, "#include <stdlib.h>\n");
 	fprintf(f, "#include <limits.h>\n");
 	fprintf(f, "#include <time.h>\n");
+	fprintf(f, "#include \"elasticpl_crypto.h\"\n");
 #ifdef WIN32
 	fprintf(f, "#include <malloc.h>\n\n");
 	fprintf(f, "#define ALLOC_ALIGNED_BUFFER(_numBytes) ((int *)_aligned_malloc (_numBytes, 64))\n");
@@ -184,7 +185,8 @@ bool compile_and_link(char* lib_name) {
 void create_instance(struct instance* inst, char *lib_name) {
 	char file_name[1000];
 #ifdef WIN32
-	sprintf(file_name, "./lib/%s.dll", lib_name);
+	sprintf(file_name, "./lib/test.dll", lib_name);
+//	sprintf(file_name, "./lib/%s.dll", lib_name);
 	inst->hndl = LoadLibrary(file_name);
 	if (!inst->hndl) {
 		fprintf(stderr, "Unable to load library: '%s'", file_name);
