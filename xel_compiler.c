@@ -164,7 +164,7 @@ bool compile_and_link(char* lib_name) {
 #else
  #ifdef __MINGW32__
 	system("gcc -c -march=native -Ofast -msse -msse2 -msse3 -mmmx -m3dnow -DBUILDING_EXAMPLE_DLL ./lib/work_lib.c -o ./lib/work_lib.o");
-	sprintf(str, "gcc -shared -o ./lib/%s.dll ./lib/work_lib.o", lib_name);
+	sprintf(str, "gcc -shared -o ./lib/%s.dll ./lib/work_lib.o -L./lib -lelasticpl_crypto", lib_name);
 	system(str);
  #else
   #ifdef __arm__
