@@ -185,8 +185,7 @@ bool compile_and_link(char* lib_name) {
 void create_instance(struct instance* inst, char *lib_name) {
 	char file_name[1000];
 #ifdef WIN32
-	sprintf(file_name, "./lib/test.dll", lib_name);
-//	sprintf(file_name, "./lib/%s.dll", lib_name);
+	sprintf(file_name, "./lib/%s.dll", lib_name);
 	inst->hndl = LoadLibrary(file_name);
 	if (!inst->hndl) {
 		fprintf(stderr, "Unable to load library: '%s'", file_name);
