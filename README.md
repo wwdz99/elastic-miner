@@ -13,7 +13,6 @@ Below are the steps I used to get the miner running on my Raspberry Pi.
 <li>sudo apt-get install cmake libcurl4-openssl-dev libudev-dev screen libtool pkg-config libjansson-dev</li>
 <li>git clone https://github.com/sprocket-fpga/xel_miner.git</li>
 <li>cd xel_miner</li>
-<li>mkdir build</li>
 <li>cd build</li>
 <li>cmake ..</li>
 <li>make install</li>
