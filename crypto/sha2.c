@@ -145,39 +145,6 @@ void sha256d(unsigned char *hash, const unsigned char *data, int len)
 	sha256(hash1, 32, hash);
 }
 
-void sha256_epl(const unsigned char *message, unsigned int len, unsigned char *digest)
-{
-	sha256_ctx ctx;
-	unsigned char *msg;
-	unsigned char hash[32];
-	unsigned int *message32 = (unsigned int *)message;
-	unsigned int *digest32 = (unsigned int *)digest;
-	unsigned int *hash32 = (unsigned int *)hash;
-	unsigned int *msg32;
-	int i, n;
-
-	msg = malloc(len);
-	if (!msg)
-		return;
-
-	msg32 = (unsigned int *)msg;
-
-	n = (int)(len / 4);
-	for (i = 0; i < n; i++) {
-		msg32[i] = swap32(message32[i]);
-	}
-
-	sha256_init(&ctx);
-	sha256_update(&ctx, msg, len);
-	sha256_final(&ctx, hash);
-
-	for (i = 0; i < 8; i++) {
-		digest32[i] = swap32(hash32[i]);
-	}
-
-	free(msg);
-}
-
 void sha256(const unsigned char *message, unsigned int len, unsigned char *digest)
 {
     sha256_ctx ctx;
