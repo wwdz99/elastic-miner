@@ -20,8 +20,18 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <time.h>
-
+#include <openssl/rand.h>
+#include <openssl/sha.h>
 #include "miner.h"
+
+unsigned char *internal_sha256(unsigned char *str, int n, unsigned char *hash)
+{
+    SHA256_CTX sha256;
+    SHA256_Init(&sha256);
+    SHA256_Update(&sha256, str, n);
+    SHA256_Final(hash, &sha256);
+    return hash;
+}
 
 #ifdef WIN32
 #include <malloc.h>
@@ -83,6 +93,7 @@ static struct work g_work = { 0 };
 static time_t g_work_time = 0;
 static struct work_package *g_work_package;
 static int g_work_package_cnt = 0;
+static const uint8_t basepoint[32] = {9};
 
 struct submit_req *g_submit_req;
 int g_submit_req_cnt = 0;
@@ -109,7 +120,6 @@ Options:\n\
   -c, --config <file>         Use JSON-formated configuration file\n\
   -D, --debug                 Display debug output\n\
   -h, --help                  Display this help text and exit\n\
-  -k, --public <publickey>    Public Key for Elastic Account\n\
   -m, --mining PREF[:ID]      Mining preference for choosing work\n\
                                 profit       (Default) Estimate most profitable based on WCET vs reward\n\
                                 wcet         Fewest cycles required by work item \n\
@@ -199,17 +209,6 @@ void parse_arg(int key, char *arg)
 		break;
 	case 'h':
 		show_usage_and_exit(0);
-	case 'k':
-		if (strlen(arg) != 64) {
-			fprintf(stderr, "Invalid Public Key - %s\n", arg);
-			show_usage_and_exit(1);
-		}
-		publickey = malloc(32);
-		d32 = (uint32_t *)publickey;
-		hex2ints(d32, 8, arg, 64);
-		for (i = 0; i < 8; i++)
-			d32[i] = swap32(d32[i]);
-		break;
 	case 'm':
 		for (i = 0; i < PREF_COUNT; i++) {
 			v = (int)strlen(pref_type[i]);
@@ -270,6 +269,27 @@ void parse_arg(int key, char *arg)
 	case 'P':
 		passphrase = strdup(arg);
 		strhide(arg);
+		publickey = malloc(32);
+
+		// Generate publickey on the fly
+		char* hash_sha256 = (char*)malloc(32*sizeof(char));
+		internal_sha256(passphrase, strlen(passphrase), hash_sha256);
+		// Clamp
+		hash_sha256[0] &= 248;
+		hash_sha256[31] &= 127;
+		hash_sha256[31] |= 64;
+		// Do "donna"
+		curve25519_donna(publickey, hash_sha256, basepoint);
+		// Now do the swap thing
+		d32 = (uint32_t *)publickey;
+		for (i = 0; i < 8; i++)
+			d32[i] = swap32(d32[i]);
+		/** This is just for the debug output to test if the key gets created correctly
+		int idk;
+		for(idk=0;idk<32;idk++) printf("%hhx",publickey[idk]);
+		printf("\n");*/
+		free(hash_sha256);
+
 		break;
 	case 'q':
 		opt_quiet = true;
