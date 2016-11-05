@@ -294,4 +294,6 @@ bool compile_and_link(char* file_name);
 void create_instance(struct instance* inst, char *file_name);
 void free_compiler(struct instance* inst);
 
+int curve25519_donna(uint8_t *mypublic, const uint8_t *secret, const uint8_t *basepoint);
+
 #endif /* __MINER_H__ */

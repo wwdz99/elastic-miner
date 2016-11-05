@@ -12,7 +12,7 @@
 
 bool create_c_source() {
 	char *code;
-	FILE* f = fopen("./lib/work_lib.c", "w");
+	FILE* f = fopen("./work/work_lib.c", "w");
 
 	if (!f)
 		return false;
@@ -22,7 +22,7 @@ bool create_c_source() {
 	fprintf(f, "#include <stdlib.h>\n");
 	fprintf(f, "#include <limits.h>\n");
 	fprintf(f, "#include <time.h>\n");
-	fprintf(f, "#include \"elasticpl_crypto.h\"\n");
+	fprintf(f, "#include \"../crypto/elasticpl_crypto.h\"\n");
 #ifdef WIN32
 	fprintf(f, "#include <malloc.h>\n\n");
 	fprintf(f, "#define ALLOC_ALIGNED_BUFFER(_numBytes) ((int *)_aligned_malloc (_numBytes, 64))\n");
@@ -159,21 +159,21 @@ bool compile_and_link(char* lib_name) {
 	applog(LOG_DEBUG, "DEBUG: Compiling C Library: %s", lib_name);
 
 #ifdef _MSC_VER
-	sprintf(str, "compile_dll.bat ./lib/%s.dll", lib_name);
+	sprintf(str, "compile_dll.bat ./work/%s.dll", lib_name);
 	system(str);
 #else
  #ifdef __MINGW32__
-	system("gcc -c -march=native -Ofast -msse -msse2 -msse3 -mmmx -m3dnow -DBUILDING_EXAMPLE_DLL ./lib/work_lib.c -o ./lib/work_lib.o");
-	sprintf(str, "gcc -shared -o ./lib/%s.dll ./lib/work_lib.o -L./lib -lelasticpl_crypto", lib_name);
+	system("gcc -c -march=native -Ofast -msse -msse2 -msse3 -mmmx -m3dnow -DBUILDING_EXAMPLE_DLL ./work/work_lib.c -o ./work/work_lib.o");
+	sprintf(str, "gcc -shared -o ./work/%s.dll ./work/work_lib.o -L./crypto -lelasticpl_crypto", lib_name);
 	system(str);
  #else
   #ifdef __arm__
-	system("gcc -c -std=c99 -Ofast -fPIC ./lib/work_lib.c -o ./lib/work_lib.o");
-	sprintf(str, "gcc -std=c99 -shared -Wl,-soname,./lib/%s.so.1 -o ./lib/%s.so ./lib/work_lib.o -L./lib -lelasticpl_crypto", lib_name, lib_name);
+	system("gcc -c -std=c99 -Ofast -fPIC ./work/work_lib.c -o ./work/work_lib.o");
+	sprintf(str, "gcc -std=c99 -shared -Wl,-soname,./work/%s.so.1 -o ./work/%s.so ./work/work_lib.o -L./crypto -lelasticpl_crypto", lib_name, lib_name);
 	system(str);
   #else
-	system("gcc -c -march=native -Ofast -fPIC ./lib/work_lib.c -o ./lib/work_lib.o");
-	sprintf(str, "gcc -shared -Wl,-soname,./lib/%s.so.1 -o ./lib/%s.so ./lib/work_lib.o -L./lib -lelasticpl_crypto", lib_name, lib_name);
+	system("gcc -c -march=native -Ofast -fPIC ./work/work_lib.c -o ./work/work_lib.o");
+	sprintf(str, "gcc -shared -Wl,-soname,./work/%s.so.1 -o ./work/%s.so ./work/work_lib.o -L./crypto -lelasticpl_crypto", lib_name, lib_name);
 	system(str);
   #endif
  #endif
@@ -185,7 +185,7 @@ bool compile_and_link(char* lib_name) {
 void create_instance(struct instance* inst, char *lib_name) {
 	char file_name[1000];
 #ifdef WIN32
-	sprintf(file_name, "./lib/%s.dll", lib_name);
+	sprintf(file_name, "./work/%s.dll", lib_name);
 	inst->hndl = LoadLibrary(file_name);
 	if (!inst->hndl) {
 		fprintf(stderr, "Unable to load library: '%s'", file_name);
@@ -202,7 +202,7 @@ void create_instance(struct instance* inst, char *lib_name) {
 	}
 	applog(LOG_DEBUG, "DEBUG: '%s' Loaded", file_name);
 #else
-	sprintf(file_name, "./lib/%s.so", lib_name);
+	sprintf(file_name, "./work/%s.so", lib_name);
 	inst->hndl = dlmopen(LM_ID_BASE, file_name, RTLD_NOW);
 	if (!inst->hndl) {
 		fprintf(stderr, "%sn", dlerror());

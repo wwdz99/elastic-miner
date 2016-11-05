@@ -3,8 +3,8 @@ set(CMAKE_BUILD_TYPE Debug)
 project(xel_miner)
 
 # Confirm CURL Has Been Installed
-FIND_PATH( CURL_INCLUDE_DIR curl/curl.h  PATHS ${PC_CURL_INCLUDEDIR} ${PC_CURL_INCLUDE_DIRS}  PATH_SUFFIXES include )
-FIND_LIBRARY( CURL_LIBRARIES NAMES curl PATHS ${PC_CURL_LIBDIR} ${PC_CURL_LIBRARY_DIRS} PATH_SUFFIXES lib )
+find_path( CURL_INCLUDE_DIR curl/curl.h  PATHS ${PC_CURL_INCLUDEDIR} ${PC_CURL_INCLUDE_DIRS}  PATH_SUFFIXES include )
+find_library( CURL_LIBRARIES NAMES curl PATHS ${PC_CURL_LIBDIR} ${PC_CURL_LIBRARY_DIRS} PATH_SUFFIXES lib )
 find_package(OpenSSL REQUIRED)
 
 IF (CURL_INCLUDE_DIR AND CURL_LIBRARIES)
@@ -19,14 +19,13 @@ ELSE (CURL_FOUND)
 	message(STATUS "CURL: Not Found!")
 ENDIF (CURL_FOUND)
 
-
 add_subdirectory(compat/jansson)
+add_subdirectory(crypto)
 
 include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/algo ${PROJECT_SOURCE_DIR}/compat/jansson ${CURL_INCLUDE_DIR})
 
 set(SRC_LIST	xel_miner.c
 				xel_compiler.c
-				curve25519-donna-c64.c
 				util.c
 				./ElasticPL/ElasticPL.c
 				./ElasticPL/ElasticPLTokenManager.c
@@ -34,6 +33,7 @@ set(SRC_LIST	xel_miner.c
 				./ElasticPL/ElasticPLInterpreter.c
 				./crypto/md5.c
 				./crypto/sha2.c
+				./crypto/curve25519-donna.c
 )
 			
 set(TARGET_NAME xel_miner)

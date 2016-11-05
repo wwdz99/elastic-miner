@@ -26,11 +26,11 @@
 
 unsigned char *internal_sha256(unsigned char *str, int n, unsigned char *hash)
 {
-    SHA256_CTX sha256;
-    SHA256_Init(&sha256);
-    SHA256_Update(&sha256, str, n);
-    SHA256_Final(hash, &sha256);
-    return hash;
+	SHA256_CTX sha256;
+	SHA256_Init(&sha256);
+	SHA256_Update(&sha256, str, n);
+	SHA256_Final(hash, &sha256);
+	return hash;
 }
 
 #ifdef WIN32
@@ -93,7 +93,7 @@ static struct work g_work = { 0 };
 static time_t g_work_time = 0;
 static struct work_package *g_work_package;
 static int g_work_package_cnt = 0;
-static const uint8_t basepoint[32] = {9};
+static const uint8_t basepoint[32] = { 9 };
 
 struct submit_req *g_submit_req;
 int g_submit_req_cnt = 0;
@@ -272,7 +272,7 @@ void parse_arg(int key, char *arg)
 		publickey = malloc(32);
 
 		// Generate publickey on the fly
-		char* hash_sha256 = (char*)malloc(32*sizeof(char));
+		char* hash_sha256 = (char*)malloc(32 * sizeof(char));
 		internal_sha256(passphrase, strlen(passphrase), hash_sha256);
 		// Clamp
 		hash_sha256[0] &= 248;
@@ -281,13 +281,13 @@ void parse_arg(int key, char *arg)
 		// Do "donna"
 		curve25519_donna(publickey, hash_sha256, basepoint);
 		// Now do the swap thing
-		d32 = (uint32_t *)publickey;
-		for (i = 0; i < 8; i++)
-			d32[i] = swap32(d32[i]);
-		/** This is just for the debug output to test if the key gets created correctly
+		//d32 = (uint32_t *)publickey;
+		//for (i = 0; i < 8; i++)
+		//	d32[i] = swap32(d32[i]);
+//		/** This is just for the debug output to test if the key gets created correctly
 		int idk;
 		for(idk=0;idk<32;idk++) printf("%hhx",publickey[idk]);
-		printf("\n");*/
+		printf("\n");//*/
 		free(hash_sha256);
 
 		break;
@@ -474,7 +474,7 @@ static void *test_compiler_thread(void *userdata) {
 
 	applog(LOG_DEBUG, "DEBUG: Loading Test File");
 	if (!load_test_file(test_code))
-				exit(EXIT_FAILURE);
+		exit(EXIT_FAILURE);
 
 	fprintf(stdout, "%s\n\n", test_code);
 
@@ -819,7 +819,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 		if (work_pkg_id < 0) {
 			struct work_package work_package;
 			memset(&work_package, 0, sizeof(struct work_package));
-			
+
 			work_package.work_id = work_id;
 			strncpy(work_package.work_str, str, 21);
 			str = (char *)json_string_value(json_object_get(pkg, "block_id"));
@@ -880,7 +880,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 			add_work_package(&work_package);
 			work_pkg_id = g_work_package_cnt - 1;
 		}
-		
+
 		// Check If Work Has Been Blacklisted
 		if (g_work_package[work_pkg_id].blacklisted) {
 			applog(LOG_DEBUG, "DEBUG: Skipping blacklisted work_id: %s", g_work_package[work_pkg_id].work_str);
@@ -898,7 +898,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 		if (opt_pref == PREF_WCET && g_work_package[work_pkg_id].WCET < best_wcet) {
 			best_pkg = work_pkg_id;
 			best_wcet = g_work_package[work_pkg_id].WCET;
-//			tgt = (char *)json_string_value(json_object_get(val, "pow_target"));
+			//			tgt = (char *)json_string_value(json_object_get(val, "pow_target"));
 		}
 		//
 		// TODO:  Add Bounty Reward Profitability Check
@@ -906,12 +906,12 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 		else if (opt_pref == PREF_PROFIT && ((double)g_work_package[work_pkg_id].pow_reward / (double)g_work_package[work_pkg_id].WCET) > best_profit) {
 			best_pkg = work_pkg_id;
 			best_profit = ((double)g_work_package[work_pkg_id].pow_reward / (double)g_work_package[work_pkg_id].WCET);
-//			tgt = (char *)json_string_value(json_object_get(val, "pow_target"));
+			//			tgt = (char *)json_string_value(json_object_get(val, "pow_target"));
 		}
 		else if (opt_pref == PREF_WORKID && (!strcmp(g_work_package[work_pkg_id].work_str, pref_workid))) {
 			best_pkg = work_pkg_id;
 			break;
-//			tgt = (char *)json_string_value(json_object_get(val, "pow_target"));
+			//			tgt = (char *)json_string_value(json_object_get(val, "pow_target"));
 		}
 	}
 
@@ -1312,9 +1312,9 @@ static bool delete_submit_req(int idx) {
 
 	pthread_mutex_lock(&submit_lock);
 
-	if(g_submit_req[idx].bounty)
+	if (g_submit_req[idx].bounty)
 		g_submit_req[idx].wrk_pkg->pending_bty_cnt--;
-	
+
 	if (g_submit_req_cnt > 0) {
 		req = malloc((g_submit_req_cnt - 1) * sizeof(struct submit_req));
 		if (!req) {
