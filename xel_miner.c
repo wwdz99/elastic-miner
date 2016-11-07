@@ -21,17 +21,9 @@
 #include <sys/time.h>
 #include <time.h>
 #include <openssl/rand.h>
-#include <openssl/sha.h>
 #include "miner.h"
 
-unsigned char *internal_sha256(unsigned char *str, int n, unsigned char *hash)
-{
-	SHA256_CTX sha256;
-	SHA256_Init(&sha256);
-	SHA256_Update(&sha256, str, n);
-	SHA256_Final(hash, &sha256);
-	return hash;
-}
+#include "crypto/elasticpl_crypto.h"
 
 #ifdef WIN32
 #include <malloc.h>
@@ -80,13 +72,13 @@ pthread_mutex_t applog_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t work_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t submit_lock = PTHREAD_MUTEX_INITIALIZER;
 
-char *rpc_url = NULL;
-char *rpc_user = NULL;
-char *rpc_pass = NULL;
-char *rpc_userpass = NULL;
-char *passphrase = NULL;
-char *publickey = NULL;
-char *test_filename;
+uint8_t *rpc_url = NULL;
+uint8_t *rpc_user = NULL;
+uint8_t *rpc_pass = NULL;
+uint8_t *rpc_userpass = NULL;
+uint8_t *passphrase = NULL;
+uint8_t publickey[32];
+uint8_t *test_filename;
 
 static struct timeval g_miner_start_time;
 static struct work g_work = { 0 };
@@ -201,7 +193,6 @@ void parse_arg(int key, char *arg)
 {
 	char *p;
 	int v, i;
-	uint32_t *d32;
 
 	switch (key) {
 	case 'D':
@@ -269,25 +260,24 @@ void parse_arg(int key, char *arg)
 	case 'P':
 		passphrase = strdup(arg);
 		strhide(arg);
-		publickey = malloc(32);
 
-		// Generate publickey on the fly
+		// Generate publickey From Secret Phrase
 		char* hash_sha256 = (char*)malloc(32 * sizeof(char));
-		internal_sha256(passphrase, strlen(passphrase), hash_sha256);
+		sha256(passphrase, strlen(passphrase), hash_sha256);
+
 		// Clamp
 		hash_sha256[0] &= 248;
 		hash_sha256[31] &= 127;
 		hash_sha256[31] |= 64;
+
 		// Do "donna"
 		curve25519_donna(publickey, hash_sha256, basepoint);
-		// Now do the swap thing
-		//d32 = (uint32_t *)publickey;
-		//for (i = 0; i < 8; i++)
-		//	d32[i] = swap32(d32[i]);
-//		/** This is just for the debug output to test if the key gets created correctly
-		int idk;
-		for(idk=0;idk<32;idk++) printf("%hhx",publickey[idk]);
-		printf("\n");//*/
+
+		printf("Public Key: ");
+		for(i = 0; i < 32; i++)
+			printf("%02X",publickey[i]);
+		printf("\n");
+
 		free(hash_sha256);
 
 		break;
@@ -1528,8 +1518,8 @@ int main(int argc, char **argv) {
 		sprintf(rpc_userpass, "%s:%s", rpc_user, rpc_pass);
 	}
 
-	if (!opt_test_compiler && !publickey) {
-		applog(LOG_ERR, "ERROR: Public Key (option -k) is required");
+	if (!opt_test_compiler && !passphrase) {
+		applog(LOG_ERR, "ERROR: Passphrase (option -P) is required");
 		return 1;
 	}
 

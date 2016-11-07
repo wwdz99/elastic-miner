@@ -17,6 +17,7 @@ bool create_c_source() {
 	if (!f)
 		return false;
 
+	fprintf(f, "#include <stdbool.h>\n");
 	fprintf(f, "#include <stdio.h>\n");
 	fprintf(f, "#include <stdint.h>\n");
 	fprintf(f, "#include <stdlib.h>\n");
@@ -164,16 +165,16 @@ bool compile_and_link(char* lib_name) {
 #else
  #ifdef __MINGW32__
 	system("gcc -c -march=native -Ofast -msse -msse2 -msse3 -mmmx -m3dnow -DBUILDING_EXAMPLE_DLL ./work/work_lib.c -o ./work/work_lib.o");
-	sprintf(str, "gcc -shared -o ./work/%s.dll ./work/work_lib.o -L./crypto -lelasticpl_crypto", lib_name);
+	sprintf(str, "gcc -shared -o ./work/%s.dll ./work/work_lib.o -L./crypto -lelasticpl_crypto -lcrypto", lib_name);
 	system(str);
  #else
   #ifdef __arm__
 	system("gcc -c -std=c99 -Ofast -fPIC ./work/work_lib.c -o ./work/work_lib.o");
-	sprintf(str, "gcc -std=c99 -shared -Wl,-soname,./work/%s.so.1 -o ./work/%s.so ./work/work_lib.o -L./crypto -lelasticpl_crypto", lib_name, lib_name);
+	sprintf(str, "gcc -std=c99 -shared -Wl,-soname,./work/%s.so.1 -o ./work/%s.so ./work/work_lib.o -L./crypto -lelasticpl_crypto -lcrypto", lib_name, lib_name);
 	system(str);
   #else
 	system("gcc -c -march=native -Ofast -fPIC ./work/work_lib.c -o ./work/work_lib.o");
-	sprintf(str, "gcc -shared -Wl,-soname,./work/%s.so.1 -o ./work/%s.so ./work/work_lib.o -L./crypto -lelasticpl_crypto", lib_name, lib_name);
+	sprintf(str, "gcc -shared -Wl,-soname,./work/%s.so.1 -o ./work/%s.so ./work/work_lib.o -L./crypto -lelasticpl_crypto -lcrypto", lib_name, lib_name);
 	system(str);
   #endif
  #endif
