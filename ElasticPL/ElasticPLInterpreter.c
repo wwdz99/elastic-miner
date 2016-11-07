@@ -192,7 +192,7 @@ static char* convert(ast* exp) {
 			strcpy(blk_old, blk_new);
 			break;
 		case NODE_SHA256:
-			sprintf(result, "m(epl_sha256( %s, mem ));\n", rval);
+			sprintf(result, "\tm(epl_sha256( %s, mem ));\n", rval);
 			break;
 		case NODE_SHA512:
 			sprintf(result, "sha512( %s );\n", rval);
@@ -204,7 +204,7 @@ static char* convert(ast* exp) {
 			sprintf(result, "md5( %s );\n", rval);
 			break;
 		case NODE_SECP192K_PTP:
-			sprintf(result, "SECP192K1PrivToPub( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp192k1, 24 ));\n", rval);
 			break;
 		case NODE_SECP192K_PA:
 			sprintf(result, "SECP192K1PointAdd( %s );\n", rval);
@@ -219,7 +219,9 @@ static char* convert(ast* exp) {
 			sprintf(result, "SECP192K1PointNegate( %s );\n", rval);
 			break;
 		case NODE_SECP192R_PTP:
+//Missing
 			sprintf(result, "SECP192R1PrivToPub( %s );\n", rval);
+//Missing
 			break;
 		case NODE_SECP192R_PA:
 			sprintf(result, "SECP192R1PointAdd( %s );\n", rval);
@@ -234,7 +236,7 @@ static char* convert(ast* exp) {
 			sprintf(result, "SECP192R1PointNegate( %s );\n", rval);
 			break;
 		case NODE_SECP224K_PTP:
-			sprintf(result, "SECP224K1PrivToPub( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp224k1, 28 ));\n", rval);
 			break;
 		case NODE_SECP224K_PA:
 			sprintf(result, "SECP224K1PointAdd( %s );\n", rval);
@@ -249,7 +251,7 @@ static char* convert(ast* exp) {
 			sprintf(result, "SECP224K1PointNegate( %s );\n", rval);
 			break;
 		case NODE_SECP224R_PTP:
-			sprintf(result, "SECP224R1PrivToPub( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp224r1, 28 ));\n", rval);
 			break;
 		case NODE_SECP224R_PA:
 			sprintf(result, "SECP224R1PointAdd( %s );\n", rval);
@@ -264,7 +266,7 @@ static char* convert(ast* exp) {
 			sprintf(result, "SECP224R1PointNegate( %s );\n", rval);
 			break;
 		case NODE_SECP256K_PTP:
-			sprintf(result, "SECP256K1PrivToPub( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp256k1, 32 ));\n", rval);
 			break;
 		case NODE_SECP256K_PA:
 			sprintf(result, "SECP256K1PointAdd( %s );\n", rval);
@@ -279,7 +281,9 @@ static char* convert(ast* exp) {
 			sprintf(result, "SECP256K1PointNegate( %s );\n", rval);
 			break;
 		case NODE_SECP256R_PTP:
+//Missing
 			sprintf(result, "SECP256R1PrivToPub( %s );\n", rval);
+//Missing
 			break;
 		case NODE_SECP256R_PA:
 			sprintf(result, "SECP256R1PointAdd( %s );\n", rval);
@@ -294,7 +298,7 @@ static char* convert(ast* exp) {
 			sprintf(result, "SECP256R1PointNegate( %s );\n", rval);
 			break;
 		case NODE_SECP384R_PTP:
-			sprintf(result, "SECP384R1PrivToPub( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp384r1, 48 ));\n", rval);
 			break;
 		case NODE_SECP384R_PA:
 			sprintf(result, "SECP384R1PointAdd( %s );\n", rval);
@@ -309,7 +313,7 @@ static char* convert(ast* exp) {
 			sprintf(result, "SECP384R1PointNegate( %s );\n", rval);
 			break;
 		case NODE_PRM192V1_PTP:
-			sprintf(result, "PRIME192V1PrivToPub( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v1, 24 ));\n", rval);
 			break;
 		case NODE_PRM192V1_PA:
 			sprintf(result, "PRIME192V1PointAdd( %s );\n", rval);
@@ -324,7 +328,7 @@ static char* convert(ast* exp) {
 			sprintf(result, "PRIME192V1PointNegate( %s );\n", rval);
 			break;
 		case NODE_PRM192V2_PTP:
-			sprintf(result, "PRIME192V2PrivToPub( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v2, 24 ));\n", rval);
 			break;
 		case NODE_PRM192V2_PA:
 			sprintf(result, "PRIME192V2PointAdd( %s );\n", rval);
@@ -339,7 +343,7 @@ static char* convert(ast* exp) {
 			sprintf(result, "PRIME192V2PointNegate( %s );\n", rval);
 			break;
 		case NODE_PRM192V3_PTP:
-			sprintf(result, "PRIME192V3PrivToPub( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v3, 24 ));\n", rval);
 			break;
 		case NODE_PRM192V3_PA:
 			sprintf(result, "PRIME192V3PointAdd( %s );\n", rval);
@@ -354,7 +358,7 @@ static char* convert(ast* exp) {
 			sprintf(result, "PRIME192V3PointNegate( %s );\n", rval);
 			break;
 		case NODE_PRM256V1_PTP:
-			sprintf(result, "PRIME256V1PrivToPub( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime256v1, 32 ));\n", rval);
 			break;
 		case NODE_PRM256V1_PA:
 			sprintf(result, "PRIME256V1PointAdd( %s );\n", rval);
