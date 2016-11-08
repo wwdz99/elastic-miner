@@ -156,7 +156,7 @@ extern uint32_t epl_md5(int idx, int len, int32_t *mem) {
 
 //	dump_hex("Hash", (unsigned char*)(hash), 16);
 
-	for (i = 0; i < 16; i++) {
+	for (i = 0; i < 4; i++) {
 		mem[idx + i] = swap32(hash32[i]);
 	}
 
@@ -168,6 +168,51 @@ extern uint32_t epl_md5(int idx, int len, int32_t *mem) {
 	free(msg);
 	return value;
 }
+
+extern uint32_t epl_ripemd160(int idx, int len, int32_t *mem) {
+	unsigned char *msg;
+	unsigned char hash[20];
+	uint32_t *hash32 = (uint32_t *)hash;
+	uint32_t *msg32;
+	uint32_t value;
+	int i, n;
+
+	n = (int)(len / 4) + ((len % 4) ? 1 : 0);
+
+	// Check Boundary Conditions Of Inputs
+	if ((idx < 0) || (len <= 0) || ((idx + n) >= VM_MEMORY_SIZE) || ((idx + 5) >= VM_MEMORY_SIZE))
+		return 0;
+
+	msg = (unsigned char *)malloc(n * sizeof(int));
+	if (!msg)
+		return 0;
+
+	msg32 = (uint32_t *)msg;
+
+	// Change Endianess Of Message
+	for (i = 0; i < n; i++) {
+		msg32[i] = swap32(mem[idx + i]);
+	}
+
+//	dump_hex("Msg", (unsigned char*)(msg), len);
+
+	RIPEMD160(msg, len, hash);
+
+//	dump_hex("Hash", (unsigned char*)(hash), 16);
+
+	for (i = 0; i < 5; i++) {
+		mem[idx + i] = swap32(hash32[i]);
+	}
+
+	// Get Value For Mangle State
+	value = swap32(hash32[0]);
+
+//	printf("Val: %d, %08X\n", value, value);
+
+	free(msg);
+	return value;
+}
+
 
 extern uint32_t epl_whirlpool(int idx, int len, int32_t *mem) {
 	unsigned char *msg;
