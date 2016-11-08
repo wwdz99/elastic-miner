@@ -374,7 +374,7 @@ static char* convert(ast* exp) {
 			sprintf(result, "Tiger( %s );\n", rval);
 			break;
 		case NODE_RIPEMD160:
-			sprintf(result, "RIPEMD160( %s );\n", rval);
+			sprintf(result, "\tm(epl_ripemd160( %s, mem ));\n", rval);
 			break;
 		case NODE_RIPEMD128:
 			sprintf(result, "RIPEMD128( %s );\n", rval);

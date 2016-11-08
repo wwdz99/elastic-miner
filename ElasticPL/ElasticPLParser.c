@@ -242,7 +242,7 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token) {
 	case TOKEN_PRM256V1_PSM:	node_type = NODE_PRM256V1_PSM;	break;
 	case TOKEN_PRM256V1_PN:	    node_type = NODE_PRM256V1_PN;	break;
 //	case TOKEN_TIGER:	        node_type = NODE_TIGER;			break;
-//	case TOKEN_RIPEMD160:	    node_type = NODE_RIPEMD160;		break;
+	case TOKEN_RIPEMD160:	    node_type = NODE_RIPEMD160;		break;
 //	case TOKEN_RIPEMD128:      	node_type = NODE_RIPEMD128;		break;
 	default: return NODE_ERROR;
 	}
