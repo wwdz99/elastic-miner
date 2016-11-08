@@ -207,16 +207,16 @@ static char* convert(ast* exp) {
 			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp192k1, 24 ));\n", rval);
 			break;
 		case NODE_SECP192K_PA:
-			sprintf(result, "SECP192K1PointAdd( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp192k1, 25, 49 ));\n", rval);
 			break;
 		case NODE_SECP192K_PS:
-			sprintf(result, "SECP192K1PointSub( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp192k1, 25, 49 ));\n", rval);
 			break;
 		case NODE_SECP192K_PSM:
-			sprintf(result, "SECP192K1PointScalarMult( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp192k1, 25, 49 ));\n", rval);
 			break;
 		case NODE_SECP192K_PN:
-			sprintf(result, "SECP192K1PointNegate( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp192k1, 25, 49 ));\n", rval);
 			break;
 		case NODE_SECP192R_PTP:
 //Missing
@@ -239,46 +239,46 @@ static char* convert(ast* exp) {
 			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp224k1, 28 ));\n", rval);
 			break;
 		case NODE_SECP224K_PA:
-			sprintf(result, "SECP224K1PointAdd( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp224k1, 29, 57 ));\n", rval);
 			break;
 		case NODE_SECP224K_PS:
-			sprintf(result, "SECP224K1PointSub( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp224k1, 29, 57 ));\n", rval);
 			break;
 		case NODE_SECP224K_PSM:
-			sprintf(result, "SECP224K1PointScalarMult( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp224k1, 29, 57 ));\n", rval);
 			break;
 		case NODE_SECP224K_PN:
-			sprintf(result, "SECP224K1PointNegate( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp224k1, 29, 57 ));\n", rval);
 			break;
 		case NODE_SECP224R_PTP:
 			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp224r1, 28 ));\n", rval);
 			break;
 		case NODE_SECP224R_PA:
-			sprintf(result, "SECP224R1PointAdd( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp224r1, 29, 57 ));\n", rval);
 			break;
 		case NODE_SECP224R_PS:
-			sprintf(result, "SECP224R1PointSub( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp224r1, 29, 57 ));\n", rval);
 			break;
 		case NODE_SECP224R_PSM:
-			sprintf(result, "SECP224R1PointScalarMult( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp224r1, 29, 57 ));\n", rval);
 			break;
 		case NODE_SECP224R_PN:
-			sprintf(result, "SECP224R1PointNegate( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp224r1, 29, 57 ));\n", rval);
 			break;
 		case NODE_SECP256K_PTP:
 			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp256k1, 32 ));\n", rval);
 			break;
 		case NODE_SECP256K_PA:
-			sprintf(result, "SECP256K1PointAdd( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp256k1, 33, 65 ));\n", rval);
 			break;
 		case NODE_SECP256K_PS:
-			sprintf(result, "SECP256K1PointSub( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp256k1, 33, 65 ));\n", rval);
 			break;
 		case NODE_SECP256K_PSM:
-			sprintf(result, "SECP256K1PointScalarMult( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp256k1, 33, 65 ));\n", rval);
 			break;
 		case NODE_SECP256K_PN:
-			sprintf(result, "SECP256K1PointNegate( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp256k1, 33, 65 ));\n", rval);
 			break;
 		case NODE_SECP256R_PTP:
 //Missing
@@ -301,76 +301,76 @@ static char* convert(ast* exp) {
 			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp384r1, 48 ));\n", rval);
 			break;
 		case NODE_SECP384R_PA:
-			sprintf(result, "SECP384R1PointAdd( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp384r1, 49, 97 ));\n", rval);
 			break;
 		case NODE_SECP384R_PS:
-			sprintf(result, "SECP384R1PointSub( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp384r1, 49, 97 ));\n", rval);
 			break;
 		case NODE_SECP384R_PSM:
-			sprintf(result, "SECP384R1PointScalarMult( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp384r1, 49, 97 ));\n", rval);
 			break;
 		case NODE_SECP384R_PN:
-			sprintf(result, "SECP384R1PointNegate( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp384r1, 49, 97 ));\n", rval);
 			break;
 		case NODE_PRM192V1_PTP:
 			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v1, 24 ));\n", rval);
 			break;
 		case NODE_PRM192V1_PA:
-			sprintf(result, "PRIME192V1PointAdd( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime192v1, 25, 49 ));\n", rval);
 			break;
 		case NODE_PRM192V1_PS:
-			sprintf(result, "PRIME192V1PointSub( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime192v1, 25, 49 ));\n", rval);
 			break;
 		case NODE_PRM192V1_PSM:
-			sprintf(result, "PRIME192V1PointScalarMult( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime192v1, 25, 49 ));\n", rval);
 			break;
 		case NODE_PRM192V1_PN:
-			sprintf(result, "PRIME192V1PointNegate( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime192v1, 25, 49 ));\n", rval);
 			break;
 		case NODE_PRM192V2_PTP:
 			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v2, 24 ));\n", rval);
 			break;
 		case NODE_PRM192V2_PA:
-			sprintf(result, "PRIME192V2PointAdd( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime192v2, 25, 49 ));\n", rval);
 			break;
 		case NODE_PRM192V2_PS:
-			sprintf(result, "PRIME192V2PointSub( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime192v2, 25, 49 ));\n", rval);
 			break;
 		case NODE_PRM192V2_PSM:
-			sprintf(result, "PRIME192V2PointScalarMult( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime192v2, 25, 49 ));\n", rval);
 			break;
 		case NODE_PRM192V2_PN:
-			sprintf(result, "PRIME192V2PointNegate( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime192v2, 25, 49 ));\n", rval);
 			break;
 		case NODE_PRM192V3_PTP:
 			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v3, 24 ));\n", rval);
 			break;
 		case NODE_PRM192V3_PA:
-			sprintf(result, "PRIME192V3PointAdd( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime192v3, 25, 49 ));\n", rval);
 			break;
 		case NODE_PRM192V3_PS:
-			sprintf(result, "PRIME192V3PointSub( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime192v3, 25, 49 ));\n", rval);
 			break;
 		case NODE_PRM192V3_PSM:
-			sprintf(result, "PRIME192V3PointScalarMult( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime192v3, 25, 49 ));\n", rval);
 			break;
 		case NODE_PRM192V3_PN:
-			sprintf(result, "PRIME192V3PointNegate( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime192v3, 25, 49 ));\n", rval);
 			break;
 		case NODE_PRM256V1_PTP:
 			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime256v1, 32 ));\n", rval);
 			break;
 		case NODE_PRM256V1_PA:
-			sprintf(result, "PRIME256V1PointAdd( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime256v1, 33, 65 ));\n", rval);
 			break;
 		case NODE_PRM256V1_PS:
-			sprintf(result, "PRIME256V1PointSub( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime256v1, 33, 65 ));\n", rval);
 			break;
 		case NODE_PRM256V1_PSM:
-			sprintf(result, "PRIME256V1PointScalarMult( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime256v1, 33, 65 ));\n", rval);
 			break;
 		case NODE_PRM256V1_PN:
-			sprintf(result, "PRIME256V1PointNegate( %s );\n", rval);
+			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime256v1, 33, 65 ));\n", rval);
 			break;
 		case NODE_TIGER:
 			sprintf(result, "Tiger( %s );\n", rval);
