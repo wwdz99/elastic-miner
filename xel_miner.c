@@ -517,10 +517,8 @@ static bool get_vm_input(struct work *work) {
 	msg32[18] = swap32(msg32[18]);
 	msg32[19] = swap32(msg32[19]);
 
-	MD5_CTX ctx;
-	MD5_Init(&ctx);
-	MD5_Update(&ctx, msg, 80);
-	MD5_Final(hash, &ctx);
+	// Hash The Inputs
+	MD5(msg, 80, hash);
 
 	// Randomize The Inputs
 	for (i = 0; i < 12; i++) {
@@ -1478,6 +1476,7 @@ static int thread_create(struct thr_info *thr, void* func)
 	return err;
 }
 
+/*
 void test_ec() {
 	int i, val;
 
@@ -1514,8 +1513,14 @@ void test_ec() {
 	//	PK: 0282006E9398A6986EDA61FE91674C3A108C399475BF1E738F19DFC2DB11DB1D28
 	//	Val : 42074222, 0282006E
 
+	m[200] = 0x61626300;	// "abc"
+//	val = epl_sha512(200, 3, m);
+//	val = epl_md5(200, 3, m);
+	val = epl_whirlpool(200, 3, m);
+
 
 }
+*/
 
 int main(int argc, char **argv) {
 	struct thr_info *thr;

@@ -31,7 +31,6 @@ set(SRC_LIST	xel_miner.c
 				./ElasticPL/ElasticPLTokenManager.c
 				./ElasticPL/ElasticPLParser.c
 				./ElasticPL/ElasticPLInterpreter.c
-				./crypto/md5.c
 				./crypto/sha2.c
 				./crypto/curve25519-donna.c
 )
