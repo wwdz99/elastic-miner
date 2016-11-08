@@ -1,6 +1,6 @@
 # xel_miner 0.5
 
-This is a prototype of a miner for solving XEL work packages.  This was put together as a tool to learn more about AST parsing & interpreting and does not include all the functionality and optimizations that will be needed...it is still in the earliest stages of developement.  This version includes the ElasticPL Crypto Functions; however, the funcational algos were not included as they aren't in openssl:
+This is a prototype of a miner for solving XEL work packages.  This was put together as a tool to learn more about AST parsing & interpreting and does not include all the functionality and optimizations that will be needed...it is still in the earliest stages of developement.  This version includes the ElasticPL Crypto Functions; however, the following algos were not included as they aren't available directly in openssl:
 
 <ul>
 <li>SEPC_192R1</li>
