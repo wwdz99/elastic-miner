@@ -195,13 +195,13 @@ static char* convert(ast* exp) {
 			sprintf(result, "\tm(epl_sha256( %s, mem ));\n", rval);
 			break;
 		case NODE_SHA512:
-			sprintf(result, "sha512( %s );\n", rval);
+			sprintf(result, "\tm(epl_sha512( %s, mem ));\n", rval);
 			break;
 		case NODE_WHIRLPOOL:
-			sprintf(result, "whirlpool( %s );\n", rval);
+			sprintf(result, "\tm(epl_whirlpool( %s, mem ));\n", rval);
 			break;
 		case NODE_MD5:
-			sprintf(result, "md5( %s );\n", rval);
+			sprintf(result, "\tm(epl_md5( %s, mem ));\n", rval);
 			break;
 		case NODE_SECP192K_PTP:
 			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp192k1, 24 ));\n", rval);
@@ -219,9 +219,7 @@ static char* convert(ast* exp) {
 			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp192k1, 25, 49 ));\n", rval);
 			break;
 		case NODE_SECP192R_PTP:
-//Missing
 			sprintf(result, "SECP192R1PrivToPub( %s );\n", rval);
-//Missing
 			break;
 		case NODE_SECP192R_PA:
 			sprintf(result, "SECP192R1PointAdd( %s );\n", rval);

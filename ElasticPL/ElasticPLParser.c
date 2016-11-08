@@ -191,11 +191,11 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token) {
 	case TOKEN_SECP192K_PS:	   	node_type = NODE_SECP192K_PS;	break;
 	case TOKEN_SECP192K_PSM:	node_type = NODE_SECP192K_PSM;	break;
 	case TOKEN_SECP192K_PN:	    node_type = NODE_SECP192K_PN;	break;
-	case TOKEN_SECP192R_PTP:	node_type = NODE_SECP192R_PTP;	break;
-	case TOKEN_SECP192R_PA:	    node_type = NODE_SECP192R_PA;	break;
-	case TOKEN_SECP192R_PS:	    node_type = NODE_SECP192R_PS;	break;
-	case TOKEN_SECP192R_PSM:	node_type = NODE_SECP192R_PSM;	break;
-	case TOKEN_SECP192R_PN:	    node_type = NODE_SECP192R_PN;	break;
+//	case TOKEN_SECP192R_PTP:	node_type = NODE_SECP192R_PTP;	break;
+//	case TOKEN_SECP192R_PA:	    node_type = NODE_SECP192R_PA;	break;
+//	case TOKEN_SECP192R_PS:	    node_type = NODE_SECP192R_PS;	break;
+//	case TOKEN_SECP192R_PSM:	node_type = NODE_SECP192R_PSM;	break;
+//	case TOKEN_SECP192R_PN:	    node_type = NODE_SECP192R_PN;	break;
 	case TOKEN_SECP224K_PTP:	node_type = NODE_SECP224K_PTP;	break;
 	case TOKEN_SECP224K_PA:	    node_type = NODE_SECP224K_PA;	break;
 	case TOKEN_SECP224K_PS:	    node_type = NODE_SECP224K_PS;	break;
@@ -211,11 +211,11 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token) {
 	case TOKEN_SECP256K_PS:	    node_type = NODE_SECP256K_PS;	break;
 	case TOKEN_SECP256K_PSM:	node_type = NODE_SECP256K_PSM;	break;
 	case TOKEN_SECP256K_PN:	    node_type = NODE_SECP256K_PN;	break;
-	case TOKEN_SECP256R_PTP:	node_type = NODE_SECP256R_PTP;	break;
-	case TOKEN_SECP256R_PA:	    node_type = NODE_SECP256R_PA;	break;
-	case TOKEN_SECP256R_PS:	    node_type = NODE_SECP256R_PS;	break;
-	case TOKEN_SECP256R_PSM:	node_type = NODE_SECP256R_PSM;	break;
-	case TOKEN_SECP256R_PN:	    node_type = NODE_SECP256R_PN;	break;
+//	case TOKEN_SECP256R_PTP:	node_type = NODE_SECP256R_PTP;	break;
+//	case TOKEN_SECP256R_PA:	    node_type = NODE_SECP256R_PA;	break;
+//	case TOKEN_SECP256R_PS:	    node_type = NODE_SECP256R_PS;	break;
+//	case TOKEN_SECP256R_PSM:	node_type = NODE_SECP256R_PSM;	break;
+//	case TOKEN_SECP256R_PN:	    node_type = NODE_SECP256R_PN;	break;
 	case TOKEN_SECP384R_PTP:	node_type = NODE_SECP384R_PTP;	break;
 	case TOKEN_SECP384R_PA:	    node_type = NODE_SECP384R_PA;	break;
 	case TOKEN_SECP384R_PS:	    node_type = NODE_SECP384R_PS;	break;
@@ -241,9 +241,9 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token) {
 	case TOKEN_PRM256V1_PS:	    node_type = NODE_PRM256V1_PS;	break;
 	case TOKEN_PRM256V1_PSM:	node_type = NODE_PRM256V1_PSM;	break;
 	case TOKEN_PRM256V1_PN:	    node_type = NODE_PRM256V1_PN;	break;
-	case TOKEN_TIGER:	        node_type = NODE_TIGER;			break;
-	case TOKEN_RIPEMD160:	    node_type = NODE_RIPEMD160;		break;
-	case TOKEN_RIPEMD128:      	node_type = NODE_RIPEMD128;		break;
+//	case TOKEN_TIGER:	        node_type = NODE_TIGER;			break;
+//	case TOKEN_RIPEMD160:	    node_type = NODE_RIPEMD160;		break;
+//	case TOKEN_RIPEMD128:      	node_type = NODE_RIPEMD128;		break;
 	default: return NODE_ERROR;
 	}
 
