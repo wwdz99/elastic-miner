@@ -1,11 +1,15 @@
-# xel_miner 0.4
+# xel_miner 0.5
 
-This is a prototype of a miner for solving XEL work packages.  This was put together as a tool to learn more about AST parsing & interpreting and is not a complete miner at this time...it is still in the earliest stages of developement and may have numerous bugs.  The funcational gaps are:
+This is a prototype of a miner for solving XEL work packages.  This was put together as a tool to learn more about AST parsing & interpreting and does not include all the functionality and optimizations that will be needed...it is still in the earliest stages of developement.  This version includes the ElasticPL Crypto Functions; however, the funcational algos were not included as they aren't in openssl:
 
 <ul>
-<li>The only ElasticPL crypto function supported right now is SHA256</li>
-<li>The target needs to get redone to match the latest updates</li>
+<li>SEPC_192R1</li>
+<li>SEPC_256R1</li>
+<li>RIPEMD128</li>
+<li>TIGER</li>
 </ul>
+
+Note:  The functions will need thorough testing.  Only minimal testing on them has been performed at this time.
 
 Below are the steps I used to get the miner running on my Raspberry Pi.
 <ul>
@@ -27,6 +31,6 @@ Use "sudo ./xel_miner -h" to see a full list of options.
 #Credits
 <ul>
 <li>The core of the miner is based on cpuminer</li>
-<li>The ElasticPL / Work Package logic is based on the tireless efforts of Evil-Knievil</li>
+<li>The ElasticPL / Work Package logic is based on the tireless efforts of Evil-Knievel</li>
 <li>The Elastic project can be found here: https://github.com/OrdinaryDude</li>
 </ul>
