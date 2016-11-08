@@ -43,13 +43,13 @@ extern uint32_t epl_sha256(int idx, int len, int32_t *mem) {
 	uint32_t value;
 	int i, n;
 
-	n = (int)(len / 4);
+	n = (int)(len / 4) + ((len % 4) ? 1 : 0);
 
 	// Check Boundary Conditions Of Inputs
-	if ((idx < 0) || (len <= 0) || ((idx + n) > VM_MEMORY_SIZE))
+	if ((idx < 0) || (len <= 0) || ((idx + n) >= VM_MEMORY_SIZE) || ((idx + 8) >= VM_MEMORY_SIZE))
 		return 0;
 
-	msg = (unsigned char *)malloc(len);
+	msg = (unsigned char *)malloc(n * sizeof(int));
 	if (!msg)
 		return 0;
 
@@ -60,13 +60,13 @@ extern uint32_t epl_sha256(int idx, int len, int32_t *mem) {
 		msg32[i] = swap32(mem[idx + i]);
 	}
 
-	dump_hex("Msg", (unsigned char*)(msg), 80);
+//	dump_hex("Msg", (unsigned char*)(msg), len);
 
 	sha256_init(&ctx);
 	sha256_update(&ctx, msg, len);
 	sha256_final(&ctx, hash);
 
-	dump_hex("Hash", (unsigned char*)(hash), 32);
+//	dump_hex("Hash", (unsigned char*)(hash), 32);
 
 	for (i = 0; i < 8; i++) {
 		mem[idx + i] = swap32(hash32[i]);
@@ -75,7 +75,139 @@ extern uint32_t epl_sha256(int idx, int len, int32_t *mem) {
 	// Get Value For Mangle State
 	value = swap32(hash32[0]);
 
-	printf("Val: %d, %08X\n", value, value);
+//	printf("Val: %d, %08X\n", value, value);
+
+	free(msg);
+	return value;
+}
+
+extern uint32_t epl_sha512(int idx, int len, int32_t *mem) {
+	unsigned char *msg;
+	unsigned char hash[64];
+	uint32_t *hash32 = (uint32_t *)hash;
+	uint32_t *msg32;
+	uint32_t value;
+	int i, n;
+
+	n = (int)(len / 4) + ((len % 4) ? 1 : 0);
+
+	// Check Boundary Conditions Of Inputs
+	if ((idx < 0) || (len <= 0) || ((idx + n) >= VM_MEMORY_SIZE) || ((idx + 16) >= VM_MEMORY_SIZE))
+		return 0;
+
+	msg = (unsigned char *)malloc(n * sizeof(int));
+	if (!msg)
+		return 0;
+
+	msg32 = (uint32_t *)msg;
+
+	// Change Endianess Of Message
+	for (i = 0; i < n; i++) {
+		msg32[i] = swap32(mem[idx + i]);
+	}
+
+//	dump_hex("Msg", (unsigned char*)(msg), len);
+
+	SHA512(msg, len, hash);
+
+//	dump_hex("Hash", (unsigned char*)(hash), 64);
+
+	for (i = 0; i < 16; i++) {
+		mem[idx + i] = swap32(hash32[i]);
+	}
+
+	// Get Value For Mangle State
+	value = swap32(hash32[0]);
+
+//	printf("Val: %d, %08X\n", value, value);
+
+	free(msg);
+	return value;
+}
+
+extern uint32_t epl_md5(int idx, int len, int32_t *mem) {
+	unsigned char *msg;
+	unsigned char hash[16];
+	uint32_t *hash32 = (uint32_t *)hash;
+	uint32_t *msg32;
+	uint32_t value;
+	int i, n;
+
+	n = (int)(len / 4) + ((len % 4) ? 1 : 0);
+
+	// Check Boundary Conditions Of Inputs
+	if ((idx < 0) || (len <= 0) || ((idx + n) >= VM_MEMORY_SIZE) || ((idx + 4) >= VM_MEMORY_SIZE))
+		return 0;
+
+	msg = (unsigned char *)malloc(n * sizeof(int));
+	if (!msg)
+		return 0;
+
+	msg32 = (uint32_t *)msg;
+
+	// Change Endianess Of Message
+	for (i = 0; i < n; i++) {
+		msg32[i] = swap32(mem[idx + i]);
+	}
+
+//	dump_hex("Msg", (unsigned char*)(msg), len);
+
+	MD5(msg, len, hash);
+
+//	dump_hex("Hash", (unsigned char*)(hash), 16);
+
+	for (i = 0; i < 16; i++) {
+		mem[idx + i] = swap32(hash32[i]);
+	}
+
+	// Get Value For Mangle State
+	value = swap32(hash32[0]);
+
+//	printf("Val: %d, %08X\n", value, value);
+
+	free(msg);
+	return value;
+}
+
+extern uint32_t epl_whirlpool(int idx, int len, int32_t *mem) {
+	unsigned char *msg;
+	unsigned char hash[64];
+	uint32_t *hash32 = (uint32_t *)hash;
+	uint32_t *msg32;
+	uint32_t value;
+	int i, n;
+
+	n = (int)(len / 4) + ((len % 4) ? 1 : 0);
+
+	// Check Boundary Conditions Of Inputs
+	if ((idx < 0) || (len <= 0) || ((idx + n) >= VM_MEMORY_SIZE) || ((idx + 16) >= VM_MEMORY_SIZE))
+		return 0;
+
+	msg = (unsigned char *)malloc(n * sizeof(int));
+	if (!msg)
+		return 0;
+
+	msg32 = (uint32_t *)msg;
+
+	// Change Endianess Of Message
+	for (i = 0; i < n; i++) {
+		msg32[i] = swap32(mem[idx + i]);
+	}
+
+//	dump_hex("Msg", (unsigned char*)(msg), len);
+
+	whirlpool_hash(msg, len, hash);
+
+//	dump_hex("Hash", (unsigned char*)(hash), 64);
+
+	for (i = 0; i < 16; i++) {
+		mem[idx + i] = swap32(hash32[i]);
+	}
+
+	// Get Value For Mangle State
+	value = swap32(hash32[0]);
+
+//	printf("Val: %d, %08X\n", value, value);
 
 	free(msg);
 	return value;
@@ -97,7 +229,7 @@ extern uint32_t epl_ec_priv_to_pub(size_t idx, bool compressed, int32_t *mem, in
 	n = (int)(len / 4) + ((len % 4) ? 1 : 0);
 
 	// Check Boundary Conditions Of Inputs
-	if ((idx < 0) || (len <= 0) || ((idx + n) > VM_MEMORY_SIZE))
+	if ((idx < 0) || (len <= 0) || ((idx + n) >= VM_MEMORY_SIZE))
 		return 0;
 
 	input = (uint8_t *)malloc(n * sizeof(int));
@@ -111,7 +243,7 @@ extern uint32_t epl_ec_priv_to_pub(size_t idx, bool compressed, int32_t *mem, in
 		input32[i] = swap32(mem[idx + i]);
 	}
 
-	dump_hex("PrivKey", (uint8_t*)(input), len);
+//	dump_hex("PrivKey", (uint8_t*)(input), len);
 
 	// Init Empty OpenSSL EC Keypair
 	key = EC_KEY_new_by_curve_name(nid);
@@ -139,7 +271,7 @@ extern uint32_t epl_ec_priv_to_pub(size_t idx, bool compressed, int32_t *mem, in
 	if (!buf_len)
 		return 0;
 
-	dump_hex("PK", buf, buf_len);
+//	dump_hex("PK", buf, buf_len);
 
 	n = (int)(buf_len / 4) + ((buf_len % 4) ? 1 : 0);
 	for (i = 0; i < n; i++) {
@@ -149,7 +281,7 @@ extern uint32_t epl_ec_priv_to_pub(size_t idx, bool compressed, int32_t *mem, in
 	// Get Value For Mangle State
 	value = swap32(buf32[0]);
 
-	printf("Val: %d, %08X\n", value, value);
+//	printf("Val: %d, %08X\n", value, value);
 
 	// Free Resources
 	free(input);
@@ -191,7 +323,7 @@ extern uint32_t epl_ec_add(size_t idx1, bool comp1, size_t idx2, bool comp2, boo
 	n1 = (int)(len1 / 4) + ((len1 % 4) ? 1 : 0);
 	n2 = (int)(len2 / 4) + ((len2 % 4) ? 1 : 0);
 
-	if ((idx1 < 0) || (idx2 < 0) || ((idx1 + uncomp_sz) > VM_MEMORY_SIZE) || ((idx2 + uncomp_sz) > VM_MEMORY_SIZE))
+	if ((idx1 < 0) || (idx2 < 0) || ((idx1 + uncomp_sz) >= VM_MEMORY_SIZE) || ((idx2 + uncomp_sz) >= VM_MEMORY_SIZE))
 		return 0;
 
 	input1 = (uint8_t *)malloc(n1 * sizeof(int));
@@ -208,8 +340,8 @@ extern uint32_t epl_ec_add(size_t idx1, bool comp1, size_t idx2, bool comp2, boo
 	for (i = 0; i < n2; i++)
 		input2_32[i] = swap32(mem[idx2 + i]);
 
-	dump_hex("Point1", (uint8_t*)(input1), len1);
-	dump_hex("Point2", (uint8_t*)(input2), len2);
+//	dump_hex("Point1", (uint8_t*)(input1), len1);
+//	dump_hex("Point2", (uint8_t*)(input2), len2);
 
 	// Initialize EC Data
 	ctx = BN_CTX_new();
@@ -235,7 +367,7 @@ extern uint32_t epl_ec_add(size_t idx1, bool comp1, size_t idx2, bool comp2, boo
 	if (!buf_len)
 		return 0;
 
-	dump_hex("Result", (uint8_t *)buf, buf_len);
+//	dump_hex("Result", (uint8_t *)buf, buf_len);
 
 	// Copy Result Back To VM
 	n = (int)(buf_len / 4) + ((buf_len % 4) ? 1 : 0);
@@ -246,7 +378,7 @@ extern uint32_t epl_ec_add(size_t idx1, bool comp1, size_t idx2, bool comp2, boo
 	// Get Value For Mangle State
 	value = swap32(buf32[0]);
 
-	printf("Val: %d, %08X\n", value, value);
+//	printf("Val: %d, %08X\n", value, value);
 
 	// Free Resources
 	free(input1);
@@ -292,7 +424,7 @@ extern uint32_t epl_ec_sub(size_t idx1, bool comp1, size_t idx2, bool comp2, boo
 	n1 = (int)(len1 / 4) + ((len1 % 4) ? 1 : 0);
 	n2 = (int)(len2 / 4) + ((len2 % 4) ? 1 : 0);
 
-	if ((idx1 < 0) || (idx2 < 0) || ((idx1 + uncomp_sz) > VM_MEMORY_SIZE) || ((idx2 + uncomp_sz) > VM_MEMORY_SIZE))
+	if ((idx1 < 0) || (idx2 < 0) || ((idx1 + uncomp_sz) >= VM_MEMORY_SIZE) || ((idx2 + uncomp_sz) >= VM_MEMORY_SIZE))
 		return 0;
 
 	input1 = (uint8_t *)malloc(n1 * sizeof(int));
@@ -309,8 +441,8 @@ extern uint32_t epl_ec_sub(size_t idx1, bool comp1, size_t idx2, bool comp2, boo
 	for (i = 0; i < n2; i++)
 		input2_32[i] = swap32(mem[idx2 + i]);
 
-	dump_hex("Point1", (uint8_t*)(input1), len1);
-	dump_hex("Point2", (uint8_t*)(input2), len2);
+//	dump_hex("Point1", (uint8_t*)(input1), len1);
+//	dump_hex("Point2", (uint8_t*)(input2), len2);
 
 	// Initialize EC Data
 	ctx = BN_CTX_new();
@@ -338,7 +470,7 @@ extern uint32_t epl_ec_sub(size_t idx1, bool comp1, size_t idx2, bool comp2, boo
 	if (!buf_len)
 		return 0;
 
-	dump_hex("Result", (uint8_t *)buf, buf_len);
+//	dump_hex("Result", (uint8_t *)buf, buf_len);
 
 	// Copy Result Back To VM
 	n = (int)(buf_len / 4) + ((buf_len % 4) ? 1 : 0);
@@ -349,7 +481,7 @@ extern uint32_t epl_ec_sub(size_t idx1, bool comp1, size_t idx2, bool comp2, boo
 	// Get Value For Mangle State
 	value = swap32(buf32[0]);
 
-	printf("Val: %d, %08X\n", value, value);
+//	printf("Val: %d, %08X\n", value, value);
 
 	// Free Resources
 	free(input1);
@@ -387,7 +519,7 @@ extern uint32_t epl_ec_neg(size_t idx1, bool comp1, bool comp, int32_t *mem, int
 
 	n1 = (int)(len1 / 4) + ((len1 % 4) ? 1 : 0);
 
-	if ((idx1 < 0) || ((idx1 + uncomp_sz) > VM_MEMORY_SIZE))
+	if ((idx1 < 0) || ((idx1 + uncomp_sz) >= VM_MEMORY_SIZE))
 		return 0;
 
 	input1 = (uint8_t *)malloc(n1 * sizeof(int));
@@ -400,7 +532,7 @@ extern uint32_t epl_ec_neg(size_t idx1, bool comp1, bool comp, int32_t *mem, int
 	for (i = 0; i < n1; i++)
 		input1_32[i] = swap32(mem[idx1 + i]);
 
-	dump_hex("Point1", (uint8_t*)(input1), len1);
+//	dump_hex("Point1", (uint8_t*)(input1), len1);
 
 	// Initialize EC Data
 	ctx = BN_CTX_new();
@@ -422,7 +554,7 @@ extern uint32_t epl_ec_neg(size_t idx1, bool comp1, bool comp, int32_t *mem, int
 	if (!buf_len)
 		return 0;
 
-	dump_hex("Result", (uint8_t *)buf, buf_len);
+//	dump_hex("Result", (uint8_t *)buf, buf_len);
 
 	// Copy Result Back To VM
 	n = (int)(buf_len / 4) + ((buf_len % 4) ? 1 : 0);
@@ -433,7 +565,7 @@ extern uint32_t epl_ec_neg(size_t idx1, bool comp1, bool comp, int32_t *mem, int
 	// Get Value For Mangle State
 	value = swap32(buf32[0]);
 
-	printf("Val: %d, %08X\n", value, value);
+//	printf("Val: %d, %08X\n", value, value);
 
 	// Free Resources
 	free(input1);
@@ -470,7 +602,7 @@ extern uint32_t epl_ec_mult(size_t idx1, bool comp1, size_t idx2, size_t n2, boo
 	len2 = n2 * 4;
 	n1 = (int)(len1 / 4) + ((len1 % 4) ? 1 : 0);
 
-	if ((idx1 < 0) || (idx2 < 0) || ((idx1 + uncomp_sz) > VM_MEMORY_SIZE) || ((idx2 + n2) > VM_MEMORY_SIZE))
+	if ((idx1 < 0) || (idx2 < 0) || ((idx1 + uncomp_sz) >= VM_MEMORY_SIZE) || ((idx2 + n2) >= VM_MEMORY_SIZE))
 		return 0;
 
 	input1 = (uint8_t *)malloc(n1 * sizeof(int));
@@ -487,8 +619,8 @@ extern uint32_t epl_ec_mult(size_t idx1, bool comp1, size_t idx2, size_t n2, boo
 	for (i = 0; i < n2; i++)
 		input2_32[i] = swap32(mem[idx2 + i]);
 
-	dump_hex("Point1", (uint8_t*)(input1), len1);
-	dump_hex("Scalar", (uint8_t*)(input2), len2);
+//	dump_hex("Point1", (uint8_t*)(input1), len1);
+//	dump_hex("Scalar", (uint8_t*)(input2), len2);
 
 	// Initialize EC Data
 	ctx = BN_CTX_new();
@@ -513,7 +645,7 @@ extern uint32_t epl_ec_mult(size_t idx1, bool comp1, size_t idx2, size_t n2, boo
 	if (!buf_len)
 		return 0;
 
-	dump_hex("Result", (uint8_t *)buf, buf_len);
+//	dump_hex("Result", (uint8_t *)buf, buf_len);
 
 	// Copy Result Back To VM
 	n = (int)(buf_len / 4) + ((buf_len % 4) ? 1 : 0);
@@ -524,7 +656,7 @@ extern uint32_t epl_ec_mult(size_t idx1, bool comp1, size_t idx2, size_t n2, boo
 	// Get Value For Mangle State
 	value = swap32(buf32[0]);
 
-	printf("Val: %d, %08X\n", value, value);
+//	printf("Val: %d, %08X\n", value, value);
 
 	// Free Resources
 	free(input1);

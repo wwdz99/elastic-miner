@@ -16,6 +16,7 @@ ENDIF (CRYPTO_LIB)
 ADD_LIBRARY( elasticpl_crypto STATIC
 	elasticpl_crypto.c
 	sha2.c
+	whirlpool.c
 )
 
 target_link_libraries(elasticpl_crypto crypto)
