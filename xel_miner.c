@@ -1478,9 +1478,50 @@ static int thread_create(struct thr_info *thr, void* func)
 	return err;
 }
 
+void test_ec() {
+	int i, val;
+
+	int32_t m[1024];
+	uint8_t priv_bytes[36] = {
+		0x16, 0x26, 0x07, 0x83, 0xe4, 0x0b, 0x16, 0x73,
+		0x16, 0x73, 0x62, 0x2a, 0xc8, 0xa5, 0xb0, 0x45,
+		0xfc, 0x3e, 0xa4, 0xaf, 0x70, 0xf7, 0x27, 0xf3,
+		0xf9, 0xe9, 0x2b, 0xdd, 0x3a, 0x1d, 0xdc, 0x42
+	};
+	uint32_t *priv32 = (uint32_t *)priv_bytes;
+
+	for (i = 0; i < 8; i++) {
+		m[i] = swap32(priv32[i]);
+		m[100 + i] = swap32(priv32[i]);
+	}
+
+
+	uint8_t t[] = { 0x02, 0x82,0x00,0x6E,0x93,0x98,0xA6,0x98,0x6E,0xDA,0x61,0xFE,0x91,0x67,0x4C,0x3A,0x10,0x8C,0x39,0x94,0x75,0xBF,0x1E,0x73,0x8F,0x19,0xDF,0xC2,0xDB,0x11,0xDB,0x1D,0x28,0x00,0x00,0x00 };
+	int32_t *t2 = (int32_t *)t;
+
+	for (i = 0; i < 9; i++) {
+		m[i + 10] = swap32(t2[i]);
+	}
+
+	val = epl_ec_priv_to_pub(0, true, m, NID_secp256k1, 32);
+//	val = epl_ec_mult(0, true, 100, 8, true, m, NID_secp256k1, 33, 65);
+	val = epl_ec_add(0, true, 10, true, true, m, NID_secp256k1, 33, 65);
+	val = epl_ec_neg(10, true, true, m, NID_secp256k1, 33, 65);
+	val = epl_ec_add(0, true, 10, true, true, m, NID_secp256k1, 33, 65);
+	val = epl_ec_neg(10, true, true, m, NID_secp256k1, 33, 65);
+	val = epl_ec_sub(0, true, 10, true, true, m, NID_secp256k1, 33, 65);
+
+	//	PK: 0282006E9398A6986EDA61FE91674C3A108C399475BF1E738F19DFC2DB11DB1D28
+	//	Val : 42074222, 0282006E
+
+
+}
+
 int main(int argc, char **argv) {
 	struct thr_info *thr;
 	int i, err, thr_idx;
+
+//	test_ec();
 
 	fprintf(stdout, "** " PACKAGE_NAME " " PACKAGE_VERSION " **\n");
 
