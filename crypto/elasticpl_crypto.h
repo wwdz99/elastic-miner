@@ -18,5 +18,9 @@
 
 extern uint32_t epl_sha256(int idx, int len, int32_t *mem);
 extern uint32_t epl_ec_priv_to_pub(size_t idx, bool compressed, int32_t *mem, int nid, size_t len);
+extern uint32_t epl_ec_add(size_t idx1, bool comp1, size_t idx2, bool comp2, bool comp, int32_t *mem, int nid, size_t comp_sz, size_t uncomp_sz);
+extern uint32_t epl_ec_sub(size_t idx1, bool comp1, size_t idx2, bool comp2, bool comp, int32_t *mem, int nid, size_t comp_sz, size_t uncomp_sz);
+extern uint32_t epl_ec_neg(size_t idx1, bool comp1, bool comp, int32_t *mem, int nid, size_t comp_sz, size_t uncomp_sz);
+extern uint32_t epl_ec_mult(size_t idx1, bool comp1, size_t idx2, size_t n2, bool comp, int32_t *mem, int nid, size_t comp_sz, size_t uncomp_sz);
 
 #endif // ELASTICPLCRYPTO_H_
