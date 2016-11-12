@@ -14,6 +14,7 @@
 #include <limits.h>
 
 #include "ElasticPL.h"
+#include "../crypto/elasticpl_crypto.h"
 #include "../miner.h"
 
 char blk_new[4096];
@@ -119,7 +120,7 @@ static char* convert(ast* exp) {
 			sprintf(result, "m(%s * %s)", lval, rval);
 			break;
 		case NODE_DIV:
-			sprintf(result, "((%s > 0) ? m(%s / %s) : m(0))", rval, lval, rval);
+			sprintf(result, "((%s != 0) ? m(%s / %s) : m(0))", rval, lval, rval);
 			break;
 		case NODE_MOD:
 			sprintf(result, "((%s > 0) ? m(%s %%%% %s) : m(0))", rval, lval, rval);
@@ -630,4 +631,908 @@ static uint32_t get_wcet(ast* exp) {
 	}
 
 	return wcet;
+}
+
+static void push(long l, bool memory) {
+	vm_stack[++vm_stack_idx].value = l;
+	vm_stack[vm_stack_idx].memory = memory;
+}
+
+static vm_stack_item pop_item() {
+	return vm_stack[vm_stack_idx--];
+}
+
+static long pop() {
+	if (vm_stack[vm_stack_idx].memory)
+		return vm_mem[vm_stack[vm_stack_idx--].value];
+	else
+		return vm_stack[vm_stack_idx--].value;
+}
+
+extern int interpret_ast() {
+	int i;
+
+	vm_bounty = false;
+
+	for (i = 0; i < vm_ast_cnt; i++) {
+		if (!interpret(vm_ast[i]))
+			return 0;
+	}
+
+	if (vm_stack_idx != -1)
+		applog(LOG_WARNING, "WARNING: Possible VM Memory Leak");
+
+	return vm_bounty;
+}
+
+static const unsigned int mask32 = (CHAR_BIT * sizeof(uint32_t) - 1);
+
+#ifdef _MSC_VER
+static uint32_t rotl32(uint32_t x, int n) {
+#else
+static uint32_t rotl32(uint32_t x, unsigned int n) {
+#endif
+n &= mask32;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers
+	return (x << n) | (x >> ((-n)&mask32));
+}
+
+#ifdef _MSC_VER
+static uint32_t rotr32(uint32_t x, int n) {
+#else
+static uint32_t rotr32(uint32_t x, unsigned int n) {
+#endif
+	n &= mask32;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers
+	return (x >> n) | (x << ((-n)&mask32));
+}
+
+static int mangle_state(int x) {
+	int mod = x % 32;
+	int leaf = mod % 4;
+	if (leaf == 0) {
+		vm_state[0] = rotl32(vm_state[0], mod);
+		vm_state[0] = vm_state[0] ^ x;
+	}
+	else if (leaf == 1) {
+		vm_state[1] = rotl32(vm_state[1], mod);
+		vm_state[1] = vm_state[1] ^ x;
+	}
+	else if (leaf == 2) {
+		vm_state[2] = rotl32(vm_state[2], mod);
+		vm_state[2] = vm_state[2] ^ x;
+	}
+	else {
+		vm_state[3] = rotl32(vm_state[3], mod);
+		vm_state[3] = vm_state[3] ^ x;
+	}
+	return x;
+}
+
+
+//vm_stack_item d_vm_stack[100];
+
+
+// Use Post Order Traversal To Process The Expressions In The AST
+static bool interpret(ast* exp) {
+	long lval, rval, val;
+
+	if (exp != NULL) {
+
+		if (!interpret(exp->left))
+			return false;
+
+		// Check For If Statement As Right Side Is Conditional
+		if (exp->type != NODE_IF)
+			if (!interpret(exp->right))
+				return false;
+
+		switch (exp->type) {
+		case NODE_CONSTANT:
+			push(exp->value, false);
+			break;
+		case NODE_VAR_CONST:
+			if (exp->value < 0 || exp->value > VM_MEMORY_SIZE)
+				push(0, true);
+			else
+				push(exp->value, true);
+			break;
+		case NODE_VAR_EXP:
+			lval = pop();
+			if (lval < 0 || lval > VM_MEMORY_SIZE)
+				push(0, true);
+			else
+				push(lval, true);
+			break;
+		case NODE_ASSIGN:
+			rval = pop();
+			lval = pop_item().value;	// Get The Memory Location, Not The Value
+			if (lval < 0 || lval > VM_MEMORY_SIZE)
+				lval = 0;
+			vm_mem[lval] = rval;
+			mangle_state(lval);
+			mangle_state(rval);
+			break;
+		case NODE_IF:
+			if (exp->right->type != NODE_ELSE) {
+				if (pop())
+					if (!interpret(exp->right))			// If Body (No Else Condition)
+						return false;
+			}
+			else {
+				if (pop()) {
+					if (!interpret(exp->right->left))	// If Body
+						return false;
+				}
+				else {
+					if (!interpret(exp->right->right))	// Else Body
+						return false;
+				}
+			}
+			break;
+		case NODE_BLOCK:
+			break;
+		case NODE_ADD:
+			rval = pop();
+			lval = pop();
+			val = (lval + rval);
+			push(val, false);
+			mangle_state(val);
+			break;
+		case NODE_SUB:
+			rval = pop();
+			lval = pop();
+			val = (lval - rval);
+			push(val, false);
+			mangle_state(val);
+			break;
+		case NODE_MUL:
+			rval = pop();
+			lval = pop();
+			val = (lval * rval);
+			push(val, false);
+			mangle_state(val);
+			break;
+		case NODE_DIV:
+			rval = pop();
+			lval = pop();
+			if (rval != 0)
+				val = lval / rval;
+			else
+				val = 0;
+			push(val, false);
+			mangle_state(val);
+			break;
+		case NODE_MOD:
+			rval = pop();
+			lval = pop();
+			if (rval > 0)
+				val = lval % rval;
+			else
+				val = 0;
+			push(val, false);
+			mangle_state(val);
+			break;
+		case NODE_LSHIFT:
+			rval = pop();
+			lval = pop();
+			val = (lval << rval);
+			push(val, false);
+			mangle_state(val);
+			break;
+		case NODE_LROT:
+			rval = pop();
+			lval = pop();
+			val = rotl32(lval, rval %32);
+			push(val, false);
+			mangle_state(val);
+			break;
+		case NODE_RSHIFT:
+			rval = pop();
+			lval = pop();
+			val = (lval >> rval);
+			push(val, false);
+			mangle_state(val);
+			break;
+		case NODE_RROT:
+			rval = pop();
+			lval = pop();
+			val = rotr32(lval, rval % 32);
+			push(val, false);
+			mangle_state(val);
+			break;
+		case NODE_NOT:
+			rval = pop();
+			push(!rval, false);
+			mangle_state(!rval);
+			break;
+		case NODE_COMPL:
+			rval = pop();
+			push(~rval, false);
+			mangle_state(~rval);
+			break;
+		case NODE_AND:
+			rval = pop();
+			lval = pop();
+//			val = (lval && rval);
+			val = (lval >! rval);
+			push(val, false);
+			mangle_state(val);
+			break;
+		case NODE_OR:
+			rval = pop();
+			lval = pop();
+			val = (lval || rval);
+			push(val, false);
+			mangle_state(val);
+			break;
+		case NODE_BITWISE_AND:
+			rval = pop();
+			lval = pop();
+			val = (lval & rval);
+			push(val, false);
+			mangle_state(val);
+			break;
+		case NODE_BITWISE_XOR:
+			rval = pop();
+			lval = pop();
+			val = (lval ^ rval);
+			push(val, false);
+			mangle_state(val);
+			break;
+		case NODE_BITWISE_OR:
+			rval = pop();
+			lval = pop();
+			val = (lval | rval);
+			push(val, false);
+			mangle_state(val);
+			break;
+		case NODE_EQ:
+			rval = pop();
+			lval = pop();
+			val = (lval == rval);
+			push(val, false);
+			mangle_state(val);
+			break;
+		case NODE_NE:
+			rval = pop();
+			lval = pop();
+			val = (lval != rval);
+			push(val, false);
+			mangle_state(val);
+			break;
+		case NODE_GT:
+			rval = pop();
+			lval = pop();
+			val = (lval > rval);
+			push(val, false);
+			mangle_state(val);
+			break;
+		case NODE_LT:
+			rval = pop();
+			lval = pop();
+			val = (lval < rval);
+			push(val, false);
+			mangle_state(val);
+			break;
+		case NODE_GE:
+			rval = pop();
+			lval = pop();
+			val = (lval >= rval);
+			push(val, false);
+			mangle_state(val);
+			break;
+		case NODE_LE:
+			rval = pop();
+			lval = pop();
+			val = (lval <= rval);
+			push(val, false);
+			mangle_state(val);
+			break;
+		case NODE_NEG:
+			rval = pop();
+			push(-rval, false);
+			mangle_state(-rval);
+			break;
+		case NODE_VERIFY:
+			rval = pop();
+			vm_bounty = (rval != 0);
+			mangle_state(vm_bounty);
+			break;
+		case NODE_PARAM:
+			break;
+		case NODE_SHA256:
+			if (vm_stack_idx >= 1) {
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_sha256(param1, param2, vm_mem);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SHA512:
+			if (vm_stack_idx >= 1) {
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_sha512(param1, param2, vm_mem);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_WHIRLPOOL:
+			if (vm_stack_idx >= 1) {
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_whirlpool(param1, param2, vm_mem);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_MD5:
+			if (vm_stack_idx >= 1) {
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_md5(param1, param2, vm_mem);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP192K_PTP:
+			if (vm_stack_idx >= 1) {
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_priv_to_pub(param1, param2, vm_mem, NID_secp192k1, 24);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP192K_PA:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_add(param1, param2, param3, param4, param5, vm_mem, NID_secp192k1, 25, 49);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP192K_PS:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_sub(param1, param2, param3, param4, param5, vm_mem, NID_secp192k1, 25, 49);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP192K_PSM:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_mult(param1, param2, param3, param4, param5, vm_mem, NID_secp192k1, 25, 49);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP192K_PN:
+			if (vm_stack_idx >= 2) {
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_neg(param1, param2, param3, vm_mem, NID_secp192k1, 25, 49);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP224K_PTP:
+			if (vm_stack_idx >= 1) {
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_priv_to_pub(param1, param2, vm_mem, NID_secp224k1, 28);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP224K_PA:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_add(param1, param2, param3, param4, param5, vm_mem, NID_secp224k1, 29, 57);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP224K_PS:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_sub(param1, param2, param3, param4, param5, vm_mem, NID_secp224k1, 29, 57);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP224K_PSM:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_mult(param1, param2, param3, param4, param5, vm_mem, NID_secp224k1, 29, 57);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP224K_PN:
+			if (vm_stack_idx >= 2) {
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_neg(param1, param2, param3, vm_mem, NID_secp224k1, 29, 57);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP224R_PTP:
+			if (vm_stack_idx >= 1) {
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_priv_to_pub(param1, param2, vm_mem, NID_secp224r1, 28);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP224R_PA:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_add(param1, param2, param3, param4, param5, vm_mem, NID_secp224r1, 29, 57);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP224R_PS:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_sub(param1, param2, param3, param4, param5, vm_mem, NID_secp224r1, 29, 57);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP224R_PSM:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_mult(param1, param2, param3, param4, param5, vm_mem, NID_secp224r1, 29, 57);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP224R_PN:
+			if (vm_stack_idx >= 2) {
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_neg(param1, param2, param3, vm_mem, NID_secp224r1, 29, 57);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP256K_PTP:
+			if (vm_stack_idx >= 1) {
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_priv_to_pub(param1, param2, vm_mem, NID_secp224k1, 32);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP256K_PA:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_add(param1, param2, param3, param4, param5, vm_mem, NID_secp256k1, 33, 65);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP256K_PS:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_sub(param1, param2, param3, param4, param5, vm_mem, NID_secp256k1, 33, 65);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP256K_PSM:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_mult(param1, param2, param3, param4, param5, vm_mem, NID_secp256k1, 33, 65);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP256K_PN:
+			if (vm_stack_idx >= 2) {
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_neg(param1, param2, param3, vm_mem, NID_secp256k1, 33, 65);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP384R_PTP:
+			if (vm_stack_idx >= 1) {
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_priv_to_pub(param1, param2, vm_mem, NID_secp384r1, 48);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP384R_PA:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_add(param1, param2, param3, param4, param5, vm_mem, NID_secp384r1, 48, 97);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP384R_PS:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_sub(param1, param2, param3, param4, param5, vm_mem, NID_secp384r1, 48, 97);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP384R_PSM:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_mult(param1, param2, param3, param4, param5, vm_mem, NID_secp384r1, 48, 97);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_SECP384R_PN:
+			if (vm_stack_idx >= 2) {
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_neg(param1, param2, param3, vm_mem, NID_secp384r1, 48, 97);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_PRM192V1_PTP:
+			if (vm_stack_idx >= 1) {
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_priv_to_pub(param1, param2, vm_mem, NID_X9_62_prime192v1, 24);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_PRM192V1_PA:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_add(param1, param2, param3, param4, param5, vm_mem, NID_X9_62_prime192v1, 25, 49);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_PRM192V1_PS:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_sub(param1, param2, param3, param4, param5, vm_mem, NID_X9_62_prime192v1, 25, 49);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_PRM192V1_PSM:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_mult(param1, param2, param3, param4, param5, vm_mem, NID_X9_62_prime192v1, 25, 49);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_PRM192V1_PN:
+			if (vm_stack_idx >= 2) {
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_neg(param1, param2, param3, vm_mem, NID_X9_62_prime192v1, 25, 49);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_PRM192V2_PTP:
+			if (vm_stack_idx >= 1) {
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_priv_to_pub(param1, param2, vm_mem, NID_X9_62_prime192v2, 24);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_PRM192V2_PA:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_add(param1, param2, param3, param4, param5, vm_mem, NID_X9_62_prime192v2, 25, 49);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_PRM192V2_PS:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_sub(param1, param2, param3, param4, param5, vm_mem, NID_X9_62_prime192v2, 25, 49);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_PRM192V2_PSM:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_mult(param1, param2, param3, param4, param5, vm_mem, NID_X9_62_prime192v2, 25, 49);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_PRM192V2_PN:
+			if (vm_stack_idx >= 2) {
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_neg(param1, param2, param3, vm_mem, NID_X9_62_prime192v2, 25, 49);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_PRM192V3_PTP:
+			if (vm_stack_idx >= 1) {
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_priv_to_pub(param1, param2, vm_mem, NID_X9_62_prime192v3, 24);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_PRM192V3_PA:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_add(param1, param2, param3, param4, param5, vm_mem, NID_X9_62_prime192v3, 25, 49);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_PRM192V3_PS:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_sub(param1, param2, param3, param4, param5, vm_mem, NID_X9_62_prime192v3, 25, 49);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_PRM192V3_PSM:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_mult(param1, param2, param3, param4, param5, vm_mem, NID_X9_62_prime192v3, 25, 49);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_PRM192V3_PN:
+			if (vm_stack_idx >= 2) {
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_neg(param1, param2, param3, vm_mem, NID_X9_62_prime192v3, 25, 49);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_PRM256V1_PTP:
+			if (vm_stack_idx >= 1) {
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_priv_to_pub(param1, param2, vm_mem, NID_X9_62_prime256v1, 32);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_PRM256V1_PA:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_add(param1, param2, param3, param4, param5, vm_mem, NID_X9_62_prime256v1, 33, 65);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_PRM256V1_PS:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_sub(param1, param2, param3, param4, param5, vm_mem, NID_X9_62_prime256v1, 33, 65);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_PRM256V1_PSM:
+			if (vm_stack_idx >= 4) {
+				int param5 = pop();
+				int param4 = pop();
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_mult(param1, param2, param3, param4, param5, vm_mem, NID_X9_62_prime256v1, 33, 65);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+		case NODE_PRM256V1_PN:
+			if (vm_stack_idx >= 2) {
+				int param3 = pop();
+				int param2 = pop();
+				int param1 = pop();
+				val = epl_ec_neg(param1, param2, param3, vm_mem, NID_X9_62_prime256v1, 33, 65);
+			}
+			else
+				val = 0;
+			mangle_state(val);
+			break;
+
+		default:
+			applog(LOG_ERR, "ERROR: VM Runtime - Unsupported Operation (%d)", exp->type);
+		}
+	}
+
+	if (vm_stack_idx >= VM_STACK_SIZE) {
+		applog(LOG_ERR, "ERROR: VM Runtime - Stack Overflow!");
+		return false;
+	}
+
+	//int i;
+	//for (i = 0; i < 100; i++)
+	//	d_vm_stack[i] = vm_stack[i];
+
+	return true;
 }

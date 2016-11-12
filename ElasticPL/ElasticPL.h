@@ -326,5 +326,19 @@ static char* append_strings(char * old, char * new);
 static char *replace(char* old, char* a, char* b);
 extern uint32_t calc_wcet();
 static uint32_t get_wcet(ast* exp);
+static void push(long l, bool memory);
+static vm_stack_item pop_item();
+static long pop();
+extern int interpret_ast();
+static bool interpret(ast* exp);
+static int mangle_state(int x);
+#ifdef _MSC_VER
+static uint32_t rotl32(uint32_t x, int n);
+static uint32_t rotr32(uint32_t x, int n);
+#else
+static uint32_t rotl32(uint32_t x, unsigned int n);
+static uint32_t rotr32(uint32_t x, unsigned int n);
+#endif
+
 
 #endif // ELASTICPL_H_
