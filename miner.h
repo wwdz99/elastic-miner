@@ -2,7 +2,7 @@
 #define __MINER_H__
 
 #define PACKAGE_NAME "xel_miner"
-#define PACKAGE_VERSION "0.5"
+#define PACKAGE_VERSION "0.6"
 
 #define USER_AGENT PACKAGE_NAME "/" PACKAGE_VERSION
 #define MAX_CPUS 16
@@ -32,6 +32,9 @@
 #define strcasecmp(x,y) _stricmp(x,y)
 #define strncasecmp(x,y,z) _strnicmp(x,y,z)
 #define __thread __declspec(thread)
+#define _ALIGN(x) __declspec(align(x))
+#else
+#define _ALIGN(x) __attribute__ ((aligned(x)))
 #endif
 
 #if JANSSON_MAJOR_VERSION >= 2
@@ -45,6 +48,12 @@
 #define MAX_SOURCE_SIZE 4096
 #define VM_INPUTS 12
 
+extern __thread _ALIGN(128) int32_t *vm_mem;
+extern __thread vm_stack_item *vm_stack;
+extern __thread int vm_stack_idx;
+extern __thread uint32_t vm_state[4];
+extern __thread bool vm_bounty;
+
 extern bool opt_debug;
 extern bool opt_debug_epl;
 extern bool opt_debug_vm;
@@ -52,7 +61,7 @@ extern bool opt_protocol;
 extern bool opt_quiet;
 extern int opt_timeout;
 extern int opt_n_threads;
-extern bool opt_test_compiler;
+extern bool opt_test_vm;
 
 extern struct work_restart *work_restart;
 
@@ -174,19 +183,13 @@ struct instance {
 
 #ifdef WIN32
 	HINSTANCE hndl;
-	int(__cdecl* initialize)();
-	int(__cdecl* reset)(int *);
-	int(__cdecl* execute)(uint32_t *);
-	int(__cdecl* free_mem)();
+	int(__cdecl* initialize)(int32_t *, uint32_t *);
+	int(__cdecl* execute)();
 #else
 	void *hndl;
-	int(*initialize)();
-	int(*reset)(int *);
-	int(*execute)(uint32_t *);
-	int(*free_mem)();
+	int(*initialize)(int32_t *, uint32_t *);
+	int(*execute)();
 #endif
-
-	uint32_t vm_state[4];
 
 };
 
@@ -248,7 +251,7 @@ void tq_thaw(struct thread_q *tq);
 
 static void *submit_thread(void *userdata);
 static void *key_monitor_thread(void *userdata);
-static void *test_compiler_thread(void *userdata);
+static void *test_vm_thread(void *userdata);
 static void restart_threads(void);
 
 static void *workio_thread(void *userdata);

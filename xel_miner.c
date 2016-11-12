@@ -51,12 +51,13 @@ bool opt_debug_epl = false;
 bool opt_debug_vm = false;
 bool opt_quiet = false;
 bool opt_protocol = false;
+bool opt_compile = true;
 bool use_colors = true;
 static int opt_retries = -1;
 static int opt_fail_pause = 10;
 static int opt_scantime = 60;  // Get New Work From Server At Least Every 60s
 bool opt_test_miner = false;
-bool opt_test_compiler = false;
+bool opt_test_vm = false;
 int opt_timeout = 30;
 int opt_n_threads = 0;
 static enum prefs opt_pref = PREF_PROFIT;
@@ -67,6 +68,12 @@ char g_work_nm[50];
 char g_work_id[22];
 uint64_t g_cur_work_id;
 unsigned char g_pow_target[65];
+
+__thread _ALIGN(128) int32_t *vm_mem = NULL;
+__thread vm_stack_item *vm_stack = NULL;
+__thread int vm_stack_idx;
+__thread uint32_t vm_state[4];
+__thread bool vm_bounty;
 
 pthread_mutex_t applog_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t work_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -113,10 +120,11 @@ Options:\n\
   -D, --debug                 Display debug output\n\
   -h, --help                  Display this help text and exit\n\
   -m, --mining PREF[:ID]      Mining preference for choosing work\n\
-                                profit       (Default) Estimate most profitable based on WCET vs reward\n\
+                                profit       (Default) Estimate most profitable based on POW Reward / WCET\n\
                                 wcet         Fewest cycles required by work item \n\
                                 workid		 Specify work ID\n\
       --no-color              Don't display colored output\n\
+      --no-compile            Use internal VM Interpreter instead of compiled C code\n\
   -o, --url=URL               URL of mining server\n\
   -p, --pass <password>       Password for mining server\n\
   -P, --phrase <passphrase>   Secret Passphrase for Elastic account\n\
@@ -146,16 +154,17 @@ static struct option const options[] = {
 	{ "help",			0, NULL, 'h' },
 	{ "mining",			1, NULL, 'm' },
 	{ "no-color",		0, NULL, 1001 },
+	{ "no-compile",		0, NULL, 1002 },
 	{ "pass",			1, NULL, 'p' },
 	{ "phrase",			1, NULL, 'P' },
-	{ "protocol",	    0, NULL, 1002 },
+	{ "protocol",	    0, NULL, 1003 },
 	{ "public",			1, NULL, 'k' },
 	{ "quiet",			0, NULL, 'q' },
 	{ "retries",		1, NULL, 'r' },
 	{ "retry-pause",	1, NULL, 'R' },
 	{ "scan-time",		1, NULL, 's' },
-	{ "test-miner",		1, NULL, 1003 },
-	{ "test-compiler",	1, NULL, 1004 },
+	{ "test-miner",		1, NULL, 1004 },
+	{ "test-vm",		1, NULL, 1005 },
 	{ "threads",		1, NULL, 't' },
 	{ "timeout",		1, NULL, 'T' },
 	{ "url",			1, NULL, 'o' },
@@ -191,7 +200,7 @@ static void strhide(char *s)
 
 void parse_arg(int key, char *arg)
 {
-	char *p;
+	char *p, *ap, *nm;
 	int v, i;
 
 	switch (key) {
@@ -222,8 +231,7 @@ void parse_arg(int key, char *arg)
 				strcpy(pref_workid, ++p);
 		}
 		break;
-	case 'o': {		// URL
-		char *ap, *nm;
+	case 'o':
 		ap = strstr(arg, "://");
 		ap = ap ? ap + 3 : arg;
 		nm = strstr(arg, "/nxt");
@@ -251,7 +259,6 @@ void parse_arg(int key, char *arg)
 		}
 
 		break;
-	}
 	case 'p':
 		free(rpc_pass);
 		rpc_pass = strdup(arg);
@@ -324,21 +331,24 @@ void parse_arg(int key, char *arg)
 		use_colors = false;
 		break;
 	case 1002:
-		opt_protocol = true;
+		opt_compile = false;
 		break;
 	case 1003:
-		if (!arg)
-			show_usage_and_exit(1);
-		test_filename = malloc(strlen(arg) + 1);
-		strcpy(test_filename, arg);
-		opt_test_miner = true;
+		opt_protocol = true;
 		break;
 	case 1004:
 		if (!arg)
 			show_usage_and_exit(1);
 		test_filename = malloc(strlen(arg) + 1);
 		strcpy(test_filename, arg);
-		opt_test_compiler = true;
+		opt_test_miner = true;
+		break;
+	case 1005:
+		if (!arg)
+			show_usage_and_exit(1);
+		test_filename = malloc(strlen(arg) + 1);
+		strcpy(test_filename, arg);
+		opt_test_vm = true;
 		opt_debug = true;
 		opt_debug_epl = true;
 		opt_debug_vm = true;
@@ -367,50 +377,16 @@ static void show_version_and_exit(void)
 	printf(" %d.%d.%d\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
 #endif
 
-	printf(" features:"
-#if defined(USE_ASM) && defined(__i386__)
-		" i386"
-#endif
-#if defined(USE_ASM) && defined(__x86_64__)
-		" x86_64"
-#endif
-#if defined(USE_ASM) && (defined(__i386__) || defined(__x86_64__))
-		" SSE2"
-#endif
-#if defined(__x86_64__) && defined(USE_AVX)
-		" AVX"
-#endif
-#if defined(__x86_64__) && defined(USE_AVX2)
-		" AVX2"
-#endif
-#if defined(__x86_64__) && defined(USE_XOP)
-		" XOP"
-#endif
-#if defined(USE_ASM) && defined(__arm__) && defined(__APCS_32__)
-		" ARM"
-#if defined(__ARM_ARCH_5E__) || defined(__ARM_ARCH_5TE__) || \
-	defined(__ARM_ARCH_5TEJ__) || defined(__ARM_ARCH_6__) || \
-	defined(__ARM_ARCH_6J__) || defined(__ARM_ARCH_6K__) || \
-	defined(__ARM_ARCH_6M__) || defined(__ARM_ARCH_6T2__) || \
-	defined(__ARM_ARCH_6Z__) || defined(__ARM_ARCH_6ZK__) || \
-	defined(__ARM_ARCH_7__) || \
-	defined(__ARM_ARCH_7A__) || defined(__ARM_ARCH_7R__) || \
-	defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
-		" ARMv5E"
-#endif
-#if defined(__ARM_NEON__)
-		" NEON"
-#endif
-#endif
-		"\n\n");
-
 	// Dependencies Versions
-	printf("%s\n", curl_version());
+	printf("curl: %s\n", curl_version());
 #ifdef JANSSON_VERSION
-	printf("jansson/%s ", JANSSON_VERSION);
+	printf("jansson: /%s ", JANSSON_VERSION);
 #endif
 #ifdef PTW32_VERSION
-	printf("pthreads/%d.%d.%d.%d ", PTW32_VERSION);
+	printf("pthreads: /%d.%d.%d.%d ", PTW32_VERSION);
+#endif
+#ifdef OPENSSL_VERSION_TEXT
+	printf("openssl: ", OPENSSL_VERSION_TEXT);
 #endif
 	printf("\n");
 	exit(0);
@@ -456,11 +432,24 @@ static bool load_test_file(char *buf) {
 	return true;
 }
 
-static void *test_compiler_thread(void *userdata) {
+static void *test_vm_thread(void *userdata) {
 	struct thr_info *mythr = (struct thr_info *) userdata;
 	int thr_id = mythr->id;
 	char test_code[MAX_SOURCE_SIZE];
 	struct instance *inst = NULL;
+	int i, rc;
+
+	// Initialize Global Variables
+	vm_mem = calloc(VM_MEMORY_SIZE, sizeof(long));
+	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
+	vm_stack_idx = -1;
+	if (!vm_mem || !vm_stack) {
+			applog(LOG_ERR, "CPU%d: Unable to allocate VM memory", thr_id);
+			exit(EXIT_FAILURE);
+	}
+
+	memset(vm_mem, 0, VM_INPUTS * sizeof(int));
+	memset(vm_state, 0, 4 * sizeof(int));
 
 	applog(LOG_DEBUG, "DEBUG: Loading Test File");
 	if (!load_test_file(test_code))
@@ -470,30 +459,50 @@ static void *test_compiler_thread(void *userdata) {
 
 	// Convert The Source Code Into ElasticPL AST
 	if (!create_epl_vm(test_code)) {
-		applog(LOG_ERR, "ERROR: Exiting 'test_compiler'");
+		applog(LOG_ERR, "ERROR: Exiting 'test_vm'");
 		exit(EXIT_FAILURE);
 	}
 
 	// Calculate WCET
 	if (!calc_wcet()) {
-		applog(LOG_ERR, "ERROR: Exiting 'test_compiler'");
+		applog(LOG_ERR, "ERROR: Exiting 'test_vm'");
 		exit(EXIT_FAILURE);
 	}
 
-	// Convert The ElasticPL Source Into A C Program Library
-	if (!compile_and_link("test")) {
-		applog(LOG_ERR, "ERROR: Exiting 'test_compiler'");
-		exit(EXIT_FAILURE);
-	}
+	if (opt_compile) {
 
-	// Link To The C Program Library
-	if (inst)
+		// Convert The ElasticPL Source Into A C Program Library
+		if (!compile_and_link("test")) {
+			applog(LOG_ERR, "ERROR: Exiting 'test_vm'");
+			exit(EXIT_FAILURE);
+		}
+
+		// Link To The C Program Library
+		if (inst)
+			free_compiler(inst);
+		inst = calloc(1, sizeof(struct instance));
+		create_instance(inst, "test");
+
+		// Execute The VM Logic
+		rc = inst->execute();
+
 		free_compiler(inst);
-	inst = calloc(1, sizeof(struct instance));
-	create_instance(inst, "test");
-	free_compiler(inst);
+	}
+	else {
+		// Execute The VM Logic
+		rc = interpret_ast();
+	}
+
+	applog(LOG_DEBUG, "DEBUG: Bounty Found: %s", rc ? "true" : "false");
+
+	for (i = 0; i < 4; i++)
+		applog(LOG_DEBUG, "DEBUG: vm_state[%d]: %9d, Hex: %08X", i, vm_state[i], vm_state[i]);
 
 	applog(LOG_NOTICE, "DEBUG: Compiler Test Complete");
+
+	free(vm_mem);
+	free(vm_stack);
+
 	exit(EXIT_SUCCESS);
 }
 
@@ -538,10 +547,12 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 	uint32_t *msg32 = (uint32_t *)msg;
 	uint32_t *hash32 = (uint32_t *)hash;
 	uint32_t *mult32 = (uint32_t *)work->multiplicator;
-	uint32_t vm_state[4];
 
 	mult32[6] = genrand_int32();
 	mult32[7] = genrand_int32();
+
+//	RAND_bytes(&mult32[6], 8);
+//	RAND_bytes(&mult32[7], 4);
 
 	while (1) {
 		// Check If New Work Is Available
@@ -561,10 +572,14 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 		get_vm_input(work);
 
 		// Reset VM Memory / State
-		inst->reset(work->vm_input);
+		memcpy(vm_mem, work->vm_input, VM_INPUTS * sizeof(int));
+		memset(vm_state, 0, 4 * sizeof(int));
 
 		// Execute The VM Logic
-		rc = inst->execute(vm_state);
+		if (opt_compile)
+			rc = inst->execute();
+		else
+			rc = interpret_ast();
 
 		// Hee, we have found a bounty, exit immediately
 		if (rc == 1)
@@ -1100,6 +1115,16 @@ static void *miner_thread(void *userdata) {
 	double eval_rate;
 	struct instance *inst = NULL;
 
+	// Initialize Global Variables
+	vm_mem = calloc(VM_MEMORY_SIZE, sizeof(long));
+	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
+	vm_stack_idx = -1;
+
+	if (!vm_mem || !vm_stack) {
+		applog(LOG_ERR, "CPU%d: Unable to allocate VM memory", thr_id);
+		goto out;
+	}
+
 	hashes_done = 0;
 	memset(&work, 0, sizeof(work));
 	gettimeofday((struct timeval *) &tv_start, NULL);
@@ -1131,11 +1156,13 @@ static void *miner_thread(void *userdata) {
 			memcpy((void *)&work, (void *)&g_work, sizeof(struct work));
 			work.thr_id = thr_id;
 
-			// Create A VM Instance For The Thread
-			if (inst)
-				free_compiler(inst);
-			inst = calloc(1, sizeof(struct instance));
-			create_instance(inst, work.wrk_pkg->work_str);
+			// Create A Compiled VM Instance For The Thread
+			if (opt_compile) {
+				if (inst)
+					free_compiler(inst);
+				inst = calloc(1, sizeof(struct instance));
+				create_instance(inst, work.wrk_pkg->work_str);
+			}
 		}
 
 		pthread_mutex_unlock(&work_lock);
@@ -1198,6 +1225,8 @@ static void *miner_thread(void *userdata) {
 	}
 
 out:
+	if (vm_mem) free(vm_mem);
+	if (vm_stack) free(vm_stack);
 	tq_freeze(mythr->q);
 
 	return NULL;
@@ -1564,13 +1593,14 @@ int main(int argc, char **argv) {
 		sprintf(rpc_userpass, "%s:%s", rpc_user, rpc_pass);
 	}
 
-	if (!opt_test_compiler && !passphrase) {
+	if (!opt_test_vm && !passphrase) {
 		applog(LOG_ERR, "ERROR: Passphrase (option -P) is required");
 		return 1;
 	}
 
 	// Seed Random Number Generator
 	init_genrand((unsigned long)time(NULL));
+	RAND_poll();
 
 #ifndef WIN32
 	/* Always catch Ctrl+C */
@@ -1605,13 +1635,13 @@ int main(int argc, char **argv) {
 	}
 
 	// In Test Compiler Mode, Run Parser / Complier Using Source Code From Test File
-	if (opt_test_compiler) {
+	if (opt_test_vm) {
 		thr = &thr_info[0];
 		thr->id = 0;
 		thr->q = tq_new();
 		if (!thr->q)
 			return 1;
-		if (thread_create(thr, test_compiler_thread)) {
+		if (thread_create(thr, test_vm_thread)) {
 			applog(LOG_ERR, "Test VM thread create failed!");
 			return 1;
 		}

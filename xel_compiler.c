@@ -23,29 +23,9 @@ bool create_c_source() {
 	fprintf(f, "#include <stdlib.h>\n");
 	fprintf(f, "#include <limits.h>\n");
 	fprintf(f, "#include <time.h>\n");
-	fprintf(f, "#include \"../crypto/elasticpl_crypto.h\"\n");
-#ifdef WIN32
-	fprintf(f, "#include <malloc.h>\n\n");
-	fprintf(f, "#define ALLOC_ALIGNED_BUFFER(_numBytes) ((int *)_aligned_malloc (_numBytes, 64))\n");
-	fprintf(f, "#define FREE_ALIGNED_BUFFER(_buffer) _aligned_free(_buffer)\n\n");
-#else
-	fprintf(f, "#include <mm_malloc.h>\n\n");
-	fprintf(f, "#define ALLOC_ALIGNED_BUFFER(_numBytes) (int *) _mm_malloc(_numBytes, 64)\n");
-	fprintf(f, "#define FREE_ALIGNED_BUFFER(_buffer) _mm_free(_buffer)\n\n");
-#endif
-#ifdef _MSC_VER
-	fprintf(f, "__declspec(thread) int32_t* mem = 0;\n");
-	fprintf(f, "__declspec(thread) uint32_t vm_state1 = 0;\n");
-	fprintf(f, "__declspec(thread) uint32_t vm_state2 = 0;\n");
-	fprintf(f, "__declspec(thread) uint32_t vm_state3 = 0;\n");
-	fprintf(f, "__declspec(thread) uint32_t vm_state4 = 0;\n\n");
-#else
-	fprintf(f, "__thread int32_t* mem = 0;\n");
-	fprintf(f, "__thread uint32_t vm_state1 = 0;\n");
-	fprintf(f, "__thread uint32_t vm_state2 = 0;\n");
-	fprintf(f, "__thread uint32_t vm_state3 = 0;\n");
-	fprintf(f, "__thread uint32_t vm_state4 = 0;\n\n");
-#endif
+	fprintf(f, "#include \"../crypto/elasticpl_crypto.h\"\n\n");
+	fprintf(f, "int32_t* mem = NULL;\n");
+	fprintf(f, "uint32_t* vm_state = NULL;\n\n");
 	fprintf(f, "static const unsigned int mask32 = (CHAR_BIT*sizeof(uint32_t)-1);\n\n");
 	fprintf(f, "static uint32_t rotl32 (uint32_t x, unsigned int n) {\n");
 	fprintf(f, "\tn &= mask32;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers\n");
@@ -59,67 +39,37 @@ bool create_c_source() {
 	fprintf(f, "\tint mod = x %% 32;\n");
 	fprintf(f, "\tint leaf = mod %% 4;\n");
 	fprintf(f, "\tif (leaf == 0) {\n");
-	fprintf(f, "\t\tvm_state1 = rotl32(vm_state1, mod);\n");
-	fprintf(f, "\t\tvm_state1 = vm_state1 ^ x;\n");
+	fprintf(f, "\t\tvm_state[0] = rotl32(vm_state[0], mod);\n");
+	fprintf(f, "\t\tvm_state[0] = vm_state[0] ^ x;\n");
 	fprintf(f, "\t}\n");
 	fprintf(f, "\telse if (leaf == 1) {\n");
-	fprintf(f, "\t\tvm_state2 = rotl32(vm_state2, mod);\n");
-	fprintf(f, "\t\tvm_state2 = vm_state2 ^ x;\n");
+	fprintf(f, "\t\tvm_state[1] = rotl32(vm_state[1], mod);\n");
+	fprintf(f, "\t\tvm_state[1] = vm_state[1] ^ x;\n");
 	fprintf(f, "\t}\n");
 	fprintf(f, "\telse if (leaf == 2) {\n");
-	fprintf(f, "\t\tvm_state3 = rotl32(vm_state3, mod);\n");
-	fprintf(f, "\t\tvm_state3 = vm_state3 ^ x;\n");
+	fprintf(f, "\t\tvm_state[2] = rotl32(vm_state[2], mod);\n");
+	fprintf(f, "\t\tvm_state[2] = vm_state[2] ^ x;\n");
 	fprintf(f, "\t}\n");
 	fprintf(f, "\telse {\n");
-	fprintf(f, "\t\tvm_state4 = rotl32(vm_state4, mod);\n");
-	fprintf(f, "\t\tvm_state4 = vm_state4 ^ x;\n");
+	fprintf(f, "\t\tvm_state[3] = rotl32(vm_state[3], mod);\n");
+	fprintf(f, "\t\tvm_state[3] = vm_state[3] ^ x;\n");
 	fprintf(f, "\t}\n");
 	fprintf(f, "\treturn x;\n");
 	fprintf(f, "}\n\n");
 #ifdef WIN32
-	fprintf(f, "__declspec(dllexport) void initialize() {\n");
+	fprintf(f, "__declspec(dllexport) void initialize(int32_t* m, uint32_t* s) {\n");
 #else
-	fprintf(f, "void initialize() {\n");
+	fprintf(f, "void initialize(int32_t* m, uint32_t* s) {\n");
 #endif
-	fprintf(f, "\tif (mem == 0)\n");
-	fprintf(f, "\t\tmem = ALLOC_ALIGNED_BUFFER(64000 * sizeof(int));\n\n");
-	fprintf(f, "\tvm_state1=0;\n");
-	fprintf(f, "\tvm_state2=0;\n");
-	fprintf(f, "\tvm_state3=0;\n");
-	fprintf(f,"\tvm_state4=0;\n" );
+	fprintf(f, "\tmem = m;\n");
+	fprintf(f, "\tvm_state = s;\n");
 	fprintf(f, "}\n\n");
 #ifdef WIN32
-	fprintf(f, "__declspec(dllexport) void free_mem() {\n");
+	fprintf(f, "__declspec(dllexport) int execute() {\n");
 #else
-	fprintf(f, "void free_mem() {\n");
-#endif
-	fprintf(f, "\tif (mem != 0) {\n");
-	fprintf(f, "\t\tFREE_ALIGNED_BUFFER(mem);\n");
-	fprintf(f, "\t\tmem = 0;\n\t}\n");
-	fprintf(f, "}\n\n");
-#ifdef WIN32
-	fprintf(f, "__declspec(dllexport) void reset(int input[]) {\n");
-#else
-	fprintf(f, "void reset(int input[]) {\n");
-#endif
-	fprintf(f, "\n\tint i;\n");
-	fprintf(f, "\tfor (i = 0; i < 12; i++)\n");
-	fprintf(f, "\t\tmem[i] = input[i];\n\n");
-	fprintf(f, "\tvm_state1=0;\n");
-	fprintf(f, "\tvm_state2=0;\n");
-	fprintf(f, "\tvm_state3=0;\n");
-	fprintf(f, "\tvm_state4=0;\n");
-	fprintf(f, "}\n\n");
-#ifdef WIN32
-	fprintf(f, "__declspec(dllexport) int execute(uint32_t vm_state[]) {\n");
-#else
-	fprintf(f, "int execute(uint32_t vm_state[]) {\n");
+	fprintf(f, "int execute() {\n");
 #endif
 	fprintf(f, "\tint rc;\n\n");
-	fprintf(f, "\tvm_state1=0;\n");
-	fprintf(f, "\tvm_state2=0;\n");
-	fprintf(f, "\tvm_state3=0;\n");
-	fprintf(f, "\tvm_state4=0;\n\n");
 	fprintf(f, "//The following code created by ElasticPL to C parser\n");
 
 	code = convert_ast_to_c();
@@ -129,14 +79,10 @@ bool create_c_source() {
 
 	fprintf(f, &code[0]);
 
-	fprintf(f, "\tvm_state[0] = vm_state1;\n");
-	fprintf(f, "\tvm_state[1] = vm_state2;\n");
-	fprintf(f, "\tvm_state[2] = vm_state3;\n");
-	fprintf(f, "\tvm_state[3] = vm_state4;\n\n");
 	fprintf(f, "\treturn rc;\n");
 	fprintf(f, "}\n");
 
-	if (opt_test_compiler) {
+	if (opt_test_vm) {
 		fprintf(stdout, "\n********************************************************************************\n");
 		fprintf(stdout, code);
 		fprintf(stdout, "\n********************************************************************************\n");
@@ -192,11 +138,9 @@ void create_instance(struct instance* inst, char *lib_name) {
 		fprintf(stderr, "Unable to load library: '%s'", file_name);
 		exit(EXIT_FAILURE);
 	}
-	inst->initialize = (int(__cdecl *)())GetProcAddress((HMODULE)inst->hndl, "initialize");
-	inst->reset = (int(__cdecl *)(int *))GetProcAddress((HMODULE)inst->hndl, "reset");
-	inst->execute = (int(__cdecl *)(uint32_t *))GetProcAddress((HMODULE)inst->hndl, "execute");
-	inst->free_mem = (int(__cdecl *)())GetProcAddress((HMODULE)inst->hndl, "free_mem");
-	if (!inst->initialize || !inst->reset || !inst->execute || !inst->free_mem) {
+	inst->initialize = (int(__cdecl *)(int32_t *, uint32_t *))GetProcAddress((HMODULE)inst->hndl, "initialize");
+	inst->execute = (int(__cdecl *)())GetProcAddress((HMODULE)inst->hndl, "execute");
+	if (!inst->initialize || !inst->execute) {
 		fprintf(stderr, "Unable to find library functions");
 		FreeLibrary((HMODULE)inst->hndl);
 		exit(EXIT_FAILURE);
@@ -210,17 +154,14 @@ void create_instance(struct instance* inst, char *lib_name) {
 		exit(EXIT_FAILURE);
 	}
 	inst->initialize = dlsym(inst->hndl, "initialize");
-	inst->reset = dlsym(inst->hndl, "reset");
 	inst->execute = dlsym(inst->hndl, "execute");
-	inst->free_mem = dlsym(inst->hndl, "free_mem");
 #endif
 
-	inst->initialize();
+	inst->initialize(vm_mem, vm_state);
 }
 
 void free_compiler(struct instance* inst) {
 	if (inst->hndl != 0) {
-		inst->free_mem();
 #ifdef WIN32
 		FreeLibrary((HMODULE)inst->hndl);
 #else
@@ -228,8 +169,6 @@ void free_compiler(struct instance* inst) {
 #endif
 		inst->hndl = 0;
 		inst->initialize = 0;
-		inst->reset = 0;
 		inst->execute = 0;
-		inst->free_mem = 0;
 	}
 }
