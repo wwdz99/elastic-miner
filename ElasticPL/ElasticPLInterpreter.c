@@ -707,9 +707,6 @@ static int mangle_state(int x) {
 	return x;
 }
 
-
-//vm_stack_item d_vm_stack[100];
-
 static bool get_param(ast *exp, int *param, size_t num) {
 	if (num > 0) {
 		if (!exp->right->left)
@@ -762,24 +759,29 @@ static int32_t interpret(ast* exp, bool mangle) {
 				val = 0;
 			else
 				val = exp->value;
-			if (mangle) {
+			if (mangle)					// This Allows Us To Mangle All Memory Locations On Left Side Of Assign Operator
 				mangle_state(val);
-				return val;
-			}
 			return vm_mem[val];
 		case NODE_VAR_EXP:
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
-			else
-				return vm_mem[lval];
+			if (mangle)					// This Allows Us To Mangle All Memory Locations On Left Side Of Assign Operator
+				mangle_state(lval);
+			return vm_mem[lval];
 		case NODE_ASSIGN:
 			rval = interpret(exp->right, false);
 			mangle_state(rval);
-			lval = interpret(exp->left, true);
+			if (exp->left->type == NODE_VAR_CONST) {
+				lval = exp->left->value;
+				mangle_state(lval);
+			}
+			else
+				lval = interpret(exp->left, true);
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
 			vm_mem[lval] = rval;
+//			mangle_state(lval);
 			return 1;
 		case NODE_IF:
 			if (exp->right->type != NODE_ELSE) {
@@ -807,26 +809,26 @@ static int32_t interpret(ast* exp, bool mangle) {
 				interpret(exp->right, false);
 			return 1;
 		case NODE_ADD:
-			rval = interpret(exp->right, false);
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
+			rval = interpret(exp->right, mangle);
 			val = (lval + rval);
 			mangle_state(val);
 			return val;
 		case NODE_SUB:
-			rval = interpret(exp->right, false);
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
+			rval = interpret(exp->right, mangle);
 			val = (lval - rval);
 			mangle_state(val);
 			return val;
 		case NODE_MUL:
-			rval = interpret(exp->right, false);
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
+			rval = interpret(exp->right, mangle);
 			val = (lval * rval);
 			mangle_state(val);
 			return val;
 		case NODE_DIV:
-			rval = interpret(exp->right, false);
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
+			rval = interpret(exp->right, mangle);
 			if (rval != 0)
 				val = lval / rval;
 			else
@@ -834,8 +836,8 @@ static int32_t interpret(ast* exp, bool mangle) {
 			mangle_state(val);
 			return val;
 		case NODE_MOD:
-			rval = interpret(exp->right, false);
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
+			rval = interpret(exp->right, mangle);
 			if (rval > 0)
 				val = lval % rval;
 			else
@@ -843,111 +845,111 @@ static int32_t interpret(ast* exp, bool mangle) {
 			mangle_state(val);
 			return val;
 		case NODE_LSHIFT:
-			rval = interpret(exp->right, false);
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
+			rval = interpret(exp->right, mangle);
 			val = (lval << rval);
 			mangle_state(val);
 			return val;
 		case NODE_LROT:
-			rval = interpret(exp->right, false);
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
+			rval = interpret(exp->right, mangle);
 			val = rotl32(lval, rval % 32);
 			mangle_state(val);
 			return val;
 		case NODE_RSHIFT:
-			rval = interpret(exp->right, false);
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
+			rval = interpret(exp->right, mangle);
 			val = (lval >> rval);
 			mangle_state(val);
 			return val;
 		case NODE_RROT:
-			rval = interpret(exp->right, false);
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
+			rval = interpret(exp->right, mangle);
 			val = rotr32(lval, rval % 32);
 			mangle_state(val);
 			return val;
 		case NODE_NOT:
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
 			mangle_state(!lval);
 			return !lval;
 		case NODE_COMPL:
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
 			mangle_state(~lval);
 			return ~lval;
 		case NODE_AND:
-			rval = interpret(exp->right, false);
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
+			rval = interpret(exp->right, mangle);
 //			val = (lval && rval);
 			val = (lval >! rval);
 			mangle_state(val);
 			return val;
 		case NODE_OR:
-			rval = interpret(exp->right, false);
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
+			rval = interpret(exp->right, mangle);
 			val = (lval || rval);
 			mangle_state(val);
 			return val;
 		case NODE_BITWISE_AND:
-			rval = interpret(exp->right, false);
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
+			rval = interpret(exp->right, mangle);
 			val = (lval & rval);
 			mangle_state(val);
 			return val;
 		case NODE_BITWISE_XOR:
-			rval = interpret(exp->right, false);
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
+			rval = interpret(exp->right, mangle);
 			val = (lval ^ rval);
 			mangle_state(val);
 			return val;
 		case NODE_BITWISE_OR:
-			rval = interpret(exp->right, false);
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
+			rval = interpret(exp->right, mangle);
 			val = (lval | rval);
 			mangle_state(val);
 			return val;
 		case NODE_EQ:
-			rval = interpret(exp->right, false);
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
+			rval = interpret(exp->right, mangle);
 			val = (lval == rval);
 			mangle_state(val);
 			return val;
 		case NODE_NE:
-			rval = interpret(exp->right, false);
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
+			rval = interpret(exp->right, mangle);
 			val = (lval != rval);
 			mangle_state(val);
 			return val;
 		case NODE_GT:
-			rval = interpret(exp->right, false);
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
+			rval = interpret(exp->right, mangle);
 			val = (lval > rval);
 			mangle_state(val);
 			return val;
 		case NODE_LT:
-			rval = interpret(exp->right, false);
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
+			rval = interpret(exp->right, mangle);
 			val = (lval < rval);
 			mangle_state(val);
 			return val;
 		case NODE_GE:
-			rval = interpret(exp->right, false);
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
+			rval = interpret(exp->right, mangle);
 			val = (lval >= rval);
 			mangle_state(val);
 			return val;
 		case NODE_LE:
-			rval = interpret(exp->right, false);
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
+			rval = interpret(exp->right, mangle);
 			val = (lval <= rval);
 			mangle_state(val);
 			return val;
 		case NODE_NEG:
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
 			mangle_state(-lval);
 			return -lval;
 		case NODE_VERIFY:
-			rval = interpret(exp->right, false);
-			lval = interpret(exp->left, false);
+			lval = interpret(exp->left, mangle);
+			rval = interpret(exp->right, mangle);
 			vm_bounty = (lval != rval);
 			mangle_state(vm_bounty);
 			return vm_bounty;
@@ -1113,6 +1115,7 @@ static int32_t interpret(ast* exp, bool mangle) {
 			else
 				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp256k1, 33, 65);
 			mangle_state(val);
+			return 1;
 		case NODE_SECP256K_PN:
 			if (!get_param(exp, param, 3))
 				val = 0;
@@ -1302,12 +1305,8 @@ static int32_t interpret(ast* exp, bool mangle) {
 
 	if (vm_stack_idx >= VM_STACK_SIZE) {
 		applog(LOG_ERR, "ERROR: VM Runtime - Stack Overflow!");
-		return false;
+		return 0;
 	}
-
-	//int i;
-	//for (i = 0; i < 100; i++)
-	//	d_vm_stack[i] = vm_stack[i];
 
 	return 1;
 }
