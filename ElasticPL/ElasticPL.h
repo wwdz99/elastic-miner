@@ -330,7 +330,7 @@ static void push(long l, bool memory);
 static vm_stack_item pop_item();
 static long pop();
 extern int interpret_ast();
-static bool interpret(ast* exp);
+static int32_t interpret(ast* exp, bool mangle);
 static int mangle_state(int x);
 #ifdef _MSC_VER
 static uint32_t rotl32(uint32_t x, int n);
