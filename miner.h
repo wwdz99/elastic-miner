@@ -48,7 +48,7 @@
 #define MAX_SOURCE_SIZE 4096
 #define VM_INPUTS 12
 
-extern __thread _ALIGN(128) int32_t *vm_mem;
+extern __thread _ALIGN(64) *vm_mem;
 extern __thread vm_stack_item *vm_stack;
 extern __thread int vm_stack_idx;
 extern __thread uint32_t vm_state[4];

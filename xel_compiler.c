@@ -24,8 +24,13 @@ bool create_c_source() {
 	fprintf(f, "#include <limits.h>\n");
 	fprintf(f, "#include <time.h>\n");
 	fprintf(f, "#include \"../crypto/elasticpl_crypto.h\"\n\n");
-	fprintf(f, "int32_t* mem = NULL;\n");
-	fprintf(f, "uint32_t* vm_state = NULL;\n\n");
+#ifdef _MSC_VER
+	fprintf(f, "__declspec(thread) int32_t* mem = NULL;\n");
+	fprintf(f, "__declspec(thread) uint32_t* vm_state = NULL;\n\n");
+#else
+	fprintf(f, "__thread int32_t* mem = NULL;\n");
+	fprintf(f, "__thread uint32_t* vm_state = NULL;\n\n");
+#endif
 	fprintf(f, "static const unsigned int mask32 = (CHAR_BIT*sizeof(uint32_t)-1);\n\n");
 	fprintf(f, "static uint32_t rotl32 (uint32_t x, unsigned int n) {\n");
 	fprintf(f, "\tn &= mask32;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers\n");

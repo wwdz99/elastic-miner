@@ -69,7 +69,7 @@ char g_work_id[22];
 uint64_t g_cur_work_id;
 unsigned char g_pow_target[65];
 
-__thread _ALIGN(128) int32_t *vm_mem = NULL;
+__thread _ALIGN(64) *vm_mem = NULL;
 __thread vm_stack_item *vm_stack = NULL;
 __thread int vm_stack_idx;
 __thread uint32_t vm_state[4];
@@ -496,7 +496,7 @@ static void *test_vm_thread(void *userdata) {
 	applog(LOG_DEBUG, "DEBUG: Bounty Found: %s", rc ? "true" : "false");
 
 	for (i = 0; i < 4; i++)
-		applog(LOG_DEBUG, "DEBUG: vm_state[%d]: %9d, Hex: %08X", i, vm_state[i], vm_state[i]);
+		applog(LOG_DEBUG, "DEBUG: vm_state[%d]: %10d, Hex: %08X", i, vm_state[i], vm_state[i]);
 
 	applog(LOG_NOTICE, "DEBUG: Compiler Test Complete");
 
@@ -1116,7 +1116,7 @@ static void *miner_thread(void *userdata) {
 	struct instance *inst = NULL;
 
 	// Initialize Global Variables
-	vm_mem = calloc(VM_MEMORY_SIZE, sizeof(long));
+	vm_mem = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
 	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
 	vm_stack_idx = -1;
 
