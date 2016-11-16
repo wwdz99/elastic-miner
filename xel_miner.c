@@ -135,7 +135,7 @@ Options:\n\
   -R, --retry-pause <n>       Time to pause between retries (Default: 10 sec)\n\
   -s, --scan-time <n>         Max time to scan work before requesting new work (Default: 60 sec)\n\
       --test-miner <file>     Run the Miner using JSON formatted work in <file>\n\
-      --test-compiler <file>  Run the Parser / Compiler using the ElasticPL source code in <file>\n\
+      --test-vm <file>        Run the Parser / Compiler using the ElasticPL source code in <file>\n\
   -t, --threads <n>           Number of miner threads (Default: Number of CPUs)\n\
   -u, --user <username>       Username for mining server\n\
   -T, --timeout <n>           Timeout for rpc calls (Default: 30 sec)\n\
@@ -371,26 +371,25 @@ static void show_usage_and_exit(int status)
 
 static void show_version_and_exit(void)
 {
-	printf("\n built on " __DATE__
+	printf("\nBuilt on " __DATE__
 #ifdef _MSC_VER
-		" with VC++ 2015\n");
+		" with VC++ 2015\n\n");
 #elif defined(__GNUC__)
 		" with GCC");
-	printf(" %d.%d.%d\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
+	printf(" %d.%d.%d\n\n", __GNUC__, __GNUC_MINOR__, __GNUC_PATCHLEVEL__);
 #endif
 
 	// Dependencies Versions
-	printf("curl: %s\n", curl_version());
+	printf("curl:     %s\n", curl_version());
 #ifdef JANSSON_VERSION
-	printf("jansson: /%s ", JANSSON_VERSION);
+	printf("jansson:  v%s\n", JANSSON_VERSION);
 #endif
 #ifdef PTW32_VERSION
-	printf("pthreads: /%d.%d.%d.%d ", PTW32_VERSION);
+	printf("pthreads: v%d.%d.%d.%d\n", PTW32_VERSION);
 #endif
 #ifdef OPENSSL_VERSION_TEXT
-	printf("openssl: ", OPENSSL_VERSION_TEXT);
+	printf("openssl:  %s\n", OPENSSL_VERSION_TEXT);
 #endif
-	printf("\n");
 	exit(0);
 }
 
