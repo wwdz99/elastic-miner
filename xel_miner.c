@@ -361,7 +361,7 @@ void parse_arg(int key, char *arg)
 static void show_usage_and_exit(int status)
 {
 	if (status)
-		fprintf(stderr, "Try `" PACKAGE_NAME " --help' for more information.\n");
+		fprintf(stderr, "Try `" PACKAGE_NAME " -h' for more information.\n");
 	else
 		printf(usage);
 	exit(status);
@@ -440,15 +440,13 @@ static void *test_vm_thread(void *userdata) {
 
 	// Initialize Global Variables
 	vm_mem = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
+	vm_state = calloc(4, sizeof(uint32_t));
 	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
 	vm_stack_idx = -1;
 	if (!vm_mem || !vm_stack) {
 			applog(LOG_ERR, "CPU%d: Unable to allocate VM memory", thr_id);
 			exit(EXIT_FAILURE);
 	}
-
-	memset(vm_mem, 0, VM_INPUTS * sizeof(int));
-	memset(vm_state, 0, 4 * sizeof(int));
 
 	applog(LOG_DEBUG, "DEBUG: Loading Test File");
 	if (!load_test_file(test_code))
@@ -481,6 +479,7 @@ static void *test_vm_thread(void *userdata) {
 			free_compiler(inst);
 		inst = calloc(1, sizeof(struct instance));
 		create_instance(inst, "test");
+		inst->initialize(vm_mem, vm_state);
 
 		// Execute The VM Logic
 		rc = inst->execute();
@@ -495,11 +494,12 @@ static void *test_vm_thread(void *userdata) {
 	applog(LOG_DEBUG, "DEBUG: Bounty Found: %s", rc ? "true" : "false");
 
 	for (i = 0; i < 4; i++)
-		applog(LOG_DEBUG, "DEBUG: vm_state[%d]: %10d, Hex: %08X", i, vm_state[i], vm_state[i]);
+		applog(LOG_DEBUG, "DEBUG: vm_state[%d]: %11d, Hex: %08X", i, vm_state[i], vm_state[i]);
 
 	applog(LOG_NOTICE, "DEBUG: Compiler Test Complete");
 
 	free(vm_mem);
+	free(vm_state);
 	free(vm_stack);
 
 	exit(EXIT_SUCCESS);
@@ -931,7 +931,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 
 	// If Running VM Interpreter Instead Of Compiled VM
 	if (!opt_compile && (g_work_package[best_pkg].work_id != g_cur_work_id)) {
-		rc = ascii85dec(source_code, MAX_SOURCE_SIZE, str);
+		rc = ascii85dec(source_code, MAX_SOURCE_SIZE, best_src);
 		if (!rc) {
 			g_work_package[best_pkg].blacklisted = true;
 			applog(LOG_ERR, "ERROR: Unable to decode 'source' for work_id: %s\n\n%s\n", g_work_package[best_pkg].work_str, str);
@@ -1143,7 +1143,7 @@ static void *miner_thread(void *userdata) {
 
 	// Initialize Global Variables
 	vm_mem = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
-	vm_state = calloc(4, sizeof(int32_t));
+	vm_state = calloc(4, sizeof(uint32_t));
 	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
 	vm_stack_idx = -1;
 
@@ -1254,6 +1254,7 @@ static void *miner_thread(void *userdata) {
 
 out:
 	if (vm_mem) free(vm_mem);
+	if (vm_state) free(vm_state);
 	if (vm_stack) free(vm_stack);
 	tq_freeze(mythr->q);
 
@@ -1341,7 +1342,7 @@ static bool add_submit_req(struct work *work, enum submit_commands req_type) {
 	g_submit_req[g_submit_req_cnt].wrk_pkg = work->wrk_pkg;
 	sprintf(g_submit_req[g_submit_req_cnt].hash, "%08X%08X%08X%08X%08X%08X%08X%08X", swap32(hash32[0]), swap32(hash32[1]), swap32(hash32[2]), swap32(hash32[3]), swap32(hash32[4]), swap32(hash32[5]), swap32(hash32[6]), swap32(hash32[7]));
 	sprintf(g_submit_req[g_submit_req_cnt].mult, "%08X%08X%08X%08X%08X%08X%08X%08X", swap32(mult32[0]), swap32(mult32[1]), swap32(mult32[2]), swap32(mult32[3]), swap32(mult32[4]), swap32(mult32[5]), swap32(mult32[6]), swap32(mult32[7]));
-	if (!req_type != SUBMIT_POW) {
+	if (req_type != SUBMIT_POW) {
 		g_submit_req[g_submit_req_cnt].bounty = true;
 		work->wrk_pkg->pending_bty_cnt++;
 	}
