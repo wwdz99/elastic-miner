@@ -176,8 +176,6 @@ static struct option const options[] = {
 static void parse_cmdline(int argc, char *argv[])
 {
 	int key;
-	int a, b, c, d, e;
-
 
 	while (1) {
 		key = getopt_long(argc, argv, short_options, options, NULL);
@@ -763,7 +761,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 	uint64_t work_id;
 	double best_profit = 0.0;
 	uint32_t best_wcet = 0xFFFFFFFF;
-	char *tgt = NULL, *src = NULL, *str = NULL;
+	char *tgt = NULL, *src = NULL, *str = NULL, *best_src = NULL;
 	json_t *wrk = NULL, *pkg = NULL;
 
 	// Reset Global Work Package Variables Used For Status Display
@@ -852,7 +850,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 				return 0;
 			}
 
-			applog(LOG_DEBUG, "DEBUG: Running ElasticPL Compiler");
+			applog(LOG_DEBUG, "DEBUG: Running ElasticPL Parser");
 
 			if (opt_debug_epl)
 				applog(LOG_DEBUG, "DEBUG: ElasticPL Source Code -\n%s", source_code);
@@ -873,10 +871,12 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 			}
 
 			// Convert The ElasticPL Source Into A C Program Library
-			if (!compile_and_link(work_package.work_str)) {
-				work_package.blacklisted = true;
-				applog(LOG_ERR, "ERROR: Unable to convert 'source' to C for work_id: %s\n\n%s\n", work_package.work_str, str);
-				return 0;
+			if (opt_compile) {
+				if (!compile_and_link(work_package.work_str)) {
+					work_package.blacklisted = true;
+					applog(LOG_ERR, "ERROR: Unable to convert 'source' to C for work_id: %s\n\n%s\n", work_package.work_str, str);
+					return 0;
+				}
 			}
 
 			applog(LOG_DEBUG, "DEBUG: Adding work package to list, work_id: %s", work_package.work_str);
@@ -901,6 +901,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 		// Select Best Work Package
 		if (opt_pref == PREF_WCET && g_work_package[work_pkg_id].WCET < best_wcet) {
 			best_pkg = work_pkg_id;
+			best_src = (char *)json_string_value(json_object_get(pkg, "source"));
 			best_wcet = g_work_package[work_pkg_id].WCET;
 			//			tgt = (char *)json_string_value(json_object_get(val, "pow_target"));
 		}
@@ -909,11 +910,13 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 		//
 		else if (opt_pref == PREF_PROFIT && ((double)g_work_package[work_pkg_id].pow_reward / (double)g_work_package[work_pkg_id].WCET) > best_profit) {
 			best_pkg = work_pkg_id;
+			best_src = (char *)json_string_value(json_object_get(pkg, "source"));
 			best_profit = ((double)g_work_package[work_pkg_id].pow_reward / (double)g_work_package[work_pkg_id].WCET);
 			//			tgt = (char *)json_string_value(json_object_get(val, "pow_target"));
 		}
 		else if (opt_pref == PREF_WORKID && (!strcmp(g_work_package[work_pkg_id].work_str, pref_workid))) {
 			best_pkg = work_pkg_id;
+			best_src = (char *)json_string_value(json_object_get(pkg, "source"));
 			break;
 			//			tgt = (char *)json_string_value(json_object_get(val, "pow_target"));
 		}
@@ -926,8 +929,30 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 		return -1;
 	}
 
+	// If Running VM Interpreter Instead Of Compiled VM
+	if (!opt_compile && (g_work_package[best_pkg].work_id != g_cur_work_id)) {
+		rc = ascii85dec(source_code, MAX_SOURCE_SIZE, str);
+		if (!rc) {
+			g_work_package[best_pkg].blacklisted = true;
+			applog(LOG_ERR, "ERROR: Unable to decode 'source' for work_id: %s\n\n%s\n", g_work_package[best_pkg].work_str, str);
+			return 0;
+		}
+
+		applog(LOG_DEBUG, "DEBUG: Running ElasticPL Parser");
+
+		if (opt_debug_epl)
+			applog(LOG_DEBUG, "DEBUG: ElasticPL Source Code -\n%s", source_code);
+
+		// Convert ElasticPL Into AST
+		if (!create_epl_vm(source_code)) {
+			g_work_package[best_pkg].blacklisted = true;
+			applog(LOG_ERR, "ERROR: Unable to convert 'source' to AST for work_id: %s\n\n%s\n", g_work_package[best_pkg].work_str, str);
+			return 0;
+		}
+	}
+
 	// Copy Data From Best Package Into Work
-	work->wrk_pkg = &g_work_package[work_pkg_id];
+	work->wrk_pkg = &g_work_package[best_pkg];
 	rc = hex2ints(work->pow_target, 8, tgt, strlen(tgt));
 	if (!rc) {
 		applog(LOG_ERR, "Invalid Target in JSON response to getwork request");

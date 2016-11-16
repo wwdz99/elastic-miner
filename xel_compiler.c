@@ -26,10 +26,17 @@ bool create_c_source() {
 	fprintf(f, "#include \"../crypto/elasticpl_crypto.h\"\n\n");
 #ifdef _MSC_VER
 	fprintf(f, "__declspec(thread) int32_t* mem = NULL;\n");
-	fprintf(f, "__declspec(thread) uint32_t* vm_state = NULL;\n\n");
+//	fprintf(f, "__declspec(thread) uint32_t* vm_state = NULL;\n\n");
+	fprintf(f, "__declspec(thread) uint32_t* vm_state1 = NULL;\n");
+	fprintf(f, "__declspec(thread) uint32_t* vm_state2 = NULL;\n");
+	fprintf(f, "__declspec(thread) uint32_t* vm_state3 = NULL;\n");
+	fprintf(f, "__declspec(thread) uint32_t* vm_state4 = NULL;\n\n");
 #else
 	fprintf(f, "__thread int32_t* mem = NULL;\n");
-	fprintf(f, "__thread uint32_t* vm_state = NULL;\n\n");
+	fprintf(f, "__thread uint32_t* vm_state1 = NULL;\n");
+	fprintf(f, "__thread uint32_t* vm_state2 = NULL;\n");
+	fprintf(f, "__thread uint32_t* vm_state3 = NULL;\n");
+	fprintf(f, "__thread uint32_t* vm_state4 = NULL;\n\n");
 #endif
 	fprintf(f, "static const unsigned int mask32 = (CHAR_BIT*sizeof(uint32_t)-1);\n\n");
 	fprintf(f, "static uint32_t rotl32 (uint32_t x, unsigned int n) {\n");
@@ -44,20 +51,20 @@ bool create_c_source() {
 	fprintf(f, "\tint mod = x %% 32;\n");
 	fprintf(f, "\tint leaf = mod %% 4;\n");
 	fprintf(f, "\tif (leaf == 0) {\n");
-	fprintf(f, "\t\tvm_state[0] = rotl32(vm_state[0], mod);\n");
-	fprintf(f, "\t\tvm_state[0] = vm_state[0] ^ x;\n");
+	fprintf(f, "\t\t*vm_state1 = rotl32(*vm_state1, mod);\n");
+	fprintf(f, "\t\t*vm_state1 = *vm_state1 ^ x;\n");
 	fprintf(f, "\t}\n");
 	fprintf(f, "\telse if (leaf == 1) {\n");
-	fprintf(f, "\t\tvm_state[1] = rotl32(vm_state[1], mod);\n");
-	fprintf(f, "\t\tvm_state[1] = vm_state[1] ^ x;\n");
+	fprintf(f, "\t\t*vm_state2 = rotl32(*vm_state2, mod);\n");
+	fprintf(f, "\t\t*vm_state2 = *vm_state2 ^ x;\n");
 	fprintf(f, "\t}\n");
 	fprintf(f, "\telse if (leaf == 2) {\n");
-	fprintf(f, "\t\tvm_state[2] = rotl32(vm_state[2], mod);\n");
-	fprintf(f, "\t\tvm_state[2] = vm_state[2] ^ x;\n");
+	fprintf(f, "\t\t*vm_state3 = rotl32(*vm_state3, mod);\n");
+	fprintf(f, "\t\t*vm_state3 = *vm_state3 ^ x;\n");
 	fprintf(f, "\t}\n");
 	fprintf(f, "\telse {\n");
-	fprintf(f, "\t\tvm_state[3] = rotl32(vm_state[3], mod);\n");
-	fprintf(f, "\t\tvm_state[3] = vm_state[3] ^ x;\n");
+	fprintf(f, "\t\t*vm_state4 = rotl32(*vm_state4, mod);\n");
+	fprintf(f, "\t\t*vm_state4 = *vm_state4 ^ x;\n");
 	fprintf(f, "\t}\n");
 	fprintf(f, "\treturn x;\n");
 	fprintf(f, "}\n\n");
@@ -67,7 +74,10 @@ bool create_c_source() {
 	fprintf(f, "void initialize(int32_t* m, uint32_t* s) {\n");
 #endif
 	fprintf(f, "\tmem = m;\n");
-	fprintf(f, "\tvm_state = s;\n");
+	fprintf(f, "\tvm_state1 = &s[0];\n");
+	fprintf(f, "\tvm_state2 = &s[1];\n");
+	fprintf(f, "\tvm_state3 = &s[2];\n");
+	fprintf(f, "\tvm_state4 = &s[3];\n");
 	fprintf(f, "}\n\n");
 #ifdef WIN32
 	fprintf(f, "__declspec(dllexport) int execute() {\n");
