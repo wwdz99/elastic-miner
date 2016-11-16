@@ -45,13 +45,13 @@
 #define JSON_LOAD_FILE(path, err_ptr) json_load_file(path, err_ptr)
 #endif
 
-#define MAX_SOURCE_SIZE 4096
+#define MAX_SOURCE_SIZE 1024 * 256	// 256K
 #define VM_INPUTS 12
 
 extern __thread _ALIGN(64) *vm_mem;
 extern __thread vm_stack_item *vm_stack;
 extern __thread int vm_stack_idx;
-extern __thread uint32_t vm_state[4];
+extern __thread uint32_t *vm_state;
 extern __thread bool vm_bounty;
 
 extern bool opt_debug;

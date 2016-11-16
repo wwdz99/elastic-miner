@@ -70,9 +70,9 @@ uint64_t g_cur_work_id;
 unsigned char g_pow_target[65];
 
 __thread _ALIGN(64) *vm_mem = NULL;
+__thread uint32_t *vm_state = NULL;
 __thread vm_stack_item *vm_stack = NULL;
 __thread int vm_stack_idx;
-__thread uint32_t vm_state[4];
 __thread bool vm_bounty;
 
 pthread_mutex_t applog_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -1143,10 +1143,11 @@ static void *miner_thread(void *userdata) {
 
 	// Initialize Global Variables
 	vm_mem = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
+	vm_state = calloc(4, sizeof(int32_t));
 	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
 	vm_stack_idx = -1;
 
-	if (!vm_mem || !vm_stack) {
+	if (!vm_mem || !vm_state || !vm_stack) {
 		applog(LOG_ERR, "CPU%d: Unable to allocate VM memory", thr_id);
 		goto out;
 	}
@@ -1188,6 +1189,7 @@ static void *miner_thread(void *userdata) {
 					free_compiler(inst);
 				inst = calloc(1, sizeof(struct instance));
 				create_instance(inst, work.wrk_pkg->work_str);
+				inst->initialize(vm_mem, vm_state);
 			}
 		}
 
