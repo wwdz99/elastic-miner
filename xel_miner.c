@@ -146,7 +146,7 @@ Options while mining ----------------------------------------------------------\
    q + <enter>                Toggle Quite mode\n\
 ";
 
-static char const short_options[] = "c:D:k:h:m:o:p:P:q:r:R:s:t:T:u:V";
+static char const short_options[] = "c:Dk:hm:o:p:P:qr:R:s:t:T:u:V";
 
 static struct option const options[] = {
 	{ "config",			1, NULL, 'c' },
@@ -176,6 +176,8 @@ static struct option const options[] = {
 static void parse_cmdline(int argc, char *argv[])
 {
 	int key;
+	int a, b, c, d, e;
+
 
 	while (1) {
 		key = getopt_long(argc, argv, short_options, options, NULL);
