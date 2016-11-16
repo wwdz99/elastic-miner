@@ -1361,7 +1361,7 @@ static bool delete_submit_req(int idx) {
 	if (g_submit_req[idx].bounty)
 		g_submit_req[idx].wrk_pkg->pending_bty_cnt--;
 
-	if (g_submit_req_cnt > 0) {
+	if (g_submit_req_cnt > 1) {
 		req = malloc((g_submit_req_cnt - 1) * sizeof(struct submit_req));
 		if (!req) {
 			applog(LOG_ERR, "ERROR: Bounty request allocation failed");
@@ -1369,8 +1369,13 @@ static bool delete_submit_req(int idx) {
 			return false;
 		}
 	}
-	else
-		free(g_submit_req);
+	else {
+		if(g_submit_req) free(g_submit_req);
+		g_submit_req = 0;
+		g_submit_req_cnt = 0;
+		pthread_mutex_unlock(&submit_lock);
+		return true;
+	}
 
 	for (i = 0; i < idx; i++)
 		memcpy(&req[i], &g_submit_req[i], sizeof(struct submit_req));
