@@ -1,8 +1,8 @@
-# xel_miner 0.6
+# xel_miner 0.7
 
-This is a prototype of a miner for solving XEL work packages.  This was put together as a tool for me to learn more about AST parsing & interpreting. I ultimately decided to convert it into an XEL miner; however, it is not optimized at all...it is a prototype that demonstrates all the functionality of an XEL miner.
+This is a prototype of a miner for solving XEL work packages.  This was put together as a tool for me to learn more about AST parsing & interpreting. I ultimately decided to convert it into an XEL miner; however, it is not optimized at all...it is a prototype that attempts demonstrate all the functionality of an XEL miner.
 
-This version includes the ElasticPL Crypto Functions; however, the following algos were not included as they aren't available directly in openssl:
+Please note, the following algos were not included in this miner as they aren't available directly in openssl:
 
 <ul>
 <li>SEPC_192R1</li>
@@ -11,7 +11,9 @@ This version includes the ElasticPL Crypto Functions; however, the following alg
 <li>TIGER</li>
 </ul>
 
-Note:  The functions will need thorough testing.  Only minimal testing on them has been performed at this time.
+Also:  All crypto functions will need thorough testing.  Only minimal testing on them has been performed at this time.
+
+The miner build has been tested using GCC in Linux as well as MinGW32.  It can also be built using Visual Studio but numerous additional project files are required to do so.
 
 Below are the steps I used to get the miner running on my Raspberry Pi.
 <ul>
@@ -24,11 +26,21 @@ Below are the steps I used to get the miner running on my Raspberry Pi.
 <li>make install</li>
 </ul>
 
+<b>*** Don't forget to use "make install" and not just "make" ***</b>
+
 To run the Miner
 
     sudo ./xel_miner -t <num_threads> -P <secret_phrase> -D -o http://127.0.0.1:6876/nxt
 
+To run the Miner w/o a compiler installed
+
+    sudo ./xel_miner -t <num_threads> -P <secret_phrase> -D -o http://127.0.0.1:6876/nxt --no-compile
+
 Use "sudo ./xel_miner -h" to see a full list of options.
+
+________________________________________________________________________________________________
+<b>BTC:   1Kciogbv4DXR6A2N4ke5misuXcZH8rfTrt</b>
+________________________________________________________________________________________________
 
 #Credits
 <ul>
