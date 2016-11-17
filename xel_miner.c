@@ -104,6 +104,7 @@ uint32_t g_bounty_deprecated_cnt = 0;
 uint32_t g_bounty_error_cnt = 0;
 uint32_t g_pow_accepted_cnt = 0;
 uint32_t g_pow_rejected_cnt = 0;
+uint32_t g_pow_discarded_cnt = 0;
 
 int work_thr_id;
 struct thr_info *thr_info;
@@ -597,7 +598,7 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 		sha256(msg, 64, hash);
 
 		// POW Solution Found
-		if (swap32(hash32[0]) <= work->pow_target[0])
+		if ((swap32(hash32[0]) <= work->pow_target[0]) && swap32(hash32[1]) <= work->pow_target[1])
 			rc = 2;
 		else
 			rc = 0;
@@ -1112,8 +1113,14 @@ static bool submit_upstream_work(CURL *curl, struct submit_req *req) {
 	}
 	else if (req->req_type == SUBMIT_POW) {
 		if (err_desc) {
-			applog(LOG_NOTICE, "CPU%d: %s***** POW Rejected! *****", req->thr_id, CL_RED);
-			g_pow_rejected_cnt++;
+			if (strstr(err_desc, "duplicate")) {
+				applog(LOG_NOTICE, "CPU%d: %s***** POW Discarded! *****", req->thr_id, CL_RED);
+				g_pow_discarded_cnt++;
+			}
+			else {
+				applog(LOG_NOTICE, "CPU%d: %s***** POW Rejected! *****", req->thr_id, CL_RED);
+				g_pow_rejected_cnt++;
+			}
 		}
 		else {
 			applog(LOG_NOTICE, "CPU%d: %s***** POW Accepted! *****", req->thr_id, CL_CYN);
@@ -1462,9 +1469,9 @@ static void *key_monitor_thread(void *userdata)
 			applog(LOG_WARNING, "Bounty Pending:\t%3d\t\tWork ID:   %s", pending_bty, g_work_id ? g_work_id : "");
 			applog(LOG_WARNING, "Bounty Accept:\t%3d\t\tTarget:    %s", g_bounty_accepted_cnt, g_pow_target);
 			applog(LOG_WARNING, "Bounty Reject:\t%3d", g_bounty_rejected_cnt);
-			applog(LOG_WARNING, "Bounty Deprct:\t%3d", g_bounty_deprecated_cnt);
-			applog(LOG_WARNING, "Bounty Timeout:\t%3d\t\tPOW Accept:  %3d", g_bounty_timeout_cnt, g_pow_accepted_cnt);
-			applog(LOG_WARNING, "Bounty Error:\t%3d\t\tPOW Reject:  %3d", g_bounty_error_cnt, g_pow_rejected_cnt);
+			applog(LOG_WARNING, "Bounty Deprct:\t%3d\t\tPOW Accept:  %3d", g_bounty_deprecated_cnt, g_pow_accepted_cnt);
+			applog(LOG_WARNING, "Bounty Timeout:\t%3d\t\tPOW Reject:  %3d", g_bounty_timeout_cnt, g_pow_rejected_cnt);
+			applog(LOG_WARNING, "Bounty Error:\t%3d\t\tPOW Discard: %3d", g_bounty_error_cnt, g_pow_discarded_cnt);
 			applog(LOG_WARNING, "********************************************************************");
 
 		}
