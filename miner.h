@@ -253,6 +253,8 @@ void tq_thaw(struct thread_q *tq);
 static void *submit_thread(void *userdata);
 static void *key_monitor_thread(void *userdata);
 static void *test_vm_thread(void *userdata);
+static void *longpoll_thread(void *userdata);
+static void longpoll_request_pull(void);
 static void restart_threads(void);
 
 static void *workio_thread(void *userdata);

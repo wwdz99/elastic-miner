@@ -282,8 +282,8 @@ void parse_arg(int key, char *arg)
 		curve25519_donna(publickey, hash_sha256, basepoint);
 
 		printf("Public Key: ");
-		for(i = 0; i < 32; i++)
-			printf("%02X",publickey[i]);
+		for (i = 0; i < 32; i++)
+			printf("%02X", publickey[i]);
 		printf("\n");
 
 		free(hash_sha256);
@@ -445,8 +445,8 @@ static void *test_vm_thread(void *userdata) {
 	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
 	vm_stack_idx = -1;
 	if (!vm_mem || !vm_stack) {
-			applog(LOG_ERR, "CPU%d: Unable to allocate VM memory", thr_id);
-			exit(EXIT_FAILURE);
+		applog(LOG_ERR, "CPU%d: Unable to allocate VM memory", thr_id);
+		exit(EXIT_FAILURE);
 	}
 
 	applog(LOG_DEBUG, "DEBUG: Loading Test File");
@@ -551,8 +551,8 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 	mult32[6] = genrand_int32();
 	mult32[7] = genrand_int32();
 
-//	RAND_bytes(&mult32[6], 8);
-//	RAND_bytes(&mult32[7], 4);
+	//	RAND_bytes(&mult32[6], 8);
+	//	RAND_bytes(&mult32[7], 4);
 
 	while (1) {
 		// Check If New Work Is Available
@@ -976,7 +976,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 	}
 
 	// Debug-Print the Best Package
-	if(strcmp(old_work_id, work->wrk_pkg->work_str) != 0)
+	if (strcmp(old_work_id, work->wrk_pkg->work_str) != 0)
 		applog(LOG_NOTICE, "Switched to work with work_id: %s", work->wrk_pkg->work_str);
 
 
@@ -1305,7 +1305,7 @@ static void *longpoll_thread(void *userdata)
 	CURL *curl;
 	json_t *val, *obj, *inner_obj;
 	int err, num_events, i;
-	char* reason;
+	char* reason = NULL;
 	curl = curl_easy_init();
 	if (!curl) {
 		applog(LOG_ERR, "CURL initialization failed");
@@ -1313,9 +1313,9 @@ static void *longpoll_thread(void *userdata)
 	}
 
 	while (1) {
-	
+
 		val = json_rpc_call(curl, rpc_url, rpc_userpass, "requestType=longpoll&randomId=1", &err);
-		if(err > 0 || !val){
+		if (err > 0 || !val) {
 			applog(LOG_ERR, "ERROR: longpoll failed...retrying in %d seconds", opt_fail_pause);
 			sleep(opt_fail_pause);
 			continue;
@@ -1328,24 +1328,25 @@ static void *longpoll_thread(void *userdata)
 		}
 
 		obj = json_object_get(val, "event");
-		if(!obj){
+		if (!obj) {
 			applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
 			sleep(opt_fail_pause);
 			continue;
 		}
 
-		if(json_is_string(obj)){
+		if (json_is_string(obj)) {
 			reason = (char *)json_string_value(obj);
-			if(strcmp(reason, "timeout") == 0){
+			if (strcmp(reason, "timeout") == 0) {
 				continue;
-			}else{
-				if(strstr(reason,"block")>=0){
+			}
+			else {
+				if (strstr(reason, "block") >= 0) {
 					applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
 					longpoll_request_pull();
 				}
 			}
 		}
-		else if(json_is_array(obj)){
+		else if (json_is_array(obj)) {
 			num_events = json_array_size(obj);
 			if (num_events == 0) {
 				applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
@@ -1355,14 +1356,14 @@ static void *longpoll_thread(void *userdata)
 
 			for (i = 0; i<num_events; i++) {
 				inner_obj = json_array_get(obj, i);
-				if(!inner_obj){
+				if (!inner_obj) {
 					applog(LOG_ERR, "ERROR: longpoll array parsing failed...retrying in %d seconds", opt_fail_pause);
 					sleep(opt_fail_pause);
 					continue;
 				}
-				if(json_is_string(inner_obj)){
+				if (json_is_string(inner_obj)) {
 					char* str = (char *)json_string_value(inner_obj);
-					if(strstr(reason,"block")>=0){
+					if (strstr(reason, "block") >= 0) {
 						applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
 						longpoll_request_pull();
 					}
@@ -1479,7 +1480,7 @@ static bool delete_submit_req(int idx) {
 		}
 	}
 	else {
-		if(g_submit_req) free(g_submit_req);
+		if (g_submit_req) free(g_submit_req);
 		g_submit_req = 0;
 		g_submit_req_cnt = 0;
 		pthread_mutex_unlock(&submit_lock);
@@ -1648,8 +1649,8 @@ static int thread_create(struct thr_info *thr, void* func)
 	return err;
 }
 
-int longpoll_request_pull(){
-	int i,thr_idx;
+static void longpoll_request_pull() {
+	int i, thr_idx=0;
 	struct thr_info *thr;
 	for (i = 0; i < opt_n_threads; i++) {
 		thr = &thr_info[thr_idx];
