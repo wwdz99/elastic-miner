@@ -765,6 +765,9 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 	char *tgt = NULL, *src = NULL, *str = NULL, *best_src = NULL;
 	json_t *wrk = NULL, *pkg = NULL;
 
+	char* old_work_id = (char*)malloc(sizeof(g_work_id));
+	memcpy(old_work_id, g_work_id, sizeof(g_work_id));
+
 	// Reset Global Work Package Variables Used For Status Display
 	memset(work, 0, sizeof(struct work));
 	memset(g_work_nm, 0, sizeof(g_work_nm));
@@ -786,6 +789,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 
 	if (!wrk || !tgt) {
 		applog(LOG_ERR, "Invalid JSON response to getwork request");
+		free(old_work_id);
 		return 0;
 	}
 
@@ -793,6 +797,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 	num_pkg = json_array_size(wrk);
 	if (num_pkg == 0) {
 		applog(LOG_INFO, "No work available...retrying in 15s");
+		free(old_work_id);
 		return -1;
 	}
 
@@ -804,6 +809,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 		str = (char *)json_string_value(json_object_get(pkg, "work_id"));
 		if (!str) {
 			applog(LOG_ERR, "Unable to parse work package");
+			free(old_work_id);
 			return 0;
 		}
 		work_id = strtoull(str, NULL, 10);
@@ -841,6 +847,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 			if (!str || strlen(str) > MAX_SOURCE_SIZE) {
 				work_package.blacklisted = true;
 				applog(LOG_ERR, "ERROR: Invalid 'source' for work_id: %s", work_package.work_str);
+				free(old_work_id);
 				return 0;
 			}
 
@@ -848,6 +855,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 			if (!rc) {
 				work_package.blacklisted = true;
 				applog(LOG_ERR, "ERROR: Unable to decode 'source' for work_id: %s\n\n%s\n", work_package.work_str, str);
+				free(old_work_id);
 				return 0;
 			}
 
@@ -860,6 +868,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 			if (!create_epl_vm(source_code)) {
 				work_package.blacklisted = true;
 				applog(LOG_ERR, "ERROR: Unable to convert 'source' to AST for work_id: %s\n\n%s\n", work_package.work_str, str);
+				free(old_work_id);
 				return 0;
 			}
 
@@ -868,6 +877,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 			if (!work_package.WCET) {
 				work_package.blacklisted = true;
 				applog(LOG_ERR, "ERROR: Unable to calculate WCET for work_id: %s\n\n%s\n", work_package.work_str, str);
+				free(old_work_id);
 				return 0;
 			}
 
@@ -876,6 +886,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 				if (!compile_and_link(work_package.work_str)) {
 					work_package.blacklisted = true;
 					applog(LOG_ERR, "ERROR: Unable to convert 'source' to C for work_id: %s\n\n%s\n", work_package.work_str, str);
+					free(old_work_id);
 					return 0;
 				}
 			}
@@ -927,6 +938,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 	if (best_pkg < 0) {
 		opt_pref = PREF_PROFIT;
 		applog(LOG_INFO, "No work available that matches preference...retrying in 15s");
+		free(old_work_id);
 		return -1;
 	}
 
@@ -936,6 +948,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 		if (!rc) {
 			g_work_package[best_pkg].blacklisted = true;
 			applog(LOG_ERR, "ERROR: Unable to decode 'source' for work_id: %s\n\n%s\n", g_work_package[best_pkg].work_str, str);
+			free(old_work_id);
 			return 0;
 		}
 
@@ -948,6 +961,7 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 		if (!create_epl_vm(source_code)) {
 			g_work_package[best_pkg].blacklisted = true;
 			applog(LOG_ERR, "ERROR: Unable to convert 'source' to AST for work_id: %s\n\n%s\n", g_work_package[best_pkg].work_str, str);
+			free(old_work_id);
 			return 0;
 		}
 	}
@@ -957,14 +971,21 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 	rc = hex2ints(work->pow_target, 8, tgt, strlen(tgt));
 	if (!rc) {
 		applog(LOG_ERR, "Invalid Target in JSON response to getwork request");
+		free(old_work_id);
 		return 0;
 	}
+
+	// Debug-Print the Best Package
+	if(strcmp(old_work_id, work->wrk_pkg->work_str) != 0)
+		applog(LOG_NOTICE, "Switched to work with work_id: %s", work->wrk_pkg->work_str);
+
 
 	// Copy Data From Best Package Into Global Variable
 	strncpy(g_work_id, work->wrk_pkg->work_str, 21);
 	strncpy(g_work_nm, work->wrk_pkg->work_nm, 49);
 	sprintf(g_pow_target, "%08X%08X%08X...", work->pow_target[0], work->pow_target[1], work->pow_target[2]);
 
+	free(old_work_id);
 	return 1;
 }
 
@@ -1118,7 +1139,7 @@ static bool submit_upstream_work(CURL *curl, struct submit_req *req) {
 				g_pow_discarded_cnt++;
 			}
 			else {
-				applog(LOG_NOTICE, "CPU%d: %s***** POW Rejected! *****", req->thr_id, CL_RED);
+				applog(LOG_NOTICE, "CPU%d: %s***** POW Rejected: %s! *****", req->thr_id, CL_RED, err_desc);
 				g_pow_rejected_cnt++;
 			}
 		}
@@ -1142,6 +1163,7 @@ static void *miner_thread(void *userdata) {
 	long hashes_done;
 	struct timeval tv_start, tv_end, diff;
 	int rc = 0;
+	bool* longpoll_requested_pull = &mythr->longpoll_requested_pull;
 	unsigned char msg[41];
 	uint32_t *msg32 = (uint32_t *)msg;
 	uint32_t *workid32;
@@ -1168,7 +1190,8 @@ static void *miner_thread(void *userdata) {
 		// Obtain New Work From workio Thread
 		pthread_mutex_lock(&work_lock);
 
-		if ((time(NULL) - g_work_time) >= opt_scantime) {
+		if ((time(NULL) - g_work_time) >= opt_scantime || *longpoll_requested_pull) {
+			*longpoll_requested_pull = false;
 			if (!get_work(mythr, &g_work)) {
 				applog(LOG_ERR, "Unable to retrieve work...exiting mining thread #%d", mythr->id);
 				pthread_mutex_unlock(&work_lock);
@@ -1274,6 +1297,85 @@ static void restart_threads(void)
 
 	for (i = 0; i < opt_n_threads; i++)
 		work_restart[i].restart = 1;
+}
+
+static void *longpoll_thread(void *userdata)
+{
+	struct thr_info *mythr = (struct thr_info *) userdata;
+	CURL *curl;
+	json_t *val, *obj, *inner_obj;
+	int err, num_events, i;
+	char* reason;
+	curl = curl_easy_init();
+	if (!curl) {
+		applog(LOG_ERR, "CURL initialization failed");
+		return NULL;
+	}
+
+	while (1) {
+	
+		val = json_rpc_call(curl, rpc_url, rpc_userpass, "requestType=longpoll&randomId=1", &err);
+		if(err > 0 || !val){
+			applog(LOG_ERR, "ERROR: longpoll failed...retrying in %d seconds", opt_fail_pause);
+			sleep(opt_fail_pause);
+			continue;
+		}
+
+		if (opt_protocol) {
+			char *str = json_dumps(val, JSON_INDENT(3));
+			applog(LOG_DEBUG, "DEBUG: JSON Response -\n%s", str);
+			free(str);
+		}
+
+		obj = json_object_get(val, "event");
+		if(!obj){
+			applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
+			sleep(opt_fail_pause);
+			continue;
+		}
+
+		if(json_is_string(obj)){
+			reason = (char *)json_string_value(obj);
+			if(strcmp(reason, "timeout") == 0){
+				continue;
+			}else{
+				if(strstr(reason,"block")>=0){
+					applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
+					longpoll_request_pull();
+				}
+			}
+		}
+		else if(json_is_array(obj)){
+			num_events = json_array_size(obj);
+			if (num_events == 0) {
+				applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
+				sleep(opt_fail_pause);
+				continue;
+			}
+
+			for (i = 0; i<num_events; i++) {
+				inner_obj = json_array_get(obj, i);
+				if(!inner_obj){
+					applog(LOG_ERR, "ERROR: longpoll array parsing failed...retrying in %d seconds", opt_fail_pause);
+					sleep(opt_fail_pause);
+					continue;
+				}
+				if(json_is_string(inner_obj)){
+					char* str = (char *)json_string_value(inner_obj);
+					if(strstr(reason,"block")>=0){
+						applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
+						longpoll_request_pull();
+					}
+				}
+			}
+
+		}
+	}
+
+	tq_freeze(mythr->q);
+	curl_easy_cleanup(curl);
+
+	return NULL;
 }
 
 static void *workio_thread(void *userdata)
@@ -1546,8 +1648,17 @@ static int thread_create(struct thr_info *thr, void* func)
 	return err;
 }
 
-int main(int argc, char **argv) {
+int longpoll_request_pull(){
+	int i,thr_idx;
 	struct thr_info *thr;
+	for (i = 0; i < opt_n_threads; i++) {
+		thr = &thr_info[thr_idx];
+		thr->longpoll_requested_pull = true;
+	}
+}
+
+int main(int argc, char **argv) {
+	struct thr_info *thr, *thr_longpoll;
 	int i, err, thr_idx;
 
 	fprintf(stdout, "** " PACKAGE_NAME " " PACKAGE_VERSION " **\n");
@@ -1621,9 +1732,20 @@ int main(int argc, char **argv) {
 	if (!thr->q)
 		return 1;
 
+	thr_longpoll = (struct thr_info*) calloc(1, sizeof(*thr));
+	thr_longpoll->id = 1000;
+	thr_longpoll->q = tq_new();
+	if (!thr_longpoll->q)
+		return 1;
+
 	// Start workio Thread
 	if (thread_create(thr, workio_thread)) {
 		applog(LOG_ERR, "work thread create failed");
+		return 1;
+	}
+
+	if (thread_create(thr_longpoll, longpoll_thread)) {
+		applog(LOG_ERR, "longpoll thread create failed");
 		return 1;
 	}
 

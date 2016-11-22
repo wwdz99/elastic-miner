@@ -117,6 +117,7 @@ struct thr_info {
 	struct thread_q	*q;
 	struct cpu_info cpu;
 	struct work work;
+	bool longpoll_requested_pull;
 	char* c_code;
 };
 
