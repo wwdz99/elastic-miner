@@ -271,7 +271,7 @@ static bool get_vm_input(struct work *work);
 static int execute_vm(int thr_id, struct work *work, struct instance *inst, long *hashes_done);
 
 static bool get_work(struct thr_info *thr, struct work *work);
-static int work_decode(const json_t *val, struct work *work, char *source_code);
+static int work_decode(const json_t *val, struct work *work);
 static int get_upstream_work(CURL *curl, struct work *work);
 static bool add_work_package(struct work_package *work_package);
 
