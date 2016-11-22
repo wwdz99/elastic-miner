@@ -1362,7 +1362,7 @@ static void *longpoll_thread(void *userdata)
 				}
 				if(json_is_string(inner_obj)){
 					char* str = (char *)json_string_value(inner_obj);
-					if(strstr(reason,"block")>=0){
+					if(strstr(str,"block")>=0){
 						applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
 						longpoll_request_pull();
 					}
