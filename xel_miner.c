@@ -78,6 +78,7 @@ __thread bool vm_bounty;
 pthread_mutex_t applog_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t work_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t submit_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t io_lock = PTHREAD_MUTEX_INITIALIZER;
 
 uint8_t *rpc_url = NULL;
 uint8_t *rpc_user = NULL;
@@ -700,6 +701,7 @@ static int get_upstream_work(CURL *curl, struct work *work) {
 
 	memset(work, 0, sizeof(struct work));
 	gettimeofday(&tv_start, NULL);
+	pthread_mutex_lock(&io_lock);
 
 	if (!opt_test_miner) {
 		val = json_rpc_call(curl, rpc_url, rpc_userpass, "requestType=getMineableWork&n=1", &err);
@@ -712,6 +714,7 @@ static int get_upstream_work(CURL *curl, struct work *work) {
 				applog(LOG_ERR, "%s\n", err_val.text);
 			else
 				applog(LOG_ERR, "%s:%d: %s\n", test_filename, err_val.line, err_val.text);
+			pthread_mutex_unlock(&io_lock);
 			return 0;
 		}
 
@@ -720,8 +723,10 @@ static int get_upstream_work(CURL *curl, struct work *work) {
 		free(str);
 	}
 
-	if (!val)
+	if (!val) {
+		pthread_mutex_unlock(&io_lock);
 		return 0;
+	}
 
 	gettimeofday(&tv_end, NULL);
 	if (opt_protocol) {
@@ -731,6 +736,7 @@ static int get_upstream_work(CURL *curl, struct work *work) {
 
 	rc = work_decode(val, work);
 	json_decref(val);
+	pthread_mutex_unlock(&io_lock);
 
 	// If We Are On The Same Work ID No Need To Recompile
 	if (!work->wrk_pkg || (work->wrk_pkg->work_id == g_cur_work_id))
@@ -1069,10 +1075,13 @@ static bool submit_upstream_work(CURL *curl, struct submit_req *req) {
 	}
 
 	gettimeofday(&tv_start, NULL);
+	pthread_mutex_lock(&io_lock);
 	val = json_rpc_call(curl, url, rpc_userpass, data, &err);
 
-	if (!val)
+	if (!val) {
+		pthread_mutex_unlock(&io_lock);
 		return false;
+	}
 
 	gettimeofday(&tv_end, NULL);
 	if (opt_protocol) {
@@ -1153,6 +1162,8 @@ static bool submit_upstream_work(CURL *curl, struct submit_req *req) {
 	}
 
 	json_decref(val);
+	pthread_mutex_unlock(&io_lock);
+
 	free(url);
 
 	return true;
@@ -1724,6 +1735,7 @@ int main(int argc, char **argv) {
 
 	pthread_mutex_init(&work_lock, NULL);
 	pthread_mutex_init(&submit_lock, NULL);
+	pthread_mutex_init(&io_lock, NULL);
 
 	work_restart = (struct work_restart*) calloc(opt_n_threads, sizeof(*work_restart));
 	if (!work_restart)
