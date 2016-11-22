@@ -1729,7 +1729,7 @@ int main(int argc, char **argv) {
 	if (!work_restart)
 		return 1;
 
-	thr_info = (struct thr_info*) calloc(opt_n_threads + 3, sizeof(*thr));
+	thr_info = (struct thr_info*) calloc(opt_n_threads + 4, sizeof(*thr));
 	if (!thr_info)
 		return 1;
 
@@ -1749,12 +1749,6 @@ int main(int argc, char **argv) {
 		free(test_filename);
 		return 0;
 	}
-
-	//curl = curl_easy_init();
-	//if (!curl) {
-	//	applog(LOG_ERR, "CURL initialization failed");
-	//	return 1;
-	//}
 
 	// Init workio Thread Info
 	work_thr_id = opt_n_threads;
