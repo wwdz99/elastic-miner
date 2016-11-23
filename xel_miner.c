@@ -84,6 +84,7 @@ __thread bool vm_bounty;
 pthread_mutex_t applog_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t work_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t submit_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t longpoll_lock = PTHREAD_MUTEX_INITIALIZER;
 
 uint8_t *rpc_url = NULL;
 uint8_t *rpc_user = NULL;
@@ -102,6 +103,7 @@ static const uint8_t basepoint[32] = { 9 };
 
 struct submit_req *g_submit_req;
 int g_submit_req_cnt = 0;
+int g_new_block = false;
 
 uint32_t g_bounty_accepted_cnt = 0;
 uint32_t g_bounty_rejected_cnt = 0;
@@ -628,8 +630,10 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 		sha256(msg, 64, hash);
 
 		// POW Solution Found
-		if ((swap32(hash32[0]) <= g_pow_target[0]) && swap32(hash32[1]) <= g_pow_target[1])
-			rc = 2;
+		if (swap32(hash32[0]) <= g_pow_target[0]) {
+			if (swap32(hash32[1]) <= g_pow_target[1])
+				rc = 2;
+		}
 		else
 			rc = 0;
 
@@ -1343,13 +1347,13 @@ static bool check_new_block(CURL *curl)
 	return true;
 }
 
-static void *workio_thread(void *userdata)
+static void *longpoll_thread(void *userdata)
 {
 	struct thr_info *mythr = (struct thr_info *) userdata;
 	CURL *curl;
-	struct workio_cmd *wc;
-	int i;
-	bool new_block;
+	json_t *val, *obj, *inner_obj;
+	int i, err, num_events;
+	char* reason = NULL;
 
 	curl = curl_easy_init();
 	if (!curl) {
@@ -1359,11 +1363,108 @@ static void *workio_thread(void *userdata)
 
 	while (1) {
 
-		// Check For New Blocks On Network
-		new_block = check_new_block(curl);
+		pthread_mutex_lock(&longpoll_lock);
+		g_new_block = false;
+		pthread_mutex_unlock(&longpoll_lock);
+
+		val = json_rpc_call(curl, rpc_url, rpc_userpass, "requestType=longpoll&randomId=1", &err);
+		if (err > 0 || !val) {
+			applog(LOG_ERR, "ERROR: longpoll failed...retrying in %d seconds", opt_fail_pause);
+			sleep(opt_fail_pause);
+			continue;
+		}
+
+		if (opt_protocol) {
+			char *str = json_dumps(val, JSON_INDENT(3));
+			applog(LOG_DEBUG, "DEBUG: JSON Response -\n%s", str);
+			free(str);
+		}
+
+		obj = json_object_get(val, "event");
+		if (!obj) {
+			applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
+			sleep(opt_fail_pause);
+			if (val) json_decref(val);
+			continue;
+		}
+
+		if (json_is_string(obj)) {
+			reason = (char *)json_string_value(obj);
+			if (strcmp(reason, "timeout") == 0) {
+				if (val) json_decref(val);
+				continue;
+			}
+			else {
+				if (strstr(reason, "block") >= 0) {
+					applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
+					if (val) json_decref(val);
+					pthread_mutex_lock(&longpoll_lock);
+					g_new_block = true;
+					pthread_mutex_unlock(&longpoll_lock);
+				}
+			}
+		}
+		else if (json_is_array(obj)) {
+			num_events = json_array_size(obj);
+			if (num_events == 0) {
+				applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
+				if (val) json_decref(val);
+				sleep(opt_fail_pause);
+				continue;
+			}
+
+			for (i = 0; i<num_events; i++) {
+				inner_obj = json_array_get(obj, i);
+				if (!inner_obj) {
+					applog(LOG_ERR, "ERROR: longpoll array parsing failed...retrying in %d seconds", opt_fail_pause);
+					if (val) json_decref(val);
+					sleep(opt_fail_pause);
+					continue;
+				}
+
+				if (json_is_string(inner_obj)) {
+					char* str = (char *)json_string_value(inner_obj);
+					if (strstr(str, "block") >= 0) {
+						applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
+						if (val) json_decref(val);
+						pthread_mutex_lock(&longpoll_lock);
+						g_new_block = true;
+						pthread_mutex_unlock(&longpoll_lock);
+					}
+				}
+			}
+		}
+
+		sleep(1);
+	}
+
+	tq_freeze(mythr->q);
+	curl_easy_cleanup(curl);
+
+	return NULL;
+}
+
+static void *workio_thread(void *userdata)
+{
+	struct thr_info *mythr = (struct thr_info *) userdata;
+	CURL *curl;
+	struct workio_cmd *wc;
+	int i;
+
+	curl = curl_easy_init();
+	if (!curl) {
+		applog(LOG_ERR, "CURL initialization failed");
+		return NULL;
+	}
+
+	while (1) {
 
 		// Get Work
-		if (new_block || (time(NULL) - g_work_time) >= opt_scantime) {
+		if (g_new_block || (time(NULL) - g_work_time) >= opt_scantime) {
+
+			pthread_mutex_lock(&longpoll_lock);
+			g_new_block = false;
+			pthread_mutex_unlock(&longpoll_lock);
 
 //			applog(LOG_DEBUG, "DEBUG: 'get_work'");
 			if (!get_work(curl))
@@ -1411,8 +1512,6 @@ static void *workio_thread(void *userdata)
 				g_bounty_timeout_cnt++;
 			}
 		}
-
-//		sleep(1);
 	}
 
 	tq_freeze(mythr->q);
@@ -1660,12 +1759,13 @@ int main(int argc, char **argv) {
 
 	pthread_mutex_init(&work_lock, NULL);
 	pthread_mutex_init(&submit_lock, NULL);
+	pthread_mutex_init(&longpoll_lock, NULL);
 
 	work_restart = (struct work_restart*) calloc(opt_n_threads, sizeof(*work_restart));
 	if (!work_restart)
 		return 1;
 
-	thr_info = (struct thr_info*) calloc(opt_n_threads + 2, sizeof(*thr));
+	thr_info = (struct thr_info*) calloc(opt_n_threads + 3, sizeof(*thr));
 	if (!thr_info)
 		return 1;
 
@@ -1721,9 +1821,20 @@ int main(int argc, char **argv) {
 	applog(LOG_INFO, "%d mining threads started", opt_n_threads);
 	gettimeofday(&g_miner_start_time, NULL);
 
-	// Start Key Monitor Thread
+	// Start Longpoll Thread
 	thr = &thr_info[opt_n_threads + 1];
 	thr->id = opt_n_threads + 1;
+	thr->q = tq_new();
+	if (!thr->q)
+		return 1;
+	if (thread_create(thr, longpoll_thread)) {
+		applog(LOG_ERR, "Longpoll thread create failed");
+		return 1;
+	}
+
+	// Start Key Monitor Thread
+	thr = &thr_info[opt_n_threads + 2];
+	thr->id = opt_n_threads + 2;
 	thr->q = tq_new();
 	if (!thr->q)
 		return 1;
