@@ -698,7 +698,7 @@ static bool get_work(CURL *curl) {
 
 		// Restart Miner Threads If Work Package Changes
 		if (work.wrk_pkg->work_id != g_cur_work_id) {
-			applog(LOG_NOTICE, "Switching to work_id: %s (target: %s)", work.wrk_pkg->work_str,g_pow_target_str);
+			applog(LOG_NOTICE, "Switching to work_id: %s (target: %s)", work.wrk_pkg->work_str, g_pow_target_str);
 			restart_threads();
 		}
 
@@ -1284,72 +1284,72 @@ static void *longpoll_thread(void *userdata)
 
 	while (1) {
 
-//		new_block = false;
+		//		new_block = false;
 
 		// Check For New Block
 		new_block = check_new_block(curl);
-//		val = json_rpc_call(curl, rpc_url, rpc_userpass, "requestType=longpoll&randomId=1", &err);
-//		if (err > 0 || !val) {
-//			applog(LOG_ERR, "ERROR: longpoll failed...retrying in %d seconds", opt_fail_pause);
-//			sleep(opt_fail_pause);
-//			continue;
-//		}
-//
-//		if (opt_protocol) {
-//			char *str = json_dumps(val, JSON_INDENT(3));
-//			applog(LOG_DEBUG, "DEBUG: JSON Response -\n%s", str);
-//			free(str);
-//		}
-//
-//		obj = json_object_get(val, "event");
-//		if (!obj) {
-//			applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
-//			sleep(opt_fail_pause);
-//			continue;
-//		}
-//
-//		if (json_is_string(obj)) {
-//			reason = (char *)json_string_value(obj);
-//			if (strcmp(reason, "timeout") == 0) {
-////				continue;
-//				;
-//			}
-//			else {
-//				if (strstr(reason, "block") >= 0) {
-//					applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
-////					longpoll_request_pull();
-//					new_block = true;
-//				}
-//			}
-//		}
-//		else if (json_is_array(obj)) {
-//			num_events = json_array_size(obj);
-//			if (num_events == 0) {
-//				applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
-//				sleep(opt_fail_pause);
-//				continue;
-//			}
-//
-//			for (i = 0; i<num_events; i++) {
-//				inner_obj = json_array_get(obj, i);
-//				if (!inner_obj) {
-//					applog(LOG_ERR, "ERROR: longpoll array parsing failed...retrying in %d seconds", opt_fail_pause);
-//					sleep(opt_fail_pause);
-//					continue;
-//				}
-//				if (json_is_string(inner_obj)) {
-//					char* str = (char *)json_string_value(inner_obj);
-//					if (strstr(reason, "block") >= 0) {
-//						applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
-////						longpoll_request_pull();
-//						new_block = true;
-//					}
-//				}
-//			}
-//		}
-//
-//		if(val) json_decref(val);
-//		val = NULL;
+		//		val = json_rpc_call(curl, rpc_url, rpc_userpass, "requestType=longpoll&randomId=1", &err);
+		//		if (err > 0 || !val) {
+		//			applog(LOG_ERR, "ERROR: longpoll failed...retrying in %d seconds", opt_fail_pause);
+		//			sleep(opt_fail_pause);
+		//			continue;
+		//		}
+		//
+		//		if (opt_protocol) {
+		//			char *str = json_dumps(val, JSON_INDENT(3));
+		//			applog(LOG_DEBUG, "DEBUG: JSON Response -\n%s", str);
+		//			free(str);
+		//		}
+		//
+		//		obj = json_object_get(val, "event");
+		//		if (!obj) {
+		//			applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
+		//			sleep(opt_fail_pause);
+		//			continue;
+		//		}
+		//
+		//		if (json_is_string(obj)) {
+		//			reason = (char *)json_string_value(obj);
+		//			if (strcmp(reason, "timeout") == 0) {
+		////				continue;
+		//				;
+		//			}
+		//			else {
+		//				if (strstr(reason, "block") >= 0) {
+		//					applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
+		////					longpoll_request_pull();
+		//					new_block = true;
+		//				}
+		//			}
+		//		}
+		//		else if (json_is_array(obj)) {
+		//			num_events = json_array_size(obj);
+		//			if (num_events == 0) {
+		//				applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
+		//				sleep(opt_fail_pause);
+		//				continue;
+		//			}
+		//
+		//			for (i = 0; i<num_events; i++) {
+		//				inner_obj = json_array_get(obj, i);
+		//				if (!inner_obj) {
+		//					applog(LOG_ERR, "ERROR: longpoll array parsing failed...retrying in %d seconds", opt_fail_pause);
+		//					sleep(opt_fail_pause);
+		//					continue;
+		//				}
+		//				if (json_is_string(inner_obj)) {
+		//					char* str = (char *)json_string_value(inner_obj);
+		//					if (strstr(reason, "block") >= 0) {
+		//						applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
+		////						longpoll_request_pull();
+		//						new_block = true;
+		//					}
+		//				}
+		//			}
+		//		}
+		//
+		//		if(val) json_decref(val);
+		//		val = NULL;
 
 		// Get Work
 		if (new_block || (time(NULL) - g_work_time) >= opt_scantime) {
@@ -1360,7 +1360,18 @@ static void *longpoll_thread(void *userdata)
 		}
 
 		// Submit POW / Bounty
-//		applog(LOG_DEBUG, "DEBUG: 'submit_work'");
+		for (i = 0; i < g_submit_req_cnt; i++) {
+
+			// Skip Requests That Are On Hold
+			if (g_submit_req[i].delay_tm >= time(NULL))
+				continue;
+
+			// Submit Request
+//			applog(LOG_DEBUG, "DEBUG: 'submit_work'");
+			if (!submit_work(curl, &g_submit_req[i]))
+				applog(LOG_ERR, "ERROR: Submit bounty request failed");
+		}
+
 		for (i = 0; i < g_submit_req_cnt; i++) {
 
 			// Remove Completed Requests
@@ -1377,16 +1388,6 @@ static void *longpoll_thread(void *userdata)
 				g_bounty_timeout_cnt++;
 				continue;
 			}
-
-			// Check If Request Is On Hold
-			if (g_submit_req[i].delay_tm >= time(NULL))
-				continue;
-
-			// Submit Request
-			pthread_mutex_lock(&submit_lock);
-			if (!submit_work(curl, &g_submit_req[i]))
-				applog(LOG_ERR, "ERROR: Submit bounty request failed");
-			pthread_mutex_unlock(&submit_lock);
 		}
 
 		sleep(1);
@@ -1742,7 +1743,7 @@ int main(int argc, char **argv) {
 		applog(LOG_ERR, "Key monitor thread create failed");
 		return 1;
 	}
-	
+
 	// Main Loop - Wait for workio thread to exit
 	pthread_join(thr_info[work_thr_id].pth, NULL);
 
