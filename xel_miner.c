@@ -1081,6 +1081,8 @@ static void *miner_thread(void *userdata) {
 	struct instance *inst = NULL;
 	char hash[32];
 	unsigned char hash_str[65];
+	unsigned char gpow_str[65];
+
 	uint32_t *hash32 = (uint32_t *)hash;
 
 
@@ -1166,9 +1168,10 @@ static void *miner_thread(void *userdata) {
 
 		// Submit Work That Meets POW Target
 		if (rc == 2) {
-			sprintf(hash_str, "%08X%08X%08X%08X%08X%08X%08X%08X", swap32(hash32[0]), swap32(hash32[1]), swap32(hash32[2]), swap32(hash32[3]), swap32(hash32[4]), swap32(hash32[5]), swap32(hash32[6]), swap32(hash32[7]));
+			sprintf(hash_str, "%08X%08X%08X...", swap32(hash32[0]), swap32(hash32[1]), swap32(hash32[2]));
+			sprintf(gpow_str, "%08X%08X%08X...", (g_pow_target[0]), (g_pow_target[1]), (g_pow_target[2]));
 
-			applog(LOG_NOTICE, "CPU%d: Submitting POW Solution (%s)", thr_id, hash_str);
+			applog(LOG_NOTICE, "CPU%d: Submitting POW Solution (%s) [t:%s]", thr_id, hash_str, gpow_str);
 			if (!add_submit_req(&work, SUBMIT_POW))
 				break;
 		}
