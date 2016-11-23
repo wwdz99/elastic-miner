@@ -779,12 +779,8 @@ static int work_decode(const json_t *val, struct work *work) {
 	}
 
 	wrk = json_object_get(val, "work_packages");
-	// 
-	// Todo: move target to Work Package level Once EK makes his change
-	//
-	tgt = (char *)json_string_value(json_object_get(val, "pow_target"));
 
-	if (!wrk || !tgt) {
+	if (!wrk) {
 		applog(LOG_ERR, "Invalid JSON response to getwork request");
 		return 0;
 	}
@@ -800,7 +796,7 @@ static int work_decode(const json_t *val, struct work *work) {
 
 	for (i = 0; i<num_pkg; i++) {
 		pkg = json_array_get(wrk, i);
-
+		tgt = (char *)json_string_value(json_object_get(pkg, "target"));
 		str = (char *)json_string_value(json_object_get(pkg, "work_id"));
 		if (!str) {
 			applog(LOG_ERR, "Unable to parse work package");
@@ -834,6 +830,13 @@ static int work_decode(const json_t *val, struct work *work) {
 			work_package.pow_reward = (uint64_t)json_number_value(json_object_get(pkg, "xel_per_pow"));
 			work_package.pending_bty_cnt = 0;
 			work_package.blacklisted = false;
+
+			// Convert Hex Target To Int Array
+			rc = hex2ints(&work_package.pow_target[0], 8, tgt, strlen(tgt));
+			if (!rc) {
+				applog(LOG_ERR, "Invalid Target in JSON response to getwork request");
+				return 0;
+			}
 
 			str = (char *)json_string_value(json_object_get(pkg, "source"));
 
@@ -978,11 +981,8 @@ static int work_decode(const json_t *val, struct work *work) {
 	strncpy(work->work_str, g_work_package[best_pkg].work_str, 21);
 	strncpy(work->work_nm, g_work_package[best_pkg].work_nm, 49);
 
-	// Convert Hex Target To Int Array
-	rc = hex2ints(work->pow_target, 8, tgt, strlen(tgt));
-	if (!rc) {
-		applog(LOG_ERR, "Invalid Target in JSON response to getwork request");
-		return 0;
+	for (i=0;i<8;++i){
+		work->pow_target[i] = g_work_package[best_pkg].pow_target[i];
 	}
 
 	return 1;

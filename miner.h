@@ -90,6 +90,7 @@ struct work_package {
 	uint64_t bounty_limit;
 	uint64_t pow_reward;
 	uint64_t bty_reward;
+	uint32_t pow_target[8];
 	int pending_bty_cnt;
 	bool blacklisted;
 };
