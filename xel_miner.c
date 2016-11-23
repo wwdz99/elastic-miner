@@ -64,10 +64,13 @@ static enum prefs opt_pref = PREF_PROFIT;
 char pref_workid[32];
 
 int num_cpus;
+bool g_need_work = false;
 char g_work_nm[50];
 char g_work_id[22];
 uint64_t g_cur_work_id;
-unsigned char g_pow_target[65];
+unsigned char g_pow_target_str[65];
+uint32_t g_pow_target[8];
+
 
 __thread _ALIGN(64) *vm_mem = NULL;
 __thread uint32_t *vm_state = NULL;
@@ -282,8 +285,8 @@ void parse_arg(int key, char *arg)
 		curve25519_donna(publickey, hash_sha256, basepoint);
 
 		printf("Public Key: ");
-		for(i = 0; i < 32; i++)
-			printf("%02X",publickey[i]);
+		for (i = 0; i < 32; i++)
+			printf("%02X", publickey[i]);
 		printf("\n");
 
 		free(hash_sha256);
@@ -445,8 +448,8 @@ static void *test_vm_thread(void *userdata) {
 	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
 	vm_stack_idx = -1;
 	if (!vm_mem || !vm_stack) {
-			applog(LOG_ERR, "CPU%d: Unable to allocate VM memory", thr_id);
-			exit(EXIT_FAILURE);
+		applog(LOG_ERR, "CPU%d: Unable to allocate VM memory", thr_id);
+		exit(EXIT_FAILURE);
 	}
 
 	applog(LOG_DEBUG, "DEBUG: Loading Test File");
@@ -548,11 +551,12 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 	uint32_t *hash32 = (uint32_t *)hash;
 	uint32_t *mult32 = (uint32_t *)work->multiplicator;
 
+	mult32[0] = thr_id;
 	mult32[6] = genrand_int32();
 	mult32[7] = genrand_int32();
 
-//	RAND_bytes(&mult32[6], 8);
-//	RAND_bytes(&mult32[7], 4);
+	//	RAND_bytes(&mult32[6], 8);
+	//	RAND_bytes(&mult32[7], 4);
 
 	while (1) {
 		// Check If New Work Is Available
@@ -598,7 +602,7 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 		sha256(msg, 64, hash);
 
 		// POW Solution Found
-		if ((swap32(hash32[0]) <= work->pow_target[0]) && swap32(hash32[1]) <= work->pow_target[1])
+		if ((swap32(hash32[0]) <= g_pow_target[0]) && swap32(hash32[1]) <= g_pow_target[1])
 			rc = 2;
 		else
 			rc = 0;
@@ -616,70 +620,6 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 	return 0;
 }
 
-static bool get_work(struct thr_info *thr, struct work *work) {
-	struct workio_cmd *wc;
-	struct work *work_heap;
-
-	// Fill Out Work Request Message
-	wc = (struct workio_cmd *) calloc(1, sizeof(*wc));
-	if (!wc)
-		return false;
-
-	wc->cmd = WC_GET_WORK;
-	wc->thr = thr;
-
-	// Send Work Request To workio Thread
-	if (!tq_push(thr_info[work_thr_id].q, wc)) {
-		workio_cmd_free(wc);
-		return false;
-	}
-
-	// Wait For Work To Be Returned
-	work_heap = (struct work*) tq_pop(thr->q, NULL);
-	if (!work_heap)
-		return false;
-
-	// Copy Work From Heap
-	memcpy(work, work_heap, sizeof(*work));
-	free(work_heap);
-
-	return true;
-}
-
-static bool workio_get_work(struct workio_cmd *wc, CURL *curl) {
-	struct work *ret_work;
-	int rc, failures = 0;
-
-	ret_work = (struct work*) calloc(1, sizeof(*ret_work));
-	if (!ret_work)
-		return false;
-
-	// Obtain New Work From Server via JSON_RPC
-	while (1) {
-		rc = get_upstream_work(curl, ret_work);
-
-		if (rc)
-			break;
-		else {
-			if ((opt_retries >= 0) && (++failures > opt_retries)) {
-				applog(LOG_ERR, "ERROR: 'json_rpc_call' failed...terminating workio thread");
-				free(ret_work);
-				return false;
-			}
-
-			/* pause, then restart work-request loop */
-			applog(LOG_ERR, "ERROR: 'json_rpc_call' failed...retrying in %d seconds", opt_fail_pause);
-			sleep(opt_fail_pause);
-		}
-	}
-
-	// Return Work To Request Thread
-	if (!tq_push(wc->thr->q, ret_work))
-		free(ret_work);
-
-	return true;
-}
-
 static bool add_work_package(struct work_package *work_package) {
 	g_work_package = realloc(g_work_package, sizeof(struct work_package) * (g_work_package_cnt + 1));
 	if (!g_work_package) {
@@ -693,15 +633,17 @@ static bool add_work_package(struct work_package *work_package) {
 	return true;
 }
 
-static int get_upstream_work(CURL *curl, struct work *work) {
+static bool get_work(CURL *curl) {
 	int err, rc;
-	char source_code[MAX_SOURCE_SIZE];
 	json_t *val;
+	struct work work;
 	struct timeval tv_start, tv_end, diff;
 
-	memset(work, 0, sizeof(struct work));
-	gettimeofday(&tv_start, NULL);
+	memset(g_work_id, 0, sizeof(g_work_id));
+	memset(g_work_nm, 0, sizeof(g_work_nm));
+	memset(g_pow_target_str, 0, sizeof(g_pow_target_str));
 
+	gettimeofday(&tv_start, NULL);
 	if (!opt_test_miner) {
 		val = json_rpc_call(curl, rpc_url, rpc_userpass, "requestType=getMineableWork&n=1", &err);
 	}
@@ -713,7 +655,7 @@ static int get_upstream_work(CURL *curl, struct work *work) {
 				applog(LOG_ERR, "%s\n", err_val.text);
 			else
 				applog(LOG_ERR, "%s:%d: %s\n", test_filename, err_val.line, err_val.text);
-			return 0;
+			return false;
 		}
 
 		char *str = json_dumps(val, JSON_INDENT(3));
@@ -721,8 +663,11 @@ static int get_upstream_work(CURL *curl, struct work *work) {
 		free(str);
 	}
 
-	if (!val)
-		return 0;
+	if (!val) {
+		applog(LOG_ERR, "ERROR: 'json_rpc_call' failed...retrying in %d seconds", opt_fail_pause);
+		sleep(opt_fail_pause);
+		return false;
+	}
 
 	gettimeofday(&tv_end, NULL);
 	if (opt_protocol) {
@@ -730,49 +675,56 @@ static int get_upstream_work(CURL *curl, struct work *work) {
 		applog(LOG_DEBUG, "DEBUG: Time to get work: %.2f ms", (1000.0 * diff.tv_sec) + (0.001 * diff.tv_usec));
 	}
 
-	rc = work_decode(val, work, source_code);
+	rc = work_decode(val, &work);
 	json_decref(val);
 
-	// If We Are On The Same Work ID No Need To Recompile
-	if (!work->wrk_pkg || (work->wrk_pkg->work_id == g_cur_work_id))
-		return 1;
-
-	g_cur_work_id = work->wrk_pkg->work_id;
-
-	if (rc < 0)
-		return -1;
-	else if (rc) {
-		gettimeofday(&tv_start, NULL);
-		if (opt_protocol) {
-			timeval_subtract(&diff, &tv_start, &tv_end);
-			applog(LOG_DEBUG, "DEBUG: Time to decode work: %.2f ms", (1000.0 * diff.tv_sec) + (0.001 * diff.tv_usec));
-		}
+	gettimeofday(&tv_start, NULL);
+	if (opt_protocol) {
+		timeval_subtract(&diff, &tv_start, &tv_end);
+		applog(LOG_DEBUG, "DEBUG: Time to decode work: %.2f ms", (1000.0 * diff.tv_sec) + (0.001 * diff.tv_usec));
 	}
-	else
-		return 0;
 
-	// Restart Mining Threads With New Work
-	restart_threads();
+	// Update Global Variables With Latest Work
+	pthread_mutex_lock(&work_lock);
+	g_work_time = time(NULL);
 
-	return 1;
+	if (rc > 0) {
+		strncpy(g_work_id, work.wrk_pkg->work_str, 21);
+		strncpy(g_work_nm, work.wrk_pkg->work_nm, 49);
+		sprintf(g_pow_target_str, "%08X%08X%08X...", work.pow_target[0], work.pow_target[1], work.pow_target[2]);
+		memcpy(g_pow_target, work.pow_target, 8 * sizeof(uint32_t));
+		memcpy(&g_work, &work, sizeof(struct work));
+
+		// Restart Miner Threads If Work Package Changes
+		if (work.wrk_pkg->work_id != g_cur_work_id) {
+			applog(LOG_NOTICE, "Switching to work_id: %s", work.wrk_pkg->work_str);
+			restart_threads();
+		}
+
+		g_cur_work_id = work.wrk_pkg->work_id;
+	}
+	else {
+		g_cur_work_id = 0;
+		restart_threads();
+	}
+
+	pthread_mutex_unlock(&work_lock);
+
+	if (!rc)
+		return false;
+
+	return true;
 }
 
-static int work_decode(const json_t *val, struct work *work, char *source_code) {
+static int work_decode(const json_t *val, struct work *work) {
 	int i, j, rc, num_pkg, best_pkg, bty_rcvd, work_pkg_id;
 	uint64_t work_id;
 	double best_profit = 0.0;
 	uint32_t best_wcet = 0xFFFFFFFF;
-	char *tgt = NULL, *src = NULL, *str = NULL, *best_src = NULL;
+	char *tgt = NULL, *src = NULL, *str = NULL, *best_src = NULL, *elastic_src = NULL;
 	json_t *wrk = NULL, *pkg = NULL;
 
-	char* old_work_id = (char*)malloc(sizeof(g_work_id));
-	memcpy(old_work_id, g_work_id, sizeof(g_work_id));
-
-	// Reset Global Work Package Variables Used For Status Display
 	memset(work, 0, sizeof(struct work));
-	memset(g_work_nm, 0, sizeof(g_work_nm));
-	memset(g_work_id, 0, sizeof(g_work_id));
-	memset(g_pow_target, 0, sizeof(g_pow_target));
 
 	if (opt_protocol) {
 		str = json_dumps(val, JSON_INDENT(3));
@@ -789,15 +741,13 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 
 	if (!wrk || !tgt) {
 		applog(LOG_ERR, "Invalid JSON response to getwork request");
-		free(old_work_id);
 		return 0;
 	}
 
 	// Check If Any Work Packages Are Available
 	num_pkg = json_array_size(wrk);
 	if (num_pkg == 0) {
-		applog(LOG_INFO, "No work available...retrying in 15s");
-		free(old_work_id);
+		applog(LOG_INFO, "No work available...retrying in %ds", opt_scantime);
 		return -1;
 	}
 
@@ -809,7 +759,6 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 		str = (char *)json_string_value(json_object_get(pkg, "work_id"));
 		if (!str) {
 			applog(LOG_ERR, "Unable to parse work package");
-			free(old_work_id);
 			return 0;
 		}
 		work_id = strtoull(str, NULL, 10);
@@ -847,37 +796,43 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 			if (!str || strlen(str) > MAX_SOURCE_SIZE) {
 				work_package.blacklisted = true;
 				applog(LOG_ERR, "ERROR: Invalid 'source' for work_id: %s", work_package.work_str);
-				free(old_work_id);
 				return 0;
 			}
 
-			rc = ascii85dec(source_code, MAX_SOURCE_SIZE, str);
+			elastic_src = malloc(MAX_SOURCE_SIZE);
+			if (!elastic_src) {
+				applog(LOG_ERR, "ERROR: Unable to allocate memory for ElasticPL Source");
+				return 0;
+			}
+
+			rc = ascii85dec(elastic_src, MAX_SOURCE_SIZE, str);
 			if (!rc) {
 				work_package.blacklisted = true;
 				applog(LOG_ERR, "ERROR: Unable to decode 'source' for work_id: %s\n\n%s\n", work_package.work_str, str);
-				free(old_work_id);
+				free(elastic_src);
 				return 0;
 			}
 
 			applog(LOG_DEBUG, "DEBUG: Running ElasticPL Parser");
 
 			if (opt_debug_epl)
-				applog(LOG_DEBUG, "DEBUG: ElasticPL Source Code -\n%s", source_code);
+				applog(LOG_DEBUG, "DEBUG: ElasticPL Source Code -\n%s", elastic_src);
 
 			// Convert ElasticPL Into AST
-			if (!create_epl_vm(source_code)) {
+			if (!create_epl_vm(elastic_src)) {
 				work_package.blacklisted = true;
 				applog(LOG_ERR, "ERROR: Unable to convert 'source' to AST for work_id: %s\n\n%s\n", work_package.work_str, str);
-				free(old_work_id);
+				free(elastic_src);
 				return 0;
 			}
+
+			free(elastic_src);
 
 			// Calculate WCET
 			work_package.WCET = calc_wcet();
 			if (!work_package.WCET) {
 				work_package.blacklisted = true;
 				applog(LOG_ERR, "ERROR: Unable to calculate WCET for work_id: %s\n\n%s\n", work_package.work_str, str);
-				free(old_work_id);
 				return 0;
 			}
 
@@ -886,7 +841,6 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 				if (!compile_and_link(work_package.work_str)) {
 					work_package.blacklisted = true;
 					applog(LOG_ERR, "ERROR: Unable to convert 'source' to C for work_id: %s\n\n%s\n", work_package.work_str, str);
-					free(old_work_id);
 					return 0;
 				}
 			}
@@ -938,32 +892,39 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 	if (best_pkg < 0) {
 		opt_pref = PREF_PROFIT;
 		applog(LOG_INFO, "No work available that matches preference...retrying in 15s");
-		free(old_work_id);
 		return -1;
 	}
 
 	// If Running VM Interpreter Instead Of Compiled VM
 	if (!opt_compile && (g_work_package[best_pkg].work_id != g_cur_work_id)) {
-		rc = ascii85dec(source_code, MAX_SOURCE_SIZE, best_src);
+		elastic_src = malloc(MAX_SOURCE_SIZE);
+		if (!elastic_src) {
+			applog(LOG_ERR, "ERROR: Unable to allocate memory for ElasticPL Source");
+			return 0;
+		}
+
+		rc = ascii85dec(elastic_src, MAX_SOURCE_SIZE, best_src);
 		if (!rc) {
 			g_work_package[best_pkg].blacklisted = true;
 			applog(LOG_ERR, "ERROR: Unable to decode 'source' for work_id: %s\n\n%s\n", g_work_package[best_pkg].work_str, str);
-			free(old_work_id);
+			free(elastic_src);
 			return 0;
 		}
 
 		applog(LOG_DEBUG, "DEBUG: Running ElasticPL Parser");
 
 		if (opt_debug_epl)
-			applog(LOG_DEBUG, "DEBUG: ElasticPL Source Code -\n%s", source_code);
+			applog(LOG_DEBUG, "DEBUG: ElasticPL Source Code -\n%s", elastic_src);
 
 		// Convert ElasticPL Into AST
-		if (!create_epl_vm(source_code)) {
+		if (!create_epl_vm(elastic_src)) {
 			g_work_package[best_pkg].blacklisted = true;
 			applog(LOG_ERR, "ERROR: Unable to convert 'source' to AST for work_id: %s\n\n%s\n", g_work_package[best_pkg].work_str, str);
-			free(old_work_id);
+			free(elastic_src);
 			return 0;
 		}
+
+		free(elastic_src);
 	}
 
 	// Copy Data From Best Package Into Work
@@ -971,69 +932,15 @@ static int work_decode(const json_t *val, struct work *work, char *source_code) 
 	rc = hex2ints(work->pow_target, 8, tgt, strlen(tgt));
 	if (!rc) {
 		applog(LOG_ERR, "Invalid Target in JSON response to getwork request");
-		free(old_work_id);
 		return 0;
 	}
 
-	// Debug-Print the Best Package
-	if(strcmp(old_work_id, work->wrk_pkg->work_str) != 0)
-		applog(LOG_NOTICE, "Switched to work with work_id: %s", work->wrk_pkg->work_str);
-
-
-	// Copy Data From Best Package Into Global Variable
-	strncpy(g_work_id, work->wrk_pkg->work_str, 21);
-	strncpy(g_work_nm, work->wrk_pkg->work_nm, 49);
-	sprintf(g_pow_target, "%08X%08X%08X...", work->pow_target[0], work->pow_target[1], work->pow_target[2]);
-
-	free(old_work_id);
 	return 1;
 }
 
-static bool submit_work(struct thr_info *thr, struct submit_req *req) {
-	struct workio_cmd *wc;
-
-	// Fill Out Work Request Message
-	wc = (struct workio_cmd *) calloc(1, sizeof(*wc));
-	if (!wc)
-		return false;
-
-	wc->cmd = WC_SUBMIT_WORK;
-	wc->thr = thr;
-	wc->req = req;
-
-	// Send Solution To workio Thread
-	if (!tq_push(thr_info[work_thr_id].q, wc))
-		goto err_out;
-
-	return true;
-
-err_out:
-	workio_cmd_free(wc);
-	return false;
-}
-
-static bool workio_submit_work(struct workio_cmd *wc, CURL *curl)
-{
-	int failures = 0;
-
-	// Sumbit Solutions via JSON-RPC
-	while (!submit_upstream_work(curl, wc->req)) {
-
-		if ((opt_retries >= 0) && (++failures > opt_retries)) {
-			applog(LOG_ERR, "...terminating workio thread");
-			return false;
-		}
-
-		applog(LOG_ERR, "...retry after %d seconds", opt_fail_pause);
-		sleep(opt_fail_pause);
-	}
-
-	return true;
-}
-
-static bool submit_upstream_work(CURL *curl, struct submit_req *req) {
+static bool submit_work(CURL *curl, struct submit_req *req) {
 	int err;
-	json_t *val;
+	json_t *val = NULL;
 	struct timeval tv_start, tv_end, diff;
 	char data[1000];
 	char *url, *err_desc, *accepted;
@@ -1089,7 +996,7 @@ static bool submit_upstream_work(CURL *curl, struct submit_req *req) {
 
 	if (req->req_type == SUBMIT_BTY_ANN) {
 		if (err_desc) {
-			if (strstr(err_desc, "duplicate")) {
+			if (strstr(err_desc, "Duplicate") || strstr(err_desc, "duplicate")) {
 				applog(LOG_DEBUG, "Work ID: %s is not accepting bounties", req->wrk_pkg->work_str);
 				req->delay_tm = time(NULL) + 30;  // Retry In 30s
 			}
@@ -1134,8 +1041,9 @@ static bool submit_upstream_work(CURL *curl, struct submit_req *req) {
 	}
 	else if (req->req_type == SUBMIT_POW) {
 		if (err_desc) {
-			if (strstr(err_desc, "duplicate")) {
-				applog(LOG_NOTICE, "CPU%d: %s***** POW Discarded! *****", req->thr_id, CL_RED);
+			if (strstr(err_desc, "Duplicate") || strstr(err_desc, "duplicate")) {
+				applog(LOG_NOTICE, "CPU%d: %s***** POW Discarded! *****", req->thr_id, CL_YLW);
+				applog(LOG_INFO, "Network is not accepting any more POW submissions for this block");
 				g_pow_discarded_cnt++;
 			}
 			else {
@@ -1152,6 +1060,7 @@ static bool submit_upstream_work(CURL *curl, struct submit_req *req) {
 
 	json_decref(val);
 	free(url);
+
 	return true;
 }
 
@@ -1187,27 +1096,14 @@ static void *miner_thread(void *userdata) {
 
 	while (1) {
 
-		// Obtain New Work From workio Thread
-		pthread_mutex_lock(&work_lock);
-
-		if ((time(NULL) - g_work_time) >= opt_scantime || *longpoll_requested_pull) {
-			*longpoll_requested_pull = false;
-			if (!get_work(mythr, &g_work)) {
-				applog(LOG_ERR, "Unable to retrieve work...exiting mining thread #%d", mythr->id);
-				pthread_mutex_unlock(&work_lock);
-				goto out;
-			}
-			g_work_time = time(NULL);
-			if (!g_work.wrk_pkg) {
-				sleep(15);	// Wait 15s Before Checking For Work Again
-				g_work_time = 0;
-				pthread_mutex_unlock(&work_lock);
-				continue;
-			}
+		// No Work Available
+		if (!g_work.wrk_pkg) {
+			sleep(1);
+			continue;
 		}
 
 		// Check If We Are Mining The Most Current Work
-		if (g_work.wrk_pkg && (!work.wrk_pkg || (work.wrk_pkg->work_id != g_work.wrk_pkg->work_id))) {
+		if (!work.wrk_pkg || (work.wrk_pkg->work_id != g_work.wrk_pkg->work_id)) {
 
 			// Copy Global Work Into Local Thread Work
 			memcpy((void *)&work, (void *)&g_work, sizeof(struct work));
@@ -1223,7 +1119,6 @@ static void *miner_thread(void *userdata) {
 			}
 		}
 
-		pthread_mutex_unlock(&work_lock);
 		work_restart[thr_id].restart = 0;
 
 		// Run VM To Check For POW Hash & Bounties
@@ -1261,12 +1156,6 @@ static void *miner_thread(void *userdata) {
 			// Create Submit Request
 			if (!add_submit_req(&work, SUBMIT_BTY_ANN))
 				break;
-
-
-			// Force g_work To Refresh
-			pthread_mutex_lock(&work_lock);
-			g_work_time = 0;
-			pthread_mutex_unlock(&work_lock);
 		}
 
 		// Submit Work That Meets POW Target
@@ -1274,11 +1163,6 @@ static void *miner_thread(void *userdata) {
 			applog(LOG_NOTICE, "CPU%d: Submitting POW Solution", thr_id);
 			if (!add_submit_req(&work, SUBMIT_POW))
 				break;
-
-			// Force g_work To Refresh
-			pthread_mutex_lock(&work_lock);
-			g_work_time = 0;
-			pthread_mutex_unlock(&work_lock);
 		}
 	}
 
@@ -1294,18 +1178,93 @@ out:
 static void restart_threads(void)
 {
 	int i;
-
 	for (i = 0; i < opt_n_threads; i++)
 		work_restart[i].restart = 1;
+}
+
+static bool check_new_block(CURL *curl)
+{
+	json_t *val, *obj, *inner_obj;
+	int i, err, num_events;
+	char* reason = NULL;
+
+	val = json_rpc_call(curl, rpc_url, rpc_userpass, "requestType=longpoll&randomId=1", &err);
+	if (err > 0 || !val) {
+		applog(LOG_ERR, "ERROR: longpoll failed...retrying in %d seconds", opt_fail_pause);
+		sleep(opt_fail_pause);
+		return false;
+	}
+
+	if (opt_protocol) {
+		char *str = json_dumps(val, JSON_INDENT(3));
+		applog(LOG_DEBUG, "DEBUG: JSON Response -\n%s", str);
+		free(str);
+	}
+
+	obj = json_object_get(val, "event");
+	if (!obj) {
+		applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
+		sleep(opt_fail_pause);
+		if (val) json_decref(val);
+		return false;
+	}
+
+	if (json_is_string(obj)) {
+		reason = (char *)json_string_value(obj);
+		if (strcmp(reason, "timeout") == 0) {
+			if (val) json_decref(val);
+			return false;
+		}
+		else {
+			if (strstr(reason, "block") >= 0) {
+				applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
+				if (val) json_decref(val);
+				return true;
+			}
+		}
+	}
+	else if (json_is_array(obj)) {
+		num_events = json_array_size(obj);
+		if (num_events == 0) {
+			applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
+			if (val) json_decref(val);
+			sleep(opt_fail_pause);
+			return false;
+		}
+
+		for (i = 0; i<num_events; i++) {
+			inner_obj = json_array_get(obj, i);
+			if (!inner_obj) {
+				applog(LOG_ERR, "ERROR: longpoll array parsing failed...retrying in %d seconds", opt_fail_pause);
+				if (val) json_decref(val);
+				sleep(opt_fail_pause);
+				return false;
+			}
+
+			if (json_is_string(inner_obj)) {
+				char* str = (char *)json_string_value(inner_obj);
+				if (strstr(str, "block") >= 0) {
+					applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
+					if (val) json_decref(val);
+					return true;
+				}
+			}
+		}
+	}
+
+	return true;
 }
 
 static void *longpoll_thread(void *userdata)
 {
 	struct thr_info *mythr = (struct thr_info *) userdata;
 	CURL *curl;
-	json_t *val, *obj, *inner_obj;
-	int err, num_events, i;
-	char* reason;
+	int i;
+	//json_t *val, *obj, *inner_obj;
+	//int i, err, num_events;
+	//char* reason = NULL;
+	bool new_block;
+
 	curl = curl_easy_init();
 	if (!curl) {
 		applog(LOG_ERR, "CURL initialization failed");
@@ -1313,121 +1272,119 @@ static void *longpoll_thread(void *userdata)
 	}
 
 	while (1) {
-	
-		val = json_rpc_call(curl, rpc_url, rpc_userpass, "requestType=longpoll&randomId=1", &err);
-		if(err > 0 || !val){
-			applog(LOG_ERR, "ERROR: longpoll failed...retrying in %d seconds", opt_fail_pause);
-			sleep(opt_fail_pause);
-			continue;
-		}
 
-		if (opt_protocol) {
-			char *str = json_dumps(val, JSON_INDENT(3));
-			applog(LOG_DEBUG, "DEBUG: JSON Response -\n%s", str);
-			free(str);
-		}
+//		new_block = false;
 
-		obj = json_object_get(val, "event");
-		if(!obj){
-			applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
-			sleep(opt_fail_pause);
-			continue;
-		}
+		// Check For New Block
+		new_block = check_new_block(curl);
+//		val = json_rpc_call(curl, rpc_url, rpc_userpass, "requestType=longpoll&randomId=1", &err);
+//		if (err > 0 || !val) {
+//			applog(LOG_ERR, "ERROR: longpoll failed...retrying in %d seconds", opt_fail_pause);
+//			sleep(opt_fail_pause);
+//			continue;
+//		}
+//
+//		if (opt_protocol) {
+//			char *str = json_dumps(val, JSON_INDENT(3));
+//			applog(LOG_DEBUG, "DEBUG: JSON Response -\n%s", str);
+//			free(str);
+//		}
+//
+//		obj = json_object_get(val, "event");
+//		if (!obj) {
+//			applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
+//			sleep(opt_fail_pause);
+//			continue;
+//		}
+//
+//		if (json_is_string(obj)) {
+//			reason = (char *)json_string_value(obj);
+//			if (strcmp(reason, "timeout") == 0) {
+////				continue;
+//				;
+//			}
+//			else {
+//				if (strstr(reason, "block") >= 0) {
+//					applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
+////					longpoll_request_pull();
+//					new_block = true;
+//				}
+//			}
+//		}
+//		else if (json_is_array(obj)) {
+//			num_events = json_array_size(obj);
+//			if (num_events == 0) {
+//				applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
+//				sleep(opt_fail_pause);
+//				continue;
+//			}
+//
+//			for (i = 0; i<num_events; i++) {
+//				inner_obj = json_array_get(obj, i);
+//				if (!inner_obj) {
+//					applog(LOG_ERR, "ERROR: longpoll array parsing failed...retrying in %d seconds", opt_fail_pause);
+//					sleep(opt_fail_pause);
+//					continue;
+//				}
+//				if (json_is_string(inner_obj)) {
+//					char* str = (char *)json_string_value(inner_obj);
+//					if (strstr(reason, "block") >= 0) {
+//						applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
+////						longpoll_request_pull();
+//						new_block = true;
+//					}
+//				}
+//			}
+//		}
+//
+//		if(val) json_decref(val);
+//		val = NULL;
 
-		if(json_is_string(obj)){
-			reason = (char *)json_string_value(obj);
-			if(strcmp(reason, "timeout") == 0){
+		// Get Work
+		if (new_block || (time(NULL) - g_work_time) >= opt_scantime) {
+
+//			applog(LOG_DEBUG, "DEBUG: 'get_work'");
+			if (!get_work(curl))
 				continue;
-			}else{
-				if(strstr(reason,"block")>=0){
-					applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
-					longpoll_request_pull();
-				}
-			}
 		}
-		else if(json_is_array(obj)){
-			num_events = json_array_size(obj);
-			if (num_events == 0) {
-				applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
-				sleep(opt_fail_pause);
+
+		// Submit POW / Bounty
+//		applog(LOG_DEBUG, "DEBUG: 'submit_work'");
+		for (i = 0; i < g_submit_req_cnt; i++) {
+
+			// Remove Completed Requests
+			if (g_submit_req[i].req_type == SUBMIT_COMPLETE) {
+				applog(LOG_DEBUG, "DEBUG: Submit complete...deleting request");
+				delete_submit_req(i);
 				continue;
 			}
 
-			for (i = 0; i<num_events; i++) {
-				inner_obj = json_array_get(obj, i);
-				if(!inner_obj){
-					applog(LOG_ERR, "ERROR: longpoll array parsing failed...retrying in %d seconds", opt_fail_pause);
-					sleep(opt_fail_pause);
-					continue;
-				}
-				if(json_is_string(inner_obj)){
-					char* str = (char *)json_string_value(inner_obj);
-					if(strstr(str,"block")>=0){
-						applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
-						longpoll_request_pull();
-					}
-				}
+			// Remove Stale Requests After 15min
+			if (time(NULL) - g_submit_req[i].start_tm >= 900) {
+				applog(LOG_DEBUG, "DEBUG: Submit request timed out after 15min");
+				delete_submit_req(i);
+				g_bounty_timeout_cnt++;
+				continue;
 			}
 
+			// Check If Request Is On Hold
+			if (g_submit_req[i].delay_tm >= time(NULL))
+				continue;
+
+			// Submit Request
+			pthread_mutex_lock(&submit_lock);
+			if (!submit_work(curl, &g_submit_req[i]))
+				applog(LOG_ERR, "ERROR: Submit bounty request failed");
+			pthread_mutex_unlock(&submit_lock);
 		}
+
+		sleep(1);
 	}
 
 	tq_freeze(mythr->q);
 	curl_easy_cleanup(curl);
 
 	return NULL;
-}
-
-static void *workio_thread(void *userdata)
-{
-	struct thr_info *mythr = (struct thr_info *) userdata;
-	CURL *curl;
-	bool ok = true;
-
-	curl = curl_easy_init();
-	if (!curl) {
-		applog(LOG_ERR, "CURL initialization failed");
-		return NULL;
-	}
-
-	while (ok) {
-		struct workio_cmd *wc;
-
-		// Wait For workio_cmd To Arrive In Queue
-		wc = (struct workio_cmd *) tq_pop(mythr->q, NULL);
-		if (!wc) {
-			ok = false;
-			break;
-		}
-
-		switch (wc->cmd) {
-		case WC_GET_WORK:
-			ok = workio_get_work(wc, curl);
-			break;
-		case WC_SUBMIT_WORK:
-			ok = workio_submit_work(wc, curl);
-			break;
-		default:	// Should Not Happen
-			ok = false;
-			break;
-		}
-
-		workio_cmd_free(wc);
-	}
-
-	tq_freeze(mythr->q);
-	curl_easy_cleanup(curl);
-
-	return NULL;
-}
-
-static void workio_cmd_free(struct workio_cmd *wc)
-{
-	if (!wc)
-		return;
-
-	memset(wc, 0, sizeof(*wc));
-	free(wc);
 }
 
 static bool add_submit_req(struct work *work, enum submit_commands req_type) {
@@ -1479,7 +1436,7 @@ static bool delete_submit_req(int idx) {
 		}
 	}
 	else {
-		if(g_submit_req) free(g_submit_req);
+		if (g_submit_req) free(g_submit_req);
 		g_submit_req = 0;
 		g_submit_req_cnt = 0;
 		pthread_mutex_unlock(&submit_lock);
@@ -1527,9 +1484,10 @@ static void *submit_thread(void *userdata) {
 				continue;
 
 			// Submit Request
-			if (!submit_work(mythr, &g_submit_req[i])) {
+			pthread_mutex_lock(&submit_lock);
+			if (!submit_work(mythr, &g_submit_req[i]))
 				applog(LOG_ERR, "ERROR: Submit bounty request failed");
-			}
+			pthread_mutex_unlock(&submit_lock);
 		}
 		sleep(1);
 	}
@@ -1569,7 +1527,7 @@ static void *key_monitor_thread(void *userdata)
 			applog(LOG_WARNING, "************************** Mining Summary **************************");
 			applog(LOG_WARNING, "Run Time: %02d Days %02d:%02d:%02d\t\tWork Name: %s", day, hour, min, sec, g_work_nm ? g_work_nm : "");
 			applog(LOG_WARNING, "Bounty Pending:\t%3d\t\tWork ID:   %s", pending_bty, g_work_id ? g_work_id : "");
-			applog(LOG_WARNING, "Bounty Accept:\t%3d\t\tTarget:    %s", g_bounty_accepted_cnt, g_pow_target);
+			applog(LOG_WARNING, "Bounty Accept:\t%3d\t\tTarget:    %s", g_bounty_accepted_cnt, g_pow_target_str);
 			applog(LOG_WARNING, "Bounty Reject:\t%3d", g_bounty_rejected_cnt);
 			applog(LOG_WARNING, "Bounty Deprct:\t%3d\t\tPOW Accept:  %3d", g_bounty_deprecated_cnt, g_pow_accepted_cnt);
 			applog(LOG_WARNING, "Bounty Timeout:\t%3d\t\tPOW Reject:  %3d", g_bounty_timeout_cnt, g_pow_rejected_cnt);
@@ -1648,17 +1606,8 @@ static int thread_create(struct thr_info *thr, void* func)
 	return err;
 }
 
-int longpoll_request_pull(){
-	int i,thr_idx;
-	struct thr_info *thr;
-	for (i = 0; i < opt_n_threads; i++) {
-		thr = &thr_info[thr_idx];
-		thr->longpoll_requested_pull = true;
-	}
-}
-
 int main(int argc, char **argv) {
-	struct thr_info *thr, *thr_longpoll;
+	struct thr_info *thr;
 	int i, err, thr_idx;
 
 	fprintf(stdout, "** " PACKAGE_NAME " " PACKAGE_VERSION " **\n");
@@ -1720,34 +1669,9 @@ int main(int argc, char **argv) {
 	if (!work_restart)
 		return 1;
 
-	thr_info = (struct thr_info*) calloc(opt_n_threads + 3, sizeof(*thr));
+	thr_info = (struct thr_info*) calloc(opt_n_threads + 2, sizeof(*thr));
 	if (!thr_info)
 		return 1;
-
-	// Init workio Thread Info
-	work_thr_id = opt_n_threads;
-	thr = &thr_info[work_thr_id];
-	thr->id = work_thr_id;
-	thr->q = tq_new();
-	if (!thr->q)
-		return 1;
-
-	thr_longpoll = (struct thr_info*) calloc(1, sizeof(*thr));
-	thr_longpoll->id = 1000;
-	thr_longpoll->q = tq_new();
-	if (!thr_longpoll->q)
-		return 1;
-
-	// Start workio Thread
-	if (thread_create(thr, workio_thread)) {
-		applog(LOG_ERR, "work thread create failed");
-		return 1;
-	}
-
-	if (thread_create(thr_longpoll, longpoll_thread)) {
-		applog(LOG_ERR, "longpoll thread create failed");
-		return 1;
-	}
 
 	// In Test Compiler Mode, Run Parser / Complier Using Source Code From Test File
 	if (opt_test_vm) {
@@ -1786,20 +1710,20 @@ int main(int argc, char **argv) {
 	applog(LOG_INFO, "%d mining threads started", opt_n_threads);
 	gettimeofday(&g_miner_start_time, NULL);
 
-	// Bounty Submit Thread
-	thr = &thr_info[opt_n_threads + 1];
-	thr->id = opt_n_threads + 1;
+	// Longpoll Thread
+	thr = &thr_info[opt_n_threads + 2];
+	thr->id = opt_n_threads + 2;
 	thr->q = tq_new();
 	if (!thr->q)
 		return 1;
-	if (thread_create(thr, submit_thread)) {
-		applog(LOG_ERR, "Bounty submit thread create failed");
+	if (thread_create(thr, longpoll_thread)) {
+		applog(LOG_ERR, "longpoll thread create failed");
 		return 1;
 	}
 
 	// Start Key Monitor Thread
-	thr = &thr_info[opt_n_threads + 2];
-	thr->id = opt_n_threads + 2;
+	thr = &thr_info[opt_n_threads + 3];
+	thr->id = opt_n_threads + 3;
 	thr->q = tq_new();
 	if (!thr->q)
 		return 1;
@@ -1807,7 +1731,7 @@ int main(int argc, char **argv) {
 		applog(LOG_ERR, "Key monitor thread create failed");
 		return 1;
 	}
-
+	
 	// Main Loop - Wait for workio thread to exit
 	pthread_join(thr_info[work_thr_id].pth, NULL);
 
