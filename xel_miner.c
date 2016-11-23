@@ -1271,9 +1271,6 @@ static void *longpoll_thread(void *userdata)
 	struct thr_info *mythr = (struct thr_info *) userdata;
 	CURL *curl;
 	int i;
-	//json_t *val, *obj, *inner_obj;
-	//int i, err, num_events;
-	//char* reason = NULL;
 	bool new_block;
 
 	curl = curl_easy_init();
@@ -1284,72 +1281,8 @@ static void *longpoll_thread(void *userdata)
 
 	while (1) {
 
-		//		new_block = false;
-
 		// Check For New Block
 		new_block = check_new_block(curl);
-		//		val = json_rpc_call(curl, rpc_url, rpc_userpass, "requestType=longpoll&randomId=1", &err);
-		//		if (err > 0 || !val) {
-		//			applog(LOG_ERR, "ERROR: longpoll failed...retrying in %d seconds", opt_fail_pause);
-		//			sleep(opt_fail_pause);
-		//			continue;
-		//		}
-		//
-		//		if (opt_protocol) {
-		//			char *str = json_dumps(val, JSON_INDENT(3));
-		//			applog(LOG_DEBUG, "DEBUG: JSON Response -\n%s", str);
-		//			free(str);
-		//		}
-		//
-		//		obj = json_object_get(val, "event");
-		//		if (!obj) {
-		//			applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
-		//			sleep(opt_fail_pause);
-		//			continue;
-		//		}
-		//
-		//		if (json_is_string(obj)) {
-		//			reason = (char *)json_string_value(obj);
-		//			if (strcmp(reason, "timeout") == 0) {
-		////				continue;
-		//				;
-		//			}
-		//			else {
-		//				if (strstr(reason, "block") >= 0) {
-		//					applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
-		////					longpoll_request_pull();
-		//					new_block = true;
-		//				}
-		//			}
-		//		}
-		//		else if (json_is_array(obj)) {
-		//			num_events = json_array_size(obj);
-		//			if (num_events == 0) {
-		//				applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
-		//				sleep(opt_fail_pause);
-		//				continue;
-		//			}
-		//
-		//			for (i = 0; i<num_events; i++) {
-		//				inner_obj = json_array_get(obj, i);
-		//				if (!inner_obj) {
-		//					applog(LOG_ERR, "ERROR: longpoll array parsing failed...retrying in %d seconds", opt_fail_pause);
-		//					sleep(opt_fail_pause);
-		//					continue;
-		//				}
-		//				if (json_is_string(inner_obj)) {
-		//					char* str = (char *)json_string_value(inner_obj);
-		//					if (strstr(reason, "block") >= 0) {
-		//						applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
-		////						longpoll_request_pull();
-		//						new_block = true;
-		//					}
-		//				}
-		//			}
-		//		}
-		//
-		//		if(val) json_decref(val);
-		//		val = NULL;
 
 		// Get Work
 		if (new_block || (time(NULL) - g_work_time) >= opt_scantime) {
@@ -1368,8 +1301,10 @@ static void *longpoll_thread(void *userdata)
 
 			// Submit Request
 //			applog(LOG_DEBUG, "DEBUG: 'submit_work'");
+			pthread_mutex_lock(&submit_lock);
 			if (!submit_work(curl, &g_submit_req[i]))
 				applog(LOG_ERR, "ERROR: Submit bounty request failed");
+			pthread_mutex_unlock(&submit_lock);
 		}
 
 		for (i = 0; i < g_submit_req_cnt; i++) {
@@ -1386,7 +1321,6 @@ static void *longpoll_thread(void *userdata)
 				applog(LOG_DEBUG, "DEBUG: Submit request timed out after 15min");
 				delete_submit_req(i);
 				g_bounty_timeout_cnt++;
-				continue;
 			}
 		}
 
@@ -1466,45 +1400,6 @@ static bool delete_submit_req(int idx) {
 	g_submit_req_cnt--;
 	pthread_mutex_unlock(&submit_lock);
 	return true;
-}
-
-static void *submit_thread(void *userdata) {
-	struct thr_info *mythr = (struct thr_info *) userdata;
-	int thr_id = mythr->id;
-	int i;
-
-	while (1) {
-		for (i = 0; i < g_submit_req_cnt; i++) {
-
-			// Remove Completed Requests
-			if (g_submit_req[i].req_type == SUBMIT_COMPLETE) {
-				applog(LOG_DEBUG, "DEBUG: Submit complete...deleting request");
-				delete_submit_req(i);
-				break;
-			}
-
-			// Remove Stale Requests After 15min
-			if (time(NULL) - g_submit_req[i].start_tm >= 900) {
-				applog(LOG_DEBUG, "DEBUG: Submit request timed out after 15min");
-				delete_submit_req(i);
-				g_bounty_timeout_cnt++;
-				break;
-			}
-
-			// Check If Request Is On Hold
-			if (g_submit_req[i].delay_tm >= time(NULL))
-				continue;
-
-			// Submit Request
-			pthread_mutex_lock(&submit_lock);
-			if (!submit_work(mythr, &g_submit_req[i]))
-				applog(LOG_ERR, "ERROR: Submit bounty request failed");
-			pthread_mutex_unlock(&submit_lock);
-		}
-		sleep(1);
-	}
-
-	return NULL;
 }
 
 static void *key_monitor_thread(void *userdata)
