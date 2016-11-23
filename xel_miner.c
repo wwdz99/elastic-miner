@@ -164,7 +164,7 @@ static struct option const options[] = {
 	{ "help",			0, NULL, 'h' },
 	{ "mining",			1, NULL, 'm' },
 	{ "no-color",		0, NULL, 1001 },
-	{ "no-compile",		0, NULL, 'N' },
+	{ "no-compile",		0, NULL, 1002 },
 	{ "pass",			1, NULL, 'p' },
 	{ "phrase",			1, NULL, 'P' },
 	{ "protocol",	    0, NULL, 1003 },
@@ -317,7 +317,7 @@ void parse_arg(int key, char *arg)
 	case 'q':
 		opt_quiet = true;
 		break;
-	case 'N':
+	case 'X':
 		opt_norenice = true;
 		break;
 	case 'r':
