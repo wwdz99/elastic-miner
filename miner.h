@@ -268,7 +268,7 @@ static void show_usage_and_exit(int status);
 static void show_version_and_exit(void);
 static bool load_test_file(char *test_source);
 static bool get_vm_input(struct work *work);
-static int execute_vm(int thr_id, struct work *work, struct instance *inst, long *hashes_done);
+static int execute_vm(int thr_id, struct work *work, struct instance *inst, long *hashes_done, char* hash);
 
 static bool check_new_block(CURL *curl);
 

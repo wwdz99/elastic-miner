@@ -542,14 +542,15 @@ static bool get_vm_input(struct work *work) {
 	return true;
 }
 
-static int execute_vm(int thr_id, struct work *work, struct instance *inst, long *hashes_done) {
+static int execute_vm(int thr_id, struct work *work, struct instance *inst, long *hashes_done, char* hash) {
 	int i, rc;
 	time_t t_start = time(NULL);
 	char msg[64];
-	char hash[32];
+
 	uint32_t *msg32 = (uint32_t *)msg;
-	uint32_t *hash32 = (uint32_t *)hash;
 	uint32_t *mult32 = (uint32_t *)work->multiplicator;
+	uint32_t *hash32 = (uint32_t *)hash;
+
 
 	mult32[0] = thr_id;
 	mult32[6] = genrand_int32();
@@ -697,7 +698,7 @@ static bool get_work(CURL *curl) {
 
 		// Restart Miner Threads If Work Package Changes
 		if (work.wrk_pkg->work_id != g_cur_work_id) {
-			applog(LOG_NOTICE, "Switching to work_id: %s", work.wrk_pkg->work_str);
+			applog(LOG_NOTICE, "Switching to work_id: %s (target: %s)", work.wrk_pkg->work_str,g_pow_target_str);
 			restart_threads();
 		}
 
@@ -1078,6 +1079,13 @@ static void *miner_thread(void *userdata) {
 	uint32_t *workid32;
 	double eval_rate;
 	struct instance *inst = NULL;
+	char hash[32];
+	unsigned char hash_str[65];
+	unsigned char gpow_str[65];
+
+	uint32_t *hash32 = (uint32_t *)hash;
+
+
 
 	// Initialize Global Variables
 	vm_mem = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
@@ -1122,7 +1130,7 @@ static void *miner_thread(void *userdata) {
 		work_restart[thr_id].restart = 0;
 
 		// Run VM To Check For POW Hash & Bounties
-		rc = execute_vm(thr_id, &work, inst, &hashes_done);
+		rc = execute_vm(thr_id, &work, inst, &hashes_done, hash);
 
 		// Record Elapsed Time
 		gettimeofday(&tv_end, NULL);
@@ -1160,7 +1168,10 @@ static void *miner_thread(void *userdata) {
 
 		// Submit Work That Meets POW Target
 		if (rc == 2) {
-			applog(LOG_NOTICE, "CPU%d: Submitting POW Solution", thr_id);
+			sprintf(hash_str, "%08X%08X%08X...", swap32(hash32[0]), swap32(hash32[1]), swap32(hash32[2]));
+			sprintf(gpow_str, "%08X%08X%08X...", (g_pow_target[0]), (g_pow_target[1]), (g_pow_target[2]));
+
+			applog(LOG_NOTICE, "CPU%d: Submitting POW Solution (%s) [t:%s]", thr_id, hash_str, gpow_str);
 			if (!add_submit_req(&work, SUBMIT_POW))
 				break;
 		}
@@ -1240,6 +1251,7 @@ static bool check_new_block(CURL *curl)
 				sleep(opt_fail_pause);
 				return false;
 			}
+
 			if (json_is_string(inner_obj)) {
 				char* str = (char *)json_string_value(inner_obj);
 				if (strstr(str, "block") >= 0) {
