@@ -588,10 +588,8 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 
 	while (1) {
 		// Check If New Work Is Available
-		if (work_restart[thr_id].restart) {
-			applog(LOG_DEBUG, "CPU%d: New work detected", thr_id);
+		if (work_restart[thr_id].restart)
 			return 0;
-		}
 
 		// Increment mult32
 		mult32[7] = mult32[7] + 1;
@@ -1274,79 +1272,6 @@ static void restart_threads(void)
 		work_restart[i].restart = 1;
 }
 
-static bool check_new_block(CURL *curl)
-{
-	json_t *val, *obj, *inner_obj;
-	int i, err, num_events;
-	char* reason = NULL;
-
-	val = json_rpc_call(curl, rpc_url, rpc_userpass, "requestType=longpoll&randomId=1", &err);
-	if (err > 0 || !val) {
-		applog(LOG_ERR, "ERROR: longpoll failed...retrying in %d seconds", opt_fail_pause);
-		sleep(opt_fail_pause);
-		return false;
-	}
-
-	if (opt_protocol) {
-		char *str = json_dumps(val, JSON_INDENT(3));
-		applog(LOG_DEBUG, "DEBUG: JSON Response -\n%s", str);
-		free(str);
-	}
-
-	obj = json_object_get(val, "event");
-	if (!obj) {
-		applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
-		sleep(opt_fail_pause);
-		if (val) json_decref(val);
-		return false;
-	}
-
-	if (json_is_string(obj)) {
-		reason = (char *)json_string_value(obj);
-		if (strcmp(reason, "timeout") == 0) {
-			if (val) json_decref(val);
-			return false;
-		}
-		else {
-			if (strstr(reason, "block") >= 0) {
-				applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
-				if (val) json_decref(val);
-				return true;
-			}
-		}
-	}
-	else if (json_is_array(obj)) {
-		num_events = json_array_size(obj);
-		if (num_events == 0) {
-			applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
-			if (val) json_decref(val);
-			sleep(opt_fail_pause);
-			return false;
-		}
-
-		for (i = 0; i<num_events; i++) {
-			inner_obj = json_array_get(obj, i);
-			if (!inner_obj) {
-				applog(LOG_ERR, "ERROR: longpoll array parsing failed...retrying in %d seconds", opt_fail_pause);
-				if (val) json_decref(val);
-				sleep(opt_fail_pause);
-				return false;
-			}
-
-			if (json_is_string(inner_obj)) {
-				char* str = (char *)json_string_value(inner_obj);
-				if (strstr(str, "block") >= 0) {
-					applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
-					if (val) json_decref(val);
-					return true;
-				}
-			}
-		}
-	}
-
-	return true;
-}
-
 static void *longpoll_thread(void *userdata)
 {
 	struct thr_info *mythr = (struct thr_info *) userdata;
@@ -1361,11 +1286,13 @@ static void *longpoll_thread(void *userdata)
 		return NULL;
 	}
 
-	while (1) {
+	pthread_mutex_lock(&longpoll_lock);
+	g_new_block = false;
+	pthread_mutex_unlock(&longpoll_lock);
 
-		pthread_mutex_lock(&longpoll_lock);
-		g_new_block = false;
-		pthread_mutex_unlock(&longpoll_lock);
+	sleep(1);
+
+	while (1) {
 
 		val = json_rpc_call(curl, rpc_url, rpc_userpass, "requestType=longpoll&randomId=1", &err);
 		if (err > 0 || !val) {
@@ -1449,7 +1376,7 @@ static void *workio_thread(void *userdata)
 	struct thr_info *mythr = (struct thr_info *) userdata;
 	CURL *curl;
 	struct workio_cmd *wc;
-	int i;
+	int i, failures;
 
 	curl = curl_easy_init();
 	if (!curl) {
@@ -1457,18 +1384,29 @@ static void *workio_thread(void *userdata)
 		return NULL;
 	}
 
+	failures = 0;
+
 	while (1) {
 
 		// Get Work
 		if (g_new_block || (time(NULL) - g_work_time) >= opt_scantime) {
 
+			if (!get_work(curl)) {
+				if ((opt_retries >= 0) && (++failures > opt_retries)) {
+					applog(LOG_ERR, "ERROR: 'json_rpc_call' failed...terminating workio thread");
+					break;
+				}
+
+				/* pause, then restart work-request loop */
+				applog(LOG_ERR, "ERROR: 'json_rpc_call' failed...retrying in %d seconds", opt_fail_pause);
+				sleep(opt_fail_pause);
+				continue;
+			}
+
+			failures = 0;
 			pthread_mutex_lock(&longpoll_lock);
 			g_new_block = false;
 			pthread_mutex_unlock(&longpoll_lock);
-
-//			applog(LOG_DEBUG, "DEBUG: 'get_work'");
-			if (!get_work(curl))
-				continue;
 		}
 
 		// Check For New Solutions On Queue
@@ -1491,7 +1429,6 @@ static void *workio_thread(void *userdata)
 				continue;
 
 			// Submit Request
-//			applog(LOG_DEBUG, "DEBUG: 'submit_work'");
 			if (!submit_work(curl, &g_submit_req[i]))
 				applog(LOG_ERR, "ERROR: Submit bounty request failed");
 		}

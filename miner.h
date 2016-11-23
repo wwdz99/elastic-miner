@@ -2,7 +2,7 @@
 #define __MINER_H__
 
 #define PACKAGE_NAME "xel_miner"
-#define PACKAGE_VERSION "0.7"
+#define PACKAGE_VERSION "0.8"
 
 #define USER_AGENT PACKAGE_NAME "/" PACKAGE_VERSION
 #define MAX_CPUS 16
@@ -251,6 +251,7 @@ void tq_freeze(struct thread_q *tq);
 void tq_thaw(struct thread_q *tq);
 
 static void *key_monitor_thread(void *userdata);
+static void *longpoll_thread(void *userdata);
 static void *test_vm_thread(void *userdata);
 static void *workio_thread(void *userdata);
 static void restart_threads(void);
@@ -264,8 +265,6 @@ static void show_version_and_exit(void);
 static bool load_test_file(char *test_source);
 static bool get_vm_input(struct work *work);
 static int execute_vm(int thr_id, struct work *work, struct instance *inst, long *hashes_done, char* hash);
-
-static bool check_new_block(CURL *curl);
 
 static bool get_work(CURL *curl);
 static int work_decode(const json_t *val, struct work *work);
