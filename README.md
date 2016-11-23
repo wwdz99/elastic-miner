@@ -1,4 +1,4 @@
-# xel_miner 0.7
+# xel_miner 0.8
 
 This is a prototype of a miner for solving XEL work packages.  This was put together as a tool for me to learn more about AST parsing & interpreting. I ultimately decided to convert it into an XEL miner; however, it is not optimized at all...it is a prototype that attempts demonstrate all the functionality of an XEL miner.
 
