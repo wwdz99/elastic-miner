@@ -773,15 +773,14 @@ static uint64_t calc_diff(uint32_t *target) {
 	d32[0] = target[1];
 	d32[1] = target[0];
 
-	return diff_1 / diff;
+	return (uint64_t) (diff_1 / diff);
 }
 
 static int work_decode(const json_t *val, struct work *work) {
 	int i, j, rc, num_pkg, best_pkg, bty_rcvd, work_pkg_id;
 	uint64_t work_id, difficulty;
-	double best_profit = 0.0;
-	uint32_t best_wcet = 0xFFFFFFFF;
-	char *tgt = NULL, *src = NULL, *str = NULL, *best_src = NULL, *elastic_src = NULL;
+	uint32_t best_wcet = 0xFFFFFFFF, best_profit = 0, profit = 0, pow_tgt[8];
+	char *tgt = NULL, *src = NULL, *str = NULL, *best_src = NULL, *best_tgt = NULL, *elastic_src = NULL;
 	json_t *wrk = NULL, *pkg = NULL;
 
 	memset(work, 0, sizeof(struct work));
@@ -920,18 +919,20 @@ static int work_decode(const json_t *val, struct work *work) {
 		}
 
 		// Get Updated Target For The Job
-		rc = hex2ints(&g_work_package[work_pkg_id].pow_target[0], 8, tgt, strlen(tgt));
+		rc = hex2ints(pow_tgt, 8, tgt, strlen(tgt));
 		if (!rc) {
 			applog(LOG_ERR, "Invalid Target in JSON response for work_id: %s", g_work_package[work_pkg_id].work_str);
 			return 0;
 		}
 
-		difficulty = calc_diff(&g_work_package[work_pkg_id].pow_target[0]);
+		difficulty = calc_diff(pow_tgt);
+		profit = (uint32_t)(((double)g_work_package[work_pkg_id].pow_reward / ((double)g_work_package[work_pkg_id].WCET * difficulty)));
 
 		// Select Best Work Package
-		if (opt_pref == PREF_WCET && g_work_package[work_pkg_id].WCET < best_wcet) {
+		if (opt_pref == PREF_WCET && (g_work_package[work_pkg_id].WCET < best_wcet)) {
 			best_pkg = work_pkg_id;
 			best_src = (char *)json_string_value(json_object_get(pkg, "source"));
+			best_tgt = tgt;
 			best_wcet = g_work_package[work_pkg_id].WCET;
 		}
 
@@ -939,14 +940,16 @@ static int work_decode(const json_t *val, struct work *work) {
 		// TODO:  Add Bounty Reward Profitability Check
 		//
 
-		else if (opt_pref == PREF_PROFIT && ((double)g_work_package[work_pkg_id].pow_reward / ((double)g_work_package[work_pkg_id].WCET * difficulty)) > best_profit) {
+		else if ((opt_pref == PREF_PROFIT) && (profit > best_profit)) {
 			best_pkg = work_pkg_id;
 			best_src = (char *)json_string_value(json_object_get(pkg, "source"));
-			best_profit = ((double)g_work_package[work_pkg_id].pow_reward / ((double)g_work_package[work_pkg_id].WCET * difficulty));
+			best_tgt = tgt;
+			best_profit = profit;
 		}
 		else if (opt_pref == PREF_WORKID && (!strcmp(g_work_package[work_pkg_id].work_str, pref_workid))) {
 			best_pkg = work_pkg_id;
 			best_src = (char *)json_string_value(json_object_get(pkg, "source"));
+			best_tgt = tgt;
 			break;
 		}
 	}
@@ -996,8 +999,11 @@ static int work_decode(const json_t *val, struct work *work) {
 	strncpy(work->work_str, g_work_package[best_pkg].work_str, 21);
 	strncpy(work->work_nm, g_work_package[best_pkg].work_nm, 49);
 
-	for (i = 0; i<8; ++i) {
-		work->pow_target[i] = g_work_package[best_pkg].pow_target[i];
+	// Convert Hex Target To Int Array
+	rc = hex2ints(work->pow_target, 8, tgt, strlen(tgt));
+	if (!rc) {
+		applog(LOG_ERR, "Invalid Target in JSON response for work_id: %s", work->work_str);
+		return 0;
 	}
 
 	return 1;
