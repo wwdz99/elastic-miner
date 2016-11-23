@@ -761,9 +761,24 @@ static bool get_work(CURL *curl) {
 	return true;
 }
 
+static uint64_t calc_diff(uint32_t *target) {
+	uint64_t diff_1 = 0x0000FFFFFFFFFFFFull;
+
+	uint64_t diff = 0x0ull;
+	uint32_t *d32 = (uint32_t *)&diff;
+
+	if (!target[0] && !target[1])
+		return diff_1;
+
+	d32[0] = target[1];
+	d32[1] = target[0];
+
+	return diff_1 / diff;
+}
+
 static int work_decode(const json_t *val, struct work *work) {
 	int i, j, rc, num_pkg, best_pkg, bty_rcvd, work_pkg_id;
-	uint64_t work_id;
+	uint64_t work_id, difficulty;
 	double best_profit = 0.0;
 	uint32_t best_wcet = 0xFFFFFFFF;
 	char *tgt = NULL, *src = NULL, *str = NULL, *best_src = NULL, *elastic_src = NULL;
@@ -774,7 +789,6 @@ static int work_decode(const json_t *val, struct work *work) {
 	if (opt_protocol) {
 		str = json_dumps(val, JSON_INDENT(3));
 		applog(LOG_DEBUG, "DEBUG: JSON Response -\n%s", str);
-		printf("DEBUG: JSON Response -\n%s", str);
 		free(str);
 	}
 
@@ -798,7 +812,7 @@ static int work_decode(const json_t *val, struct work *work) {
 		pkg = json_array_get(wrk, i);
 		tgt = (char *)json_string_value(json_object_get(pkg, "target"));
 		str = (char *)json_string_value(json_object_get(pkg, "work_id"));
-		if (!str) {
+		if (!str || !tgt) {
 			applog(LOG_ERR, "Unable to parse work package");
 			return 0;
 		}
@@ -830,13 +844,6 @@ static int work_decode(const json_t *val, struct work *work) {
 			work_package.pow_reward = (uint64_t)json_number_value(json_object_get(pkg, "xel_per_pow"));
 			work_package.pending_bty_cnt = 0;
 			work_package.blacklisted = false;
-
-			// Convert Hex Target To Int Array
-			rc = hex2ints(&work_package.pow_target[0], 8, tgt, strlen(tgt));
-			if (!rc) {
-				applog(LOG_ERR, "Invalid Target in JSON response to getwork request");
-				return 0;
-			}
 
 			str = (char *)json_string_value(json_object_get(pkg, "source"));
 
@@ -912,27 +919,35 @@ static int work_decode(const json_t *val, struct work *work) {
 			continue;
 		}
 
+		// Get Updated Target For The Job
+		rc = hex2ints(&g_work_package[work_pkg_id].pow_target[0], 8, tgt, strlen(tgt));
+		if (!rc) {
+			applog(LOG_ERR, "Invalid Target in JSON response for work_id: %s", g_work_package[work_pkg_id].work_str);
+			return 0;
+		}
+
+		difficulty = calc_diff(&g_work_package[work_pkg_id].pow_target[0]);
+
 		// Select Best Work Package
 		if (opt_pref == PREF_WCET && g_work_package[work_pkg_id].WCET < best_wcet) {
 			best_pkg = work_pkg_id;
 			best_src = (char *)json_string_value(json_object_get(pkg, "source"));
 			best_wcet = g_work_package[work_pkg_id].WCET;
-			//			tgt = (char *)json_string_value(json_object_get(val, "pow_target"));
 		}
+
 		//
 		// TODO:  Add Bounty Reward Profitability Check
 		//
-		else if (opt_pref == PREF_PROFIT && ((double)g_work_package[work_pkg_id].pow_reward / (double)g_work_package[work_pkg_id].WCET) > best_profit) {
+
+		else if (opt_pref == PREF_PROFIT && ((double)g_work_package[work_pkg_id].pow_reward / ((double)g_work_package[work_pkg_id].WCET * difficulty)) > best_profit) {
 			best_pkg = work_pkg_id;
 			best_src = (char *)json_string_value(json_object_get(pkg, "source"));
-			best_profit = ((double)g_work_package[work_pkg_id].pow_reward / (double)g_work_package[work_pkg_id].WCET);
-			//			tgt = (char *)json_string_value(json_object_get(val, "pow_target"));
+			best_profit = ((double)g_work_package[work_pkg_id].pow_reward / ((double)g_work_package[work_pkg_id].WCET * difficulty));
 		}
 		else if (opt_pref == PREF_WORKID && (!strcmp(g_work_package[work_pkg_id].work_str, pref_workid))) {
 			best_pkg = work_pkg_id;
 			best_src = (char *)json_string_value(json_object_get(pkg, "source"));
 			break;
-			//			tgt = (char *)json_string_value(json_object_get(val, "pow_target"));
 		}
 	}
 
@@ -981,7 +996,7 @@ static int work_decode(const json_t *val, struct work *work) {
 	strncpy(work->work_str, g_work_package[best_pkg].work_str, 21);
 	strncpy(work->work_nm, g_work_package[best_pkg].work_nm, 49);
 
-	for (i=0;i<8;++i){
+	for (i = 0; i<8; ++i) {
 		work->pow_target[i] = g_work_package[best_pkg].pow_target[i];
 	}
 
@@ -1123,7 +1138,6 @@ static void *miner_thread(void *userdata) {
 	long hashes_done;
 	struct timeval tv_start, tv_end, diff;
 	int rc = 0;
-	bool* longpoll_requested_pull = &mythr->longpoll_requested_pull;
 	unsigned char msg[41];
 	uint32_t *msg32 = (uint32_t *)msg;
 	uint32_t *workid32;
@@ -1362,6 +1376,9 @@ static void *longpoll_thread(void *userdata)
 				}
 			}
 		}
+
+		if (val) json_decref(val);
+		val = NULL;
 
 		sleep(1);
 	}

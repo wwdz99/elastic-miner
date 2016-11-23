@@ -121,7 +121,6 @@ struct thr_info {
 	struct thread_q	*q;
 	struct cpu_info cpu;
 	struct work work;
-	bool longpoll_requested_pull;
 	char* c_code;
 };
 
@@ -269,6 +268,7 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 
 static bool get_work(CURL *curl);
 static int work_decode(const json_t *val, struct work *work);
+static uint64_t calc_diff(uint32_t *target);
 static bool add_work_package(struct work_package *work_package);
 static void update_pending_cnt(uint64_t work_id, bool add);
 
