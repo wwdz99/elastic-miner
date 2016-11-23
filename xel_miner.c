@@ -761,25 +761,29 @@ static bool get_work(CURL *curl) {
 	return true;
 }
 
-static uint64_t calc_diff(uint32_t *target) {
-	uint64_t diff_1 = 0x0000FFFFFFFFFFFFull;
+static double calc_diff(uint32_t *target) {
+	double diff_1 = 0x0000FFFFFFFFFFFF;
+	double diff;
 
-	uint64_t diff = 0x0ull;
-	uint32_t *d32 = (uint32_t *)&diff;
+	uint64_t tgt = 0x0ull;
+	uint32_t *tgt32 = (uint32_t *)&tgt;
 
-	if (!target[0] && !target[1])
+	tgt32[0] = target[1];
+	tgt32[1] = target[0];
+
+	diff = (double)tgt;
+
+	if (!diff)
 		return diff_1;
 
-	d32[0] = target[1];
-	d32[1] = target[0];
-
-	return (uint64_t) (diff_1 / diff);
+	return (double)(diff_1 / diff);
 }
 
 static int work_decode(const json_t *val, struct work *work) {
 	int i, j, rc, num_pkg, best_pkg, bty_rcvd, work_pkg_id;
-	uint64_t work_id, difficulty;
-	uint32_t best_wcet = 0xFFFFFFFF, best_profit = 0, profit = 0, pow_tgt[8];
+	uint64_t work_id;
+	uint32_t best_wcet = 0xFFFFFFFF, pow_tgt[8];
+	double difficulty, best_profit = 0, profit = 0;
 	char *tgt = NULL, *src = NULL, *str = NULL, *best_src = NULL, *best_tgt = NULL, *elastic_src = NULL;
 	json_t *wrk = NULL, *pkg = NULL;
 
@@ -926,7 +930,7 @@ static int work_decode(const json_t *val, struct work *work) {
 		}
 
 		difficulty = calc_diff(pow_tgt);
-		profit = (uint32_t)(((double)g_work_package[work_pkg_id].pow_reward / ((double)g_work_package[work_pkg_id].WCET * difficulty)));
+		profit = ((double)g_work_package[work_pkg_id].pow_reward / ((double)g_work_package[work_pkg_id].WCET * difficulty));
 
 		// Select Best Work Package
 		if (opt_pref == PREF_WCET && (g_work_package[work_pkg_id].WCET < best_wcet)) {
