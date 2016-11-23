@@ -540,8 +540,8 @@ static bool get_vm_input(struct work *work) {
 	char hash[16];
 	uint32_t *msg32 = (uint32_t *)msg;
 	uint32_t *hash32 = (uint32_t *)hash;
-	uint32_t *workid32 = (uint32_t *)&work->wrk_pkg->work_id;
-	uint32_t *blockid32 = (uint32_t *)&work->wrk_pkg->block_id;
+	uint32_t *workid32 = (uint32_t *)&work->work_id;
+	uint32_t *blockid32 = (uint32_t *)&work->block_id;
 
 	memcpy(&msg[0], work->multiplicator, 32);
 	memcpy(&msg[32], publickey, 32);
@@ -646,6 +646,22 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 	return 0;
 }
 
+static void update_pending_cnt(uint64_t work_id, bool add) {
+	int i;
+
+	for (i = 0; i < g_work_package_cnt; i++) {
+		if (work_id == g_work_package[i].work_id) {
+
+			if (add)
+				g_work_package[i].pending_bty_cnt++;
+			else
+				g_work_package[i].pending_bty_cnt--;
+
+			break;
+		}
+	}
+}
+
 static bool add_work_package(struct work_package *work_package) {
 	g_work_package = realloc(g_work_package, sizeof(struct work_package) * (g_work_package_cnt + 1));
 	if (!g_work_package) {
@@ -715,19 +731,19 @@ static bool get_work(CURL *curl) {
 	g_work_time = time(NULL);
 
 	if (rc > 0) {
-		strncpy(g_work_id, work.wrk_pkg->work_str, 21);
-		strncpy(g_work_nm, work.wrk_pkg->work_nm, 49);
+		strncpy(g_work_id, work.work_str, 21);
+		strncpy(g_work_nm, work.work_nm, 49);
 		sprintf(g_pow_target_str, "%08X%08X%08X...", work.pow_target[0], work.pow_target[1], work.pow_target[2]);
 		memcpy(g_pow_target, work.pow_target, 8 * sizeof(uint32_t));
 		memcpy(&g_work, &work, sizeof(struct work));
 
 		// Restart Miner Threads If Work Package Changes
-		if (work.wrk_pkg->work_id != g_cur_work_id) {
-			applog(LOG_NOTICE, "Switching to work_id: %s (target: %s)", work.wrk_pkg->work_str, g_pow_target_str);
+		if (work.work_id != g_cur_work_id) {
+			applog(LOG_NOTICE, "Switching to work_id: %s (target: %s)", work.work_str, g_pow_target_str);
 			restart_threads();
 		}
 
-		g_cur_work_id = work.wrk_pkg->work_id;
+		g_cur_work_id = work.work_id;
 	}
 	else {
 		g_cur_work_id = 0;
@@ -953,8 +969,13 @@ static int work_decode(const json_t *val, struct work *work) {
 		free(elastic_src);
 	}
 
-	// Copy Data From Best Package Into Work
-	work->wrk_pkg = &g_work_package[best_pkg];
+	// Copy Work Package Details To Work
+	work->block_id = g_work_package[best_pkg].block_id;
+	work->work_id = g_work_package[best_pkg].work_id;
+	strncpy(work->work_str, g_work_package[best_pkg].work_str, 21);
+	strncpy(work->work_nm, g_work_package[best_pkg].work_nm, 49);
+
+	// Convert Hex Target To Int Array
 	rc = hex2ints(work->pow_target, 8, tgt, strlen(tgt));
 	if (!rc) {
 		applog(LOG_ERR, "Invalid Target in JSON response to getwork request");
@@ -979,19 +1000,19 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 
 	if (req->req_type == SUBMIT_BTY_ANN) {
 		sprintf(url, "%s?requestType=bountyAnnouncement", rpc_url);
-		sprintf(data, "deadline=3&feeNQT=0&amountNQT=5000&work_id=%s&hash_announcement=%s&secretPhrase=%s", req->wrk_pkg->work_str, req->hash, passphrase);
+		sprintf(data, "deadline=3&feeNQT=0&amountNQT=5000&work_id=%s&hash_announcement=%s&secretPhrase=%s", req->work_str, req->hash, passphrase);
 	}
 	else if (req->req_type == SUBMIT_BTY_CONF) {
 		sprintf(url, "%s?requestType=getApprovedBounties", rpc_url);
-		sprintf(data, "work_id=%s&hash_announcement=%s&secretPhrase=%s", req->wrk_pkg->work_str, req->hash, passphrase);
+		sprintf(data, "work_id=%s&hash_announcement=%s&secretPhrase=%s", req->work_str, req->hash, passphrase);
 	}
 	else if (req->req_type == SUBMIT_BOUNTY) {
 		sprintf(url, "%s?requestType=createPoX", rpc_url);
-		sprintf(data, "deadline=3&feeNQT=0&amountNQT=0&work_id=%s&multiplicator=%s&is_pow=false&secretPhrase=%s", req->wrk_pkg->work_str, req->mult, passphrase);
+		sprintf(data, "deadline=3&feeNQT=0&amountNQT=0&work_id=%s&multiplicator=%s&is_pow=false&secretPhrase=%s", req->work_str, req->mult, passphrase);
 	}
 	else if (req->req_type == SUBMIT_POW) {
 		sprintf(url, "%s?requestType=createPoX", rpc_url);
-		sprintf(data, "deadline=3&feeNQT=0&amountNQT=0&work_id=%s&multiplicator=%s&is_pow=true&secretPhrase=%s", req->wrk_pkg->work_str, req->mult, passphrase);
+		sprintf(data, "deadline=3&feeNQT=0&amountNQT=0&work_id=%s&multiplicator=%s&is_pow=true&secretPhrase=%s", req->work_str, req->mult, passphrase);
 	}
 	else {
 		applog(LOG_ERR, "ERROR: Unknown request type");
@@ -1023,7 +1044,7 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 	if (req->req_type == SUBMIT_BTY_ANN) {
 		if (err_desc) {
 			if (strstr(err_desc, "Duplicate") || strstr(err_desc, "duplicate")) {
-				applog(LOG_DEBUG, "Work ID: %s is not accepting bounties", req->wrk_pkg->work_str);
+				applog(LOG_DEBUG, "Work ID: %s is not accepting bounties", req->work_str);
 				req->delay_tm = time(NULL) + 30;  // Retry In 30s
 			}
 			else {
@@ -1133,13 +1154,13 @@ static void *miner_thread(void *userdata) {
 	while (1) {
 
 		// No Work Available
-		if (!g_work.wrk_pkg) {
+		if (!g_work.work_id) {
 			sleep(1);
 			continue;
 		}
 
 		// Check If We Are Mining The Most Current Work
-		if (!work.wrk_pkg || (work.wrk_pkg->work_id != g_work.wrk_pkg->work_id)) {
+		if (work.work_id != g_work.work_id) {
 
 			// Copy Global Work Into Local Thread Work
 			memcpy((void *)&work, (void *)&g_work, sizeof(struct work));
@@ -1150,7 +1171,7 @@ static void *miner_thread(void *userdata) {
 				if (inst)
 					free_compiler(inst);
 				inst = calloc(1, sizeof(struct instance));
-				create_instance(inst, work.wrk_pkg->work_str);
+				create_instance(inst, work.work_str);
 				inst->initialize(vm_mem, vm_state);
 			}
 		}
@@ -1178,7 +1199,7 @@ static void *miner_thread(void *userdata) {
 			applog(LOG_NOTICE, "CPU%d: Submitting Bounty Solution", thr_id);
 
 			// Create Announcement Message
-			workid32 = (uint32_t *)&work.wrk_pkg->work_id;
+			workid32 = (uint32_t *)&work.work_id;
 			memcpy(&msg[0], &workid32[1], 4);	// Swap First 4 Bytes Of Long
 			memcpy(&msg[4], &workid32[0], 4);	// With Second 4 Bytes Of Long
 			memcpy(&msg[8], work.multiplicator, 32);
@@ -1418,12 +1439,13 @@ static bool add_submit_req(struct work *work, enum submit_commands req_type) {
 	g_submit_req[g_submit_req_cnt].start_tm = time(NULL);
 	g_submit_req[g_submit_req_cnt].delay_tm = 0;
 	g_submit_req[g_submit_req_cnt].retries = 0;
-	g_submit_req[g_submit_req_cnt].wrk_pkg = work->wrk_pkg;
+	g_submit_req[g_submit_req_cnt].work_id = work->work_id;
+	strncpy(g_submit_req[g_submit_req_cnt].work_str, work->work_str, 21);
 	sprintf(g_submit_req[g_submit_req_cnt].hash, "%08X%08X%08X%08X%08X%08X%08X%08X", swap32(hash32[0]), swap32(hash32[1]), swap32(hash32[2]), swap32(hash32[3]), swap32(hash32[4]), swap32(hash32[5]), swap32(hash32[6]), swap32(hash32[7]));
 	sprintf(g_submit_req[g_submit_req_cnt].mult, "%08X%08X%08X%08X%08X%08X%08X%08X", swap32(mult32[0]), swap32(mult32[1]), swap32(mult32[2]), swap32(mult32[3]), swap32(mult32[4]), swap32(mult32[5]), swap32(mult32[6]), swap32(mult32[7]));
 	if (req_type != SUBMIT_POW) {
 		g_submit_req[g_submit_req_cnt].bounty = true;
-		work->wrk_pkg->pending_bty_cnt++;
+		update_pending_cnt(work->work_id, true);
 	}
 	g_submit_req_cnt++;
 
@@ -1438,7 +1460,7 @@ static bool delete_submit_req(int idx) {
 	pthread_mutex_lock(&submit_lock);
 
 	if (g_submit_req[idx].bounty)
-		g_submit_req[idx].wrk_pkg->pending_bty_cnt--;
+		update_pending_cnt(g_submit_req[idx].work_id, false);
 
 	if (g_submit_req_cnt > 1) {
 		req = malloc((g_submit_req_cnt - 1) * sizeof(struct submit_req));

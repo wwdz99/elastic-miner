@@ -84,8 +84,8 @@ enum submit_commands {
 struct work_package {
 	uint64_t block_id;
 	uint64_t work_id;
-	char work_str[22];
-	char work_nm[50];
+	unsigned char work_str[22];
+	unsigned char work_nm[50];
 	uint32_t WCET;
 	uint64_t bounty_limit;
 	uint64_t pow_reward;
@@ -96,7 +96,10 @@ struct work_package {
 
 struct work {
 	int thr_id;
-	struct work_package *wrk_pkg;
+	uint64_t block_id;
+	uint64_t work_id;
+	unsigned char work_str[22];
+	unsigned char work_nm[50];
 	uint32_t pow_target[8];
 	int32_t vm_input[12];
 	unsigned char multiplicator[32];
@@ -135,7 +138,8 @@ struct submit_req {
 	int retries;
 	char hash[65];		// Announcment Hash In Hex
 	char mult[65];		// Multiplicator In Hex
-	struct work_package *wrk_pkg;
+	uint64_t work_id;
+	unsigned char work_str[22];
 };
 
 struct workio_cmd {
@@ -266,6 +270,7 @@ static bool check_new_block(CURL *curl);
 static bool get_work(CURL *curl);
 static int work_decode(const json_t *val, struct work *work);
 static bool add_work_package(struct work_package *work_package);
+static void update_pending_cnt(uint64_t work_id, bool add);
 
 static bool submit_work(CURL *curl, struct submit_req *req);
 static bool delete_submit_req(int idx);
