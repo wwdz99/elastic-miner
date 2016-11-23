@@ -53,6 +53,7 @@ bool opt_debug = false;
 bool opt_debug_epl = false;
 bool opt_debug_vm = false;
 bool opt_quiet = false;
+bool opt_norenice = false;
 bool opt_protocol = false;
 bool opt_compile = true;
 bool use_colors = true;
@@ -144,6 +145,7 @@ Options:\n\
       --test-miner <file>     Run the Miner using JSON formatted work in <file>\n\
       --test-vm <file>        Run the Parser / Compiler using the ElasticPL source code in <file>\n\
   -t, --threads <n>           Number of miner threads (Default: Number of CPUs)\n\
+      --no-renice             Do not lower the priority of miner threads\n\
   -u, --user <username>       Username for mining server\n\
   -T, --timeout <n>           Timeout for rpc calls (Default: 30 sec)\n\
   -V, --version               Display version information and exit\n\
@@ -158,6 +160,7 @@ static char const short_options[] = "c:Dk:hm:o:p:P:qr:R:s:t:T:u:V";
 static struct option const options[] = {
 	{ "config",			1, NULL, 'c' },
 	{ "debug",			0, NULL, 'D' },
+	{ "no-renice",		0, NULL, 'X' },
 	{ "help",			0, NULL, 'h' },
 	{ "mining",			1, NULL, 'm' },
 	{ "no-color",		0, NULL, 1001 },
@@ -313,6 +316,9 @@ void parse_arg(int key, char *arg)
 		break;
 	case 'q':
 		opt_quiet = true;
+		break;
+	case 'X':
+		opt_norenice = true;
 		break;
 	case 'r':
 		v = atoi(arg);
@@ -1105,7 +1111,8 @@ static void *miner_thread(void *userdata) {
 	uint32_t *hash32 = (uint32_t *)hash;
 
 	// Set lower priority
-	thread_low_priority();
+	if(!opt_norenice)
+		thread_low_priority();
 
 	// Initialize Global Variables
 	vm_mem = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
