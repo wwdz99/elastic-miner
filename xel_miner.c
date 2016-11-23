@@ -30,6 +30,9 @@
 #include "compat/winansi.h"
 #else
 #include <mm_malloc.h>
+#include <sys/resource.h>
+#include <sys/types.h>
+#include <sys/syscall.h>
 #endif
 
 enum prefs {
@@ -200,6 +203,22 @@ static void strhide(char *s)
 {
 	if (*s) *s++ = 'x';
 	while (*s) *s++ = '\0';
+}
+
+static void thread_low_priority(){
+#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
+	uint64_t tid = syscall(__NR_gettid);
+ 	int rc = setpriority(PRIO_PROCESS, tid, 7);
+ 	if(rc){
+ 		applog(LOG_ERR, "Error(%d): failed setting thread priority (you are safe to ignore this message)", rc);
+ 	}else{
+ 		if(opt_debug)
+ 			applog(LOG_DEBUG, "setting low thread priority for thread id %ld", tid);
+ 	}
+#else
+  // TODO: implement for non posix platforms
+  // Possibly: Use SetThreadPriority() on windows
+#endif
 }
 
 void parse_arg(int key, char *arg)
@@ -1085,7 +1104,8 @@ static void *miner_thread(void *userdata) {
 
 	uint32_t *hash32 = (uint32_t *)hash;
 
-
+	// Set lower priority
+	thread_low_priority();
 
 	// Initialize Global Variables
 	vm_mem = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
