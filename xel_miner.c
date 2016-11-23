@@ -749,6 +749,7 @@ static bool get_work(CURL *curl) {
 	}
 	else {
 		g_cur_work_id = 0;
+		memset(&g_work, 0, sizeof(struct work));
 		restart_threads();
 	}
 
@@ -935,7 +936,7 @@ static int work_decode(const json_t *val, struct work *work) {
 	// If No Work Matched Current Preference Switch To Profit Mode
 	if (best_pkg < 0) {
 		opt_pref = PREF_PROFIT;
-		applog(LOG_INFO, "No work available that matches preference...retrying in 15s");
+		applog(LOG_INFO, "No work available that matches preference...retrying in %ds", opt_scantime);
 		return -1;
 	}
 
