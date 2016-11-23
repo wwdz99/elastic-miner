@@ -137,6 +137,29 @@ out:
 	return rval;
 }
 
+void *tq_pop_nowait(struct thread_q *tq) {
+	struct tq_ent *ent;
+	void *rval = NULL;
+
+	pthread_mutex_lock(&tq->mutex);
+
+	if (!list_empty(&tq->q))
+		goto pop;
+	else
+		goto out;
+
+pop:
+	ent = list_entry(tq->q.next, struct tq_ent, q_node);
+	rval = ent->data;
+
+	list_del(&ent->q_node);
+	free(ent);
+
+out:
+	pthread_mutex_unlock(&tq->mutex);
+	return rval;
+}
+
 /* Subtract the `struct timeval' values X and Y,
 storing the result in RESULT.
 Return 1 if the difference is negative, otherwise 0.  */

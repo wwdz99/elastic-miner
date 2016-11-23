@@ -75,7 +75,6 @@ uint64_t g_cur_work_id;
 unsigned char g_pow_target_str[65];
 uint32_t g_pow_target[8];
 
-
 __thread _ALIGN(64) *vm_mem = NULL;
 __thread uint32_t *vm_state = NULL;
 __thread vm_stack_item *vm_stack = NULL;
@@ -145,26 +144,26 @@ Options:\n\
       --test-miner <file>     Run the Miner using JSON formatted work in <file>\n\
       --test-vm <file>        Run the Parser / Compiler using the ElasticPL source code in <file>\n\
   -t, --threads <n>           Number of miner threads (Default: Number of CPUs)\n\
-      --no-renice             Do not lower the priority of miner threads\n\
   -u, --user <username>       Username for mining server\n\
   -T, --timeout <n>           Timeout for rpc calls (Default: 30 sec)\n\
   -V, --version               Display version information and exit\n\
+  -X  --no-renice             Do not lower the priority of miner threads\n\
 Options while mining ----------------------------------------------------------\n\n\
    s + <enter>                Display mining summary\n\
    d + <enter>                Toggle Debug mode\n\
    q + <enter>                Toggle Quite mode\n\
 ";
 
-static char const short_options[] = "c:Dk:hm:o:p:P:qr:R:s:t:T:u:V";
+static char const short_options[] = "c:Dk:hm:o:p:P:qr:R:s:t:T:u:VX";
 
 static struct option const options[] = {
 	{ "config",			1, NULL, 'c' },
 	{ "debug",			0, NULL, 'D' },
-	{ "no-renice",		0, NULL, 'X' },
 	{ "help",			0, NULL, 'h' },
 	{ "mining",			1, NULL, 'm' },
 	{ "no-color",		0, NULL, 1001 },
 	{ "no-compile",		0, NULL, 1002 },
+	{ "no-renice",		0, NULL, 'X' },
 	{ "pass",			1, NULL, 'p' },
 	{ "phrase",			1, NULL, 'P' },
 	{ "protocol",	    0, NULL, 1003 },
@@ -206,22 +205,6 @@ static void strhide(char *s)
 {
 	if (*s) *s++ = 'x';
 	while (*s) *s++ = '\0';
-}
-
-static void thread_low_priority(){
-#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
-	uint64_t tid = syscall(__NR_gettid);
- 	int rc = setpriority(PRIO_PROCESS, tid, 7);
- 	if(rc){
- 		applog(LOG_ERR, "Error(%d): failed setting thread priority (you are safe to ignore this message)", rc);
- 	}else{
- 		if(opt_debug)
- 			applog(LOG_DEBUG, "setting low thread priority for thread id %ld", tid);
- 	}
-#else
-  // TODO: implement for non posix platforms
-  // Possibly: Use SetThreadPriority() on windows
-#endif
 }
 
 void parse_arg(int key, char *arg)
@@ -317,9 +300,6 @@ void parse_arg(int key, char *arg)
 	case 'q':
 		opt_quiet = true;
 		break;
-	case 'X':
-		opt_norenice = true;
-		break;
 	case 'r':
 		v = atoi(arg);
 		if (v < -1 || v > 9999)
@@ -356,6 +336,9 @@ void parse_arg(int key, char *arg)
 		break;
 	case 'V':
 		show_version_and_exit();
+	case 'X':
+		opt_norenice = true;
+		break;
 	case 1001:
 		use_colors = false;
 		break;
@@ -418,6 +401,23 @@ static void show_version_and_exit(void)
 	printf("openssl:  %s\n", OPENSSL_VERSION_TEXT);
 #endif
 	exit(0);
+}
+
+static void thread_low_priority() {
+#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
+	uint64_t tid = syscall(__NR_gettid);
+	int rc = setpriority(PRIO_PROCESS, tid, 7);
+	if (rc) {
+		applog(LOG_ERR, "Error(%d): failed setting thread priority (you are safe to ignore this message)", rc);
+	}
+	else {
+		if (opt_debug)
+			applog(LOG_DEBUG, "setting low thread priority for thread id %ld", tid);
+	}
+#else
+	// TODO: implement for non posix platforms
+	// Possibly: Use SetThreadPriority() on windows
+#endif
 }
 
 static bool load_test_file(char *buf) {
@@ -1094,6 +1094,7 @@ static void *miner_thread(void *userdata) {
 	struct thr_info *mythr = (struct thr_info *) userdata;
 	int thr_id = mythr->id;
 	struct work work;
+	struct workio_cmd *wc = NULL;
 	char s[16];
 	long hashes_done;
 	struct timeval tv_start, tv_end, diff;
@@ -1111,7 +1112,7 @@ static void *miner_thread(void *userdata) {
 	uint32_t *hash32 = (uint32_t *)hash;
 
 	// Set lower priority
-	if(!opt_norenice)
+	if (!opt_norenice)
 		thread_low_priority();
 
 	// Initialize Global Variables
@@ -1189,8 +1190,22 @@ static void *miner_thread(void *userdata) {
 			sha256(msg, 41, work.announcement_hash);
 
 			// Create Submit Request
-			if (!add_submit_req(&work, SUBMIT_BTY_ANN))
-				break;
+			wc = (struct workio_cmd *) calloc(1, sizeof(*wc));
+			if (!wc) {
+				applog(LOG_ERR, "ERROR: Unable to allocate workio_cmd.  Shutting down thread for CPU%d", thr_id);
+				goto out;
+			}
+
+			wc->cmd = SUBMIT_BTY_ANN;
+			wc->thr = mythr;
+			memcpy(&wc->work, &work, sizeof(struct work));
+
+			// Add Solution To Queue
+			if (!tq_push(thr_info[work_thr_id].q, wc)) {
+				applog(LOG_ERR, "ERROR: Unable to add solution to queue.  Shutting down thread for CPU%d", thr_id);
+				free(wc);
+				goto out;
+			}
 		}
 
 		// Submit Work That Meets POW Target
@@ -1199,8 +1214,22 @@ static void *miner_thread(void *userdata) {
 			sprintf(gpow_str, "%08X%08X%08X...", (g_pow_target[0]), (g_pow_target[1]), (g_pow_target[2]));
 
 			applog(LOG_NOTICE, "CPU%d: Submitting POW Solution (%s) [t:%s]", thr_id, hash_str, gpow_str);
-			if (!add_submit_req(&work, SUBMIT_POW))
-				break;
+			wc = (struct workio_cmd *) calloc(1, sizeof(*wc));
+			if (!wc) {
+				applog(LOG_ERR, "ERROR: Unable to allocate workio_cmd.  Shutting down thread for CPU%d", thr_id);
+				goto out;
+			}
+
+			wc->cmd = SUBMIT_POW;
+			wc->thr = mythr;
+			memcpy(&wc->work, &work, sizeof(struct work));
+
+			// Add Solution To Queue
+			if (!tq_push(thr_info[work_thr_id].q, wc)) {
+				applog(LOG_ERR, "ERROR: Unable to add solution to queue.  Shutting down thread for CPU%d", thr_id);
+				free(wc);
+				goto out;
+			}
 		}
 	}
 
@@ -1293,10 +1322,11 @@ static bool check_new_block(CURL *curl)
 	return true;
 }
 
-static void *longpoll_thread(void *userdata)
+static void *workio_thread(void *userdata)
 {
 	struct thr_info *mythr = (struct thr_info *) userdata;
 	CURL *curl;
+	struct workio_cmd *wc;
 	int i;
 	bool new_block;
 
@@ -1308,7 +1338,7 @@ static void *longpoll_thread(void *userdata)
 
 	while (1) {
 
-		// Check For New Block
+		// Check For New Blocks On Network
 		new_block = check_new_block(curl);
 
 		// Get Work
@@ -1319,8 +1349,20 @@ static void *longpoll_thread(void *userdata)
 				continue;
 		}
 
+		// Check For New Solutions On Queue
+		wc = (struct workio_cmd *) tq_pop_nowait(mythr->q);
+		while (wc) {
+			add_submit_req(&wc->work, wc->cmd);
+			free(wc);
+			wc = (struct workio_cmd *) tq_pop_nowait(mythr->q);
+		}
+
 		// Submit POW / Bounty
 		for (i = 0; i < g_submit_req_cnt; i++) {
+
+			// Skip Completed Requests
+			if (g_submit_req[i].req_type == SUBMIT_COMPLETE)
+				continue;
 
 			// Skip Requests That Are On Hold
 			if (g_submit_req[i].delay_tm >= time(NULL))
@@ -1328,15 +1370,13 @@ static void *longpoll_thread(void *userdata)
 
 			// Submit Request
 //			applog(LOG_DEBUG, "DEBUG: 'submit_work'");
-			pthread_mutex_lock(&submit_lock);
 			if (!submit_work(curl, &g_submit_req[i]))
 				applog(LOG_ERR, "ERROR: Submit bounty request failed");
-			pthread_mutex_unlock(&submit_lock);
 		}
 
+		// Remove Completed Solutions
 		for (i = 0; i < g_submit_req_cnt; i++) {
 
-			// Remove Completed Requests
 			if (g_submit_req[i].req_type == SUBMIT_COMPLETE) {
 				applog(LOG_DEBUG, "DEBUG: Submit complete...deleting request");
 				delete_submit_req(i);
@@ -1351,7 +1391,7 @@ static void *longpoll_thread(void *userdata)
 			}
 		}
 
-		sleep(1);
+//		sleep(1);
 	}
 
 	tq_freeze(mythr->q);
@@ -1624,10 +1664,25 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 
+	// Init workio Thread Info
+	work_thr_id = opt_n_threads;
+	thr = &thr_info[work_thr_id];
+	thr->id = work_thr_id;
+	thr->q = tq_new();
+	if (!thr->q)
+		return 1;
+
+	// Start workio Thread
+	if (thread_create(thr, workio_thread)) {
+		//	if (thread_create(thr, workio_thread)) {
+		applog(LOG_ERR, "work thread create failed");
+		return 1;
+	}
+
 	applog(LOG_INFO, "Attempting to start %d miner threads", opt_n_threads);
 	thr_idx = 0;
 
-	// Otherwise, Start Mining Threads
+	// Start Mining Threads
 	for (i = 0; i < opt_n_threads; i++) {
 		thr = &thr_info[thr_idx];
 
@@ -1644,20 +1699,9 @@ int main(int argc, char **argv) {
 	applog(LOG_INFO, "%d mining threads started", opt_n_threads);
 	gettimeofday(&g_miner_start_time, NULL);
 
-	// Longpoll Thread
-	thr = &thr_info[opt_n_threads + 2];
-	thr->id = opt_n_threads + 2;
-	thr->q = tq_new();
-	if (!thr->q)
-		return 1;
-	if (thread_create(thr, longpoll_thread)) {
-		applog(LOG_ERR, "longpoll thread create failed");
-		return 1;
-	}
-
 	// Start Key Monitor Thread
-	thr = &thr_info[opt_n_threads + 3];
-	thr->id = opt_n_threads + 3;
+	thr = &thr_info[opt_n_threads + 1];
+	thr->id = opt_n_threads + 1;
 	thr->q = tq_new();
 	if (!thr->q)
 		return 1;

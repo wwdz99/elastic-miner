@@ -126,11 +126,6 @@ struct work_restart {
 	char padding[128 - sizeof(uint8_t)];
 };
 
-enum workio_commands {
-	WC_GET_WORK,
-	WC_SUBMIT_WORK,
-};
-
 struct submit_req {
 	int thr_id;
 	bool bounty;
@@ -144,9 +139,9 @@ struct submit_req {
 };
 
 struct workio_cmd {
-	enum workio_commands cmd;
+	enum submit_commands cmd;
 	struct thr_info *thr;
-	struct submit_req *req;
+	struct work work;
 };
 
 struct header_info {
@@ -247,18 +242,14 @@ struct thread_q *tq_new(void);
 void tq_free(struct thread_q *tq);
 bool tq_push(struct thread_q *tq, void *data);
 void *tq_pop(struct thread_q *tq, const struct timespec *abstime);
+void *tq_pop_nowait(struct thread_q *tq);
 void tq_freeze(struct thread_q *tq);
 void tq_thaw(struct thread_q *tq);
 
-static void *submit_thread(void *userdata);
 static void *key_monitor_thread(void *userdata);
 static void *test_vm_thread(void *userdata);
-static void *longpoll_thread(void *userdata);
-static void longpoll_request_pull(void);
-static void restart_threads(void);
-
 static void *workio_thread(void *userdata);
-static void workio_cmd_free(struct workio_cmd *wc);
+static void restart_threads(void);
 
 extern uint32_t swap32(int a);
 static void parse_cmdline(int argc, char *argv[]);
