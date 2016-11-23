@@ -270,13 +270,13 @@ static bool load_test_file(char *test_source);
 static bool get_vm_input(struct work *work);
 static int execute_vm(int thr_id, struct work *work, struct instance *inst, long *hashes_done);
 
-static bool get_work(struct thr_info *thr, struct work *work);
+static bool check_new_block(CURL *curl);
+
+static bool get_work(CURL *curl);
 static int work_decode(const json_t *val, struct work *work);
-static int get_upstream_work(CURL *curl, struct work *work);
 static bool add_work_package(struct work_package *work_package);
 
-static bool submit_work(struct thr_info *thr, struct submit_req *req);
-static bool submit_upstream_work(CURL *curl, struct submit_req *req);
+static bool submit_work(CURL *curl, struct submit_req *req);
 static bool delete_submit_req(int idx);
 static bool add_submit_req(struct work *work, enum submit_commands req_type);
 
