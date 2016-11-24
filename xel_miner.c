@@ -1301,9 +1301,9 @@ static void *longpoll_thread(void *userdata)
 {
 	struct thr_info *mythr = (struct thr_info *) userdata;
 	CURL *curl;
-	json_t *val, *obj, *inner_obj;
+	json_t *val = NULL, *obj, *inner_obj;
 	int i, err, num_events;
-	char* reason = NULL;
+	char *reason = NULL, *str = NULL;
 
 	curl = curl_easy_init();
 	if (!curl) {
@@ -1319,6 +1319,9 @@ static void *longpoll_thread(void *userdata)
 
 	while (1) {
 
+		if (val) json_decref(val);
+		val = NULL;
+
 		val = json_rpc_call(curl, rpc_url, rpc_userpass, "requestType=longpoll&randomId=1", &err);
 		if (err > 0 || !val) {
 			applog(LOG_ERR, "ERROR: longpoll failed...retrying in %d seconds", opt_fail_pause);
@@ -1327,7 +1330,7 @@ static void *longpoll_thread(void *userdata)
 		}
 
 		if (opt_protocol) {
-			char *str = json_dumps(val, JSON_INDENT(3));
+			*str = json_dumps(val, JSON_INDENT(3));
 			applog(LOG_DEBUG, "DEBUG: JSON Response -\n%s", str);
 			free(str);
 		}
@@ -1336,20 +1339,17 @@ static void *longpoll_thread(void *userdata)
 		if (!obj) {
 			applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
 			sleep(opt_fail_pause);
-			if (val) json_decref(val);
 			continue;
 		}
 
 		if (json_is_string(obj)) {
 			reason = (char *)json_string_value(obj);
 			if (strcmp(reason, "timeout") == 0) {
-				if (val) json_decref(val);
 				continue;
 			}
 			else {
-				if (strstr(reason, "block") >= 0) {
+				if (strstr(reason, "block")) {
 					applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
-					if (val) json_decref(val);
 					pthread_mutex_lock(&longpoll_lock);
 					g_new_block = true;
 					pthread_mutex_unlock(&longpoll_lock);
@@ -1360,7 +1360,6 @@ static void *longpoll_thread(void *userdata)
 			num_events = json_array_size(obj);
 			if (num_events == 0) {
 				applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
-				if (val) json_decref(val);
 				sleep(opt_fail_pause);
 				continue;
 			}
@@ -1369,16 +1368,14 @@ static void *longpoll_thread(void *userdata)
 				inner_obj = json_array_get(obj, i);
 				if (!inner_obj) {
 					applog(LOG_ERR, "ERROR: longpoll array parsing failed...retrying in %d seconds", opt_fail_pause);
-					if (val) json_decref(val);
 					sleep(opt_fail_pause);
 					continue;
 				}
 
 				if (json_is_string(inner_obj)) {
-					char* str = (char *)json_string_value(inner_obj);
-					if (strstr(str, "block") >= 0) {
+					str = (char *)json_string_value(inner_obj);
+					if (strstr(str, "block")) {
 						applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
-						if (val) json_decref(val);
 						pthread_mutex_lock(&longpoll_lock);
 						g_new_block = true;
 						pthread_mutex_unlock(&longpoll_lock);
@@ -1386,9 +1383,6 @@ static void *longpoll_thread(void *userdata)
 				}
 			}
 		}
-
-		if (val) json_decref(val);
-		val = NULL;
 
 		sleep(1);
 	}
