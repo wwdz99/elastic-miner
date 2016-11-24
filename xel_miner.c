@@ -1330,7 +1330,7 @@ static void *longpoll_thread(void *userdata)
 		}
 
 		if (opt_protocol) {
-			*str = json_dumps(val, JSON_INDENT(3));
+			str = json_dumps(val, JSON_INDENT(3));
 			applog(LOG_DEBUG, "DEBUG: JSON Response -\n%s", str);
 			free(str);
 		}
