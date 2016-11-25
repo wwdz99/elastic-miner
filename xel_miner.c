@@ -1334,6 +1334,8 @@ static void *longpoll_thread(void *userdata)
 
 	while (1) {
 
+		nosleep = false;
+
 		if (val) json_decref(val);
 		val = NULL;
 
