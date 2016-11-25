@@ -1318,6 +1318,7 @@ static void *longpoll_thread(void *userdata)
 	json_t *val = NULL, *obj, *inner_obj;
 	int i, err, num_events;
 	char *reason = NULL, *str = NULL;
+	bool nosleep = false;
 
 	curl = curl_easy_init();
 	if (!curl) {
@@ -1363,9 +1364,10 @@ static void *longpoll_thread(void *userdata)
 			}
 			else {
 				if (strstr(reason, "block")) {
-					applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
+					applog(LOG_NOTICE, "Longpoll: detected %s", str);
 					pthread_mutex_lock(&longpoll_lock);
 					g_new_block = true;
+					nosleep = true;
 					pthread_mutex_unlock(&longpoll_lock);
 				}
 			}
@@ -1389,9 +1391,10 @@ static void *longpoll_thread(void *userdata)
 				if (json_is_string(inner_obj)) {
 					str = (char *)json_string_value(inner_obj);
 					if (strstr(str, "block")) {
-						applog(LOG_NOTICE, "Longpoll: detected new block on Elastic network");
+						applog(LOG_NOTICE, "Longpoll: detected %s", str);
 						pthread_mutex_lock(&longpoll_lock);
 						g_new_block = true;
+						nosleep = true;
 						pthread_mutex_unlock(&longpoll_lock);
 						break;
 					}
@@ -1399,7 +1402,8 @@ static void *longpoll_thread(void *userdata)
 			}
 		}
 
-		sleep(1);
+		if(!nosleep)
+			sleep(1);
 	}
 
 	tq_freeze(mythr->q);
