@@ -805,7 +805,7 @@ static int work_decode(const json_t *val, struct work *work) {
 	// Check If Any Work Packages Are Available
 	num_pkg = json_array_size(wrk);
 	if (num_pkg == 0) {
-		applog(LOG_INFO, "No work available...retrying in %ds", opt_scantime);
+			applog(LOG_INFO, "No work available...retrying in %ds", opt_scantime);
 		return -1;
 	}
 
@@ -1071,11 +1071,16 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 
 	if (req->req_type == SUBMIT_BTY_ANN) {
 		if (err_desc) {
-			if (strstr(err_desc, "Duplicate") || strstr(err_desc, "duplicate")) {
-				applog(LOG_DEBUG, "Work ID: %s is not accepting bounties", req->work_str);
-				req->delay_tm = time(NULL) + 30;  // Retry In 30s
+			if (strstr(err_desc, "Duplicate unconfirmed transaction:")) {
+				applog(LOG_NOTICE, "CPU%d: %s***** Bounty Discarded *****", req->thr_id, CL_YLW);
+				applog(LOG_DEBUG, "Work ID: %s - No more bounty announcement slots available", req->work_str, err_desc);
+//				req->delay_tm = time(NULL) + 30;  // Retry In 30s
+				req->req_type = SUBMIT_COMPLETE;
 			}
 			else {
+				applog(LOG_NOTICE, "CPU%d: %s***** Bounty Rejected *****", req->thr_id, CL_RED);
+				applog(LOG_DEBUG, "Reason: %s", err_desc);
+//				req->delay_tm = time(NULL) + 30;  // Retry In 30s
 				req->req_type = SUBMIT_COMPLETE;
 				g_bounty_error_cnt++;
 			}
@@ -1105,8 +1110,14 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 	}
 	else if (req->req_type == SUBMIT_BOUNTY) {
 		if (err_desc) {
-			applog(LOG_NOTICE, "CPU%d: %s***** Bounty Rejected! *****", req->thr_id, CL_RED);
-			g_bounty_rejected_cnt++;
+			if (strstr(err_desc, "Duplicate unconfirmed transaction:")) {
+				applog(LOG_NOTICE, "CPU%d: %s***** Bounty Discarded *****", req->thr_id, CL_YLW);
+				applog(LOG_DEBUG, "Work ID: %s - Work is already closed, you missed the reveal period", req->work_str, err_desc);
+			}
+			else {
+				applog(LOG_NOTICE, "CPU%d: %s***** Bounty Rejected! *****", req->thr_id, CL_RED);
+				g_bounty_rejected_cnt++;
+			}
 		}
 		else {
 			applog(LOG_NOTICE, "CPU%d: %s***** Bounty Claimed! *****", req->thr_id, CL_GRN);
@@ -1116,9 +1127,9 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 	}
 	else if (req->req_type == SUBMIT_POW) {
 		if (err_desc) {
-			if (strstr(err_desc, "Duplicate") || strstr(err_desc, "duplicate")) {
+			if (strstr(err_desc, "Duplicate unconfirmed transaction:")) {
 				applog(LOG_NOTICE, "CPU%d: %s***** POW Discarded! *****", req->thr_id, CL_YLW);
-				applog(LOG_INFO, "Network is not accepting any more POW submissions for this block");
+				applog(LOG_INFO, "Work ID: %s -%s", req->work_str, err_desc + 34);
 				g_pow_discarded_cnt++;
 			}
 			else {
@@ -1182,6 +1193,8 @@ static void *miner_thread(void *userdata) {
 
 		// No Work Available
 		if (!g_work.work_id) {
+			if (work.work_id)
+				memset(&work, 0, sizeof(struct work));
 			sleep(1);
 			continue;
 		}
@@ -1261,7 +1274,8 @@ static void *miner_thread(void *userdata) {
 			sprintf(hash_str, "%08X%08X%08X...", swap32(hash32[0]), swap32(hash32[1]), swap32(hash32[2]));
 			sprintf(gpow_str, "%08X%08X%08X...", (g_pow_target[0]), (g_pow_target[1]), (g_pow_target[2]));
 
-			applog(LOG_NOTICE, "CPU%d: Submitting POW Solution (%s) [t:%s]", thr_id, hash_str, gpow_str);
+			applog(LOG_NOTICE, "CPU%d: Submitting POW Solution", thr_id);
+			applog(LOG_DEBUG, "DEBUG: Hash - %s  Tgt - %s",hash_str, gpow_str);
 			wc = (struct workio_cmd *) calloc(1, sizeof(*wc));
 			if (!wc) {
 				applog(LOG_ERR, "ERROR: Unable to allocate workio_cmd.  Shutting down thread for CPU%d", thr_id);
@@ -1379,6 +1393,7 @@ static void *longpoll_thread(void *userdata)
 						pthread_mutex_lock(&longpoll_lock);
 						g_new_block = true;
 						pthread_mutex_unlock(&longpoll_lock);
+						break;
 					}
 				}
 			}
@@ -1410,7 +1425,7 @@ static void *workio_thread(void *userdata)
 
 	while (1) {
 
-		// Get Work
+		// Get Work (New Block or Every 'Scantime' To Check For Difficulty Change)
 		if (g_new_block || (time(NULL) - g_work_time) >= opt_scantime) {
 
 			if (!get_work(curl)) {
@@ -1469,6 +1484,15 @@ static void *workio_thread(void *userdata)
 				applog(LOG_DEBUG, "DEBUG: Submit request timed out after 15min");
 				delete_submit_req(i);
 				g_bounty_timeout_cnt++;
+			}
+		}
+
+		// Sleep For 15 Sec If No Work
+		if (!g_work.work_id) {
+			for (i = 0; i < 15; i++) {
+				sleep(1);
+				if (g_new_block || g_submit_req_cnt)
+					break;
 			}
 		}
 	}
@@ -1755,7 +1779,6 @@ int main(int argc, char **argv) {
 
 	// Start workio Thread
 	if (thread_create(thr, workio_thread)) {
-		//	if (thread_create(thr, workio_thread)) {
 		applog(LOG_ERR, "work thread create failed");
 		return 1;
 	}
