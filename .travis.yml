@@ -1,1 +1,3 @@
+before_install:
+  cmake .
 language: C
