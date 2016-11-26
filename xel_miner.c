@@ -1375,13 +1375,6 @@ static void *longpoll_thread(void *userdata)
 			}
 		}
 		else if (json_is_array(obj)) {
-
-
-			str = json_dumps(val, JSON_INDENT(3));
-			applog(LOG_DEBUG, "DEBUG: JSON Response -\n%s", str);
-			free(str);
-
-
 			num_events = json_array_size(obj);
 			if (num_events == 0) {
 				applog(LOG_ERR, "ERROR: longpoll decode failed...retrying in %d seconds", opt_fail_pause);
