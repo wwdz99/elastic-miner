@@ -285,6 +285,7 @@ extern uint32_t epl_ec_priv_to_pub(size_t idx, bool compressed, int32_t *mem, in
 
 	// Change Endianess Of Private Key
 	for (i = 0; i < n; i++) {
+//		printf("m[%d] = %lu, %08X\n", i + idx, mem[idx + i], mem[idx + i]);
 		input32[i] = swap32(mem[idx + i]);
 	}
 
@@ -330,6 +331,7 @@ extern uint32_t epl_ec_priv_to_pub(size_t idx, bool compressed, int32_t *mem, in
 
 	// Free Resources
 	free(input);
+	EC_KEY_free(key);
 	EC_POINT_free(pub_key);
 	BN_clear_free(&priv_key);
 
