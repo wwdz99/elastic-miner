@@ -1317,7 +1317,7 @@ static void *longpoll_thread(void *userdata)
 	CURL *curl;
 	json_t *val = NULL, *obj, *inner_obj;
 	int i, err, num_events;
-	char *reason = NULL, *str = NULL;
+	char *str = NULL;
 	bool nosleep = false;
 
 	curl = curl_easy_init();
@@ -1360,12 +1360,12 @@ static void *longpoll_thread(void *userdata)
 		}
 
 		if (json_is_string(obj)) {
-			reason = (char *)json_string_value(obj);
-			if (strcmp(reason, "timeout") == 0) {
+			str = (char *)json_string_value(obj);
+			if (strcmp(str, "timeout") == 0) {
 				continue;
 			}
 			else {
-				if (strstr(reason, "block")) {
+				if (strstr(str, "block")) {
 					applog(LOG_NOTICE, "Longpoll: detected %s", str);
 					pthread_mutex_lock(&longpoll_lock);
 					g_new_block = true;
@@ -1398,13 +1398,12 @@ static void *longpoll_thread(void *userdata)
 						g_new_block = true;
 						nosleep = true;
 						pthread_mutex_unlock(&longpoll_lock);
-						break;
 					}
 				}
 			}
 		}
 
-		if(!nosleep)
+		if (!nosleep)
 			sleep(1);
 	}
 
