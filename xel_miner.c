@@ -406,7 +406,7 @@ static void show_version_and_exit(void)
 }
 
 static void thread_low_priority() {
-#if defined (__unix__) || (defined (__APPLE__) && defined (__MACH__))
+#if defined (__unix__)  && defined (__MACH__)
 	uint64_t tid = syscall(__NR_gettid);
 	int rc = setpriority(PRIO_PROCESS, tid, 7);
 	if (rc) {

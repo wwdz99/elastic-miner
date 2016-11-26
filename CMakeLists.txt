@@ -22,7 +22,7 @@ ENDIF (CURL_FOUND)
 add_subdirectory(compat/jansson)
 add_subdirectory(crypto)
 
-include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/algo ${PROJECT_SOURCE_DIR}/compat/jansson ${CURL_INCLUDE_DIR})
+include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/algo ${PROJECT_SOURCE_DIR}/compat/jansson ${CURL_INCLUDE_DIR} ${OPENSSL_INCLUDE_DIR})
 
 set(SRC_LIST	xel_miner.c
 				xel_compiler.c
