@@ -1,5 +1,11 @@
 # xel_miner 0.8
 
+<a href="https://scan.coverity.com/projects/ordinarydude-xel_miner">
+  <img alt="Coverity Scan Build Status"
+       src="https://scan.coverity.com/projects/10948/badge.svg"/>
+</a>  <img src="https://travis-ci.org/OrdinaryDude/xel_miner.svg?branch=master"/>
+
+
 This is a prototype of a miner for solving XEL work packages.  This was put together as a tool for me to learn more about AST parsing & interpreting. I ultimately decided to convert it into an XEL miner; however, it is not optimized at all...it is a prototype that attempts demonstrate all the functionality of an XEL miner.
 
 Please note, the following algos were not included in this miner as they aren't available directly in openssl:
