@@ -1,3 +1,2 @@
-before_install:
-  cmake .
+script: cmake . && make
 language: C
