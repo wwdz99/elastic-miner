@@ -22,7 +22,7 @@ ENDIF (CURL_FOUND)
 add_subdirectory(compat/jansson)
 add_subdirectory(crypto)
 
-include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/algo ${PROJECT_SOURCE_DIR}/compat/jansson ${CURL_INCLUDE_DIR})
+include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/algo ${PROJECT_SOURCE_DIR}/compat/jansson ${CURL_INCLUDE_DIR} ${OPENSSL_INCLUDE_DIR})
 
 set(SRC_LIST	xel_miner.c
 				xel_compiler.c
@@ -57,12 +57,12 @@ ELSEIF( WIN32 )
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -msse -msse2 -msse3 -mmmx -m3dnow")
 ELSEIF ( CMAKE_SYSTEM_PROCESSOR MATCHES "(x86)|(X86)|(amd64)|(AMD64)" )
 	target_link_libraries(${TARGET_NAME} m dl)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Ofast -msse -msse2 -msse3 -mmmx -m3dnow -fPIC -fext-numeric-literals")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -fPIC -fext-numeric-literals")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Ofast -msse -msse2 -msse3 -mmmx -m3dnow -fPIC")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -fPIC")
 ELSEIF ( UNIX )
 	target_link_libraries(${TARGET_NAME} m dl)
-        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Ofast -fPIC -fext-numeric-literals")
-        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -fPIC -fext-numeric-literals")
+        set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -Ofast -fPIC")
+        set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Ofast -fPIC")
 ENDIF()
 
 set_target_properties( ${TARGET_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR} )

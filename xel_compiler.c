@@ -10,6 +10,10 @@
 #include <dlfcn.h>
 #endif
 
+#ifndef LM_ID_BASE
+#define LM_ID_BASE              0x00
+#endif
+
 bool create_c_source() {
 	char *code;
 	FILE* f = fopen("./work/work_lib.c", "w");
