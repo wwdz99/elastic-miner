@@ -15,6 +15,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
+#include <CL/cl.h>
 
 #ifdef WIN32
 #include <windows.h>
@@ -62,6 +63,10 @@ extern bool opt_quiet;
 extern int opt_timeout;
 extern int opt_n_threads;
 extern bool opt_test_vm;
+extern bool opt_opencl_cpu;
+extern bool opt_opencl_nvdia;
+extern bool opt_opencl_amd;
+extern bool use_opencl;
 
 extern struct work_restart *work_restart;
 
@@ -275,6 +280,12 @@ static bool submit_work(CURL *curl, struct submit_req *req);
 static bool delete_submit_req(int idx);
 static bool add_submit_req(struct work *work, enum submit_commands req_type);
 
+static bool get_opencl_base_data(struct work *work, uint32_t *vm_input);
+static bool prepare_opencl_kernels(void);
+static cl_kernel create_opencl_kernel(cl_device_id device_id, cl_context context, const char *source, const char *name);
+static bool initialize_opencl(void);
+static void *opencl_miner_thread(void *userdata);
+
 // Function Prototypes - util.c
 extern void applog(int prio, const char *fmt, ...);
 extern int timeval_subtract(struct timeval *result, struct timeval *x, struct timeval *y);
@@ -287,9 +298,11 @@ extern json_t* json_rpc_call(CURL *curl, const char *url, const char *userpass, 
 extern unsigned long genrand_int32(void);
 extern void init_genrand(unsigned long s);
 
-bool compile_and_link(char* file_name);
-void create_instance(struct instance* inst, char *file_name);
-void free_compiler(struct instance* inst);
+static bool create_c_source(void);
+extern bool compile_and_link(char* file_name);
+extern void create_instance(struct instance* inst, char *file_name);
+extern void free_compiler(struct instance* inst);
+extern bool create_opencl_source(char *work_str);
 
 int curve25519_donna(uint8_t *mypublic, const uint8_t *secret, const uint8_t *basepoint);
 

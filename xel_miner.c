@@ -10,6 +10,7 @@
 * any later version.
 */
 
+#define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #define _GNU_SOURCE
 
 #include <curl/curl.h>
@@ -34,6 +35,7 @@
 #include <sys/types.h>
 #include <sys/syscall.h>
 #endif
+
 
 enum prefs {
 	PREF_PROFIT,	// Estimate most profitable based on WCET vs reward
@@ -62,10 +64,15 @@ static int opt_fail_pause = 10;
 static int opt_scantime = 60;  // Get New Work From Server At Least Every 60s
 bool opt_test_miner = false;
 bool opt_test_vm = false;
+bool opt_opencl_cpu = false;
+bool opt_opencl_nvdia = false;
+bool opt_opencl_amd = false;
+bool use_opencl = false;
 int opt_timeout = 30;
 int opt_n_threads = 0;
 static enum prefs opt_pref = PREF_PROFIT;
 char pref_workid[32];
+
 
 int num_cpus;
 bool g_need_work = false;
@@ -118,6 +125,141 @@ int work_thr_id;
 struct thr_info *thr_info;
 struct work_restart *work_restart = NULL;
 
+// ******************* OpenCL **********************
+#define CL_CHECK(x) x
+
+#include <CL/cl.h>
+
+int ocl_cores = 0;
+
+// OpenCL Buffers
+static cl_mem base_data;
+static cl_mem input;
+static cl_mem output;
+
+// OpenCL State
+static cl_command_queue queue;
+
+// OpenCL Kernels
+static cl_kernel kernel_initialize;
+static cl_kernel kernel_execute;
+
+static cl_device_id device_id;
+static cl_context context;
+
+static bool prepare_opencl_kernels() {
+	int err;
+
+	// Create Buffers
+	base_data = clCreateBuffer(context, CL_MEM_READ_WRITE, 96 * sizeof(char), NULL, NULL);
+	input = clCreateBuffer(context, CL_MEM_READ_WRITE, ocl_cores * VM_MEMORY_SIZE * sizeof(int32_t), NULL, NULL);
+	output = clCreateBuffer(context, CL_MEM_READ_WRITE, ocl_cores * sizeof(uint32_t), NULL, NULL);
+
+	if (!input || !base_data || !output) {
+		applog(LOG_ERR, "Unable to create OpenCL buffers");
+		return false;
+	}
+
+	// Set Argurments For Kernels
+	err = clSetKernelArg(kernel_initialize, 0, sizeof(cl_mem), &input);
+	err |= clSetKernelArg(kernel_initialize, 1, sizeof(cl_mem), &base_data);
+	if (err != CL_SUCCESS) {
+		applog(LOG_ERR, "Unable to set OpenCL argurments for 'initialize'");
+		return false;
+	}
+
+	err = clSetKernelArg(kernel_execute, 0, sizeof(cl_mem), &input);
+	err |= clSetKernelArg(kernel_execute, 1, sizeof(cl_mem), &output);
+	if (err != CL_SUCCESS) {
+		applog(LOG_ERR, "Unable to set OpenCL argurments for 'execute'");
+		return false;
+	}
+
+	return true;
+}
+
+static cl_kernel create_opencl_kernel(cl_device_id device_id, cl_context context, const char *source, const char *name) {
+	int err;
+
+	// Load OpenCL Source Code
+	cl_program program = clCreateProgramWithSource(context, 1, &source, NULL, &err);
+	if (err != CL_SUCCESS) {
+		applog(LOG_ERR, "Unable to load OpenCL program");
+		return NULL;
+	}
+
+	// Compile OpenCL Source Code
+	err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
+	if (err != CL_SUCCESS) {
+		size_t len;
+		char buffer[2048];
+		clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
+		applog(LOG_ERR, "Unable to compile OpenCL program -\n%s", buffer);
+	}
+
+	// Create OpenCL Kernel
+	cl_kernel kernel = clCreateKernel(program, name, &err);
+	if (!kernel || err != CL_SUCCESS) {
+		applog(LOG_ERR, "Unable to create OpenCL kernel");
+		clReleaseProgram(program);
+		return NULL;
+	}
+
+	return kernel;
+}
+
+static bool initialize_opencl() {
+
+	cl_platform_id platforms[100];
+	cl_uint platforms_n = 0;
+	CL_CHECK(clGetPlatformIDs(100, platforms, &platforms_n));
+
+	applog(LOG_DEBUG, "=== %d OpenCL platform(s) found: ===", platforms_n);
+	for (int i = 0; i < platforms_n; i++) {
+		char buffer[10240];
+		applog(LOG_DEBUG, "  -- %d --\n", i);
+		CL_CHECK(clGetPlatformInfo(platforms[i], CL_PLATFORM_PROFILE, 10240, buffer, NULL));
+		applog(LOG_DEBUG, "  PROFILE = %s\n", buffer);
+		CL_CHECK(clGetPlatformInfo(platforms[i], CL_PLATFORM_VERSION, 10240, buffer, NULL));
+		applog(LOG_DEBUG, "  VERSION = %s\n", buffer);
+		CL_CHECK(clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, 10240, buffer, NULL));
+		applog(LOG_DEBUG, "  NAME = %s\n", buffer);
+		CL_CHECK(clGetPlatformInfo(platforms[i], CL_PLATFORM_VENDOR, 10240, buffer, NULL));
+		applog(LOG_DEBUG, "  VENDOR = %s\n", buffer);
+		CL_CHECK(clGetPlatformInfo(platforms[i], CL_PLATFORM_EXTENSIONS, 10240, buffer, NULL));
+		applog(LOG_DEBUG, "  EXTENSIONS = %s\n", buffer);
+	}
+
+	if (platforms_n == 0) {
+		applog(LOG_ERR, "No OpenCL platforms found");
+		return false;
+	}
+
+	cl_device_id devices[100];
+	cl_uint devices_n = 0;
+
+	int err;
+	err = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, 1, &device_id, NULL);
+	if (err != CL_SUCCESS) {
+		applog(LOG_ERR, "Unable to enumerate OpenCL device IDs");
+		return false;
+	}
+
+	context = clCreateContext(0, 1, &device_id, NULL, NULL, &err);
+	if (!context) {
+		applog(LOG_ERR, "Unable to create OpenCL context");
+		return false;
+	}
+
+	queue = clCreateCommandQueue(context, device_id, 0, &err);
+	if (!queue) {
+		applog(LOG_ERR, "Unable to create OpenCL command queue");
+		return false;
+	}
+
+	return true;
+}
+
 extern uint32_t swap32(int a) {
 	return ((a << 24) | ((a << 8) & 0x00FF0000) | ((a >> 8) & 0x0000FF00) | ((a >> 24) & 0x000000FF));
 }
@@ -134,6 +276,9 @@ Options:\n\
                                 workid		 Specify work ID\n\
       --no-color              Don't display colored output\n\
       --no-compile            Use internal VM Interpreter instead of compiled C code\n\
+      --opencl-CPU            Run VM using OpenCL Intel CPU binary (for testing only) \n\
+      --opencl-AMD            Run VM using OpenCL AMD binary \n\
+      --opencl-NVDIA          Run VM using OpenCL NVDIA binary \n\
   -o, --url=URL               URL of mining server\n\
   -p, --pass <password>       Password for mining server\n\
   -P, --phrase <passphrase>   Secret Passphrase for Elastic account\n\
@@ -166,6 +311,9 @@ static struct option const options[] = {
 	{ "no-color",		0, NULL, 1001 },
 	{ "no-compile",		0, NULL, 1002 },
 	{ "no-renice",		0, NULL, 'X' },
+	{ "opencl-CPU",		0, NULL, 1006 },
+	{ "opencl-AMD",		0, NULL, 1007 },
+	{ "opencl-NVDIA",	0, NULL, 1008 },
 	{ "pass",			1, NULL, 'p' },
 	{ "phrase",			1, NULL, 'P' },
 	{ "protocol",	    0, NULL, 1003 },
@@ -366,6 +514,21 @@ void parse_arg(int key, char *arg)
 		opt_debug = true;
 		opt_debug_epl = true;
 		opt_debug_vm = true;
+		break;
+	case 1006:
+		opt_opencl_cpu = true;
+		use_opencl = true;
+		opt_compile = false;
+		break;
+	case 1007:
+		opt_opencl_amd = true;
+		use_opencl = true;
+		opt_compile = false;
+		break;
+	case 1008:
+		opt_opencl_nvdia = true;
+		use_opencl = true;
+		opt_compile = false;
 		break;
 	default:
 		show_usage_and_exit(1);
@@ -569,6 +732,33 @@ static bool get_vm_input(struct work *work) {
 	return true;
 }
 
+static bool get_opencl_base_data(struct work *work, uint32_t *vm_input) {
+	int i;
+	char msg[80];
+	uint32_t *msg32 = (uint32_t *)msg;
+	uint32_t *workid32 = (uint32_t *)&work->work_id;
+	uint32_t *blockid32 = (uint32_t *)&work->block_id;
+
+	memcpy(&vm_input[0], work->multiplicator, 32);
+	memcpy(&vm_input[8], publickey, 32);
+	memcpy(&vm_input[16], &workid32[1], 4);	// Swap First 4 Bytes Of Long
+	memcpy(&vm_input[17], &workid32[0], 4);	// With Second 4 Bytes Of Long
+	memcpy(&vm_input[18], &blockid32[1], 4);
+	memcpy(&vm_input[19], &blockid32[0], 4);
+	vm_input[16] = swap32(vm_input[16]);
+	vm_input[17] = swap32(vm_input[17]);
+	vm_input[18] = swap32(vm_input[18]);
+	vm_input[19] = swap32(vm_input[19]);
+
+	// Target
+	vm_input[20] = g_pow_target[0];
+	vm_input[21] = g_pow_target[1];
+	vm_input[22] = g_pow_target[2];
+	vm_input[23] = g_pow_target[3];
+
+	return true;
+}
+
 static int execute_vm(int thr_id, struct work *work, struct instance *inst, long *hashes_done, char* hash) {
 	int i, rc;
 	time_t t_start = time(NULL);
@@ -629,8 +819,7 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 
 		// POW Solution Found
 		if (swap32(hash32[0]) <= g_pow_target[0]) {
-			if (swap32(hash32[1]) <= g_pow_target[1])
-				rc = 2;
+			rc = 2;
 		}
 		else
 			rc = 0;
@@ -805,7 +994,7 @@ static int work_decode(const json_t *val, struct work *work) {
 	// Check If Any Work Packages Are Available
 	num_pkg = json_array_size(wrk);
 	if (num_pkg == 0) {
-			applog(LOG_INFO, "No work available...retrying in %ds", opt_scantime);
+		applog(LOG_INFO, "No work available...retrying in %ds", opt_scantime);
 		return -1;
 	}
 
@@ -902,6 +1091,13 @@ static int work_decode(const json_t *val, struct work *work) {
 					return 0;
 				}
 			}
+			else if (use_opencl) {
+				if (!create_opencl_source(work_package.work_str)) {
+					work_package.blacklisted = true;
+					applog(LOG_ERR, "ERROR: Unable to convert 'source' to OpenCL for work_id: %s\n\n%s\n", work_package.work_str, str);
+					return 0;
+				}
+			}
 
 			applog(LOG_DEBUG, "DEBUG: Adding work package to list, work_id: %s", work_package.work_str);
 
@@ -966,7 +1162,7 @@ static int work_decode(const json_t *val, struct work *work) {
 	}
 
 	// If Running VM Interpreter Instead Of Compiled VM
-	if (!opt_compile && (g_work_package[best_pkg].work_id != g_cur_work_id)) {
+	if (!opt_compile && !use_opencl && (g_work_package[best_pkg].work_id != g_cur_work_id)) {
 		elastic_src = malloc(MAX_SOURCE_SIZE);
 		if (!elastic_src) {
 			applog(LOG_ERR, "ERROR: Unable to allocate memory for ElasticPL Source");
@@ -1074,13 +1270,13 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 			if (strstr(err_desc, "Duplicate unconfirmed transaction:")) {
 				applog(LOG_NOTICE, "CPU%d: %s***** Bounty Discarded *****", req->thr_id, CL_YLW);
 				applog(LOG_DEBUG, "Work ID: %s - No more bounty announcement slots available", req->work_str, err_desc);
-//				req->delay_tm = time(NULL) + 30;  // Retry In 30s
+				//				req->delay_tm = time(NULL) + 30;  // Retry In 30s
 				req->req_type = SUBMIT_COMPLETE;
 			}
 			else {
 				applog(LOG_NOTICE, "CPU%d: %s***** Bounty Rejected *****", req->thr_id, CL_RED);
 				applog(LOG_DEBUG, "Reason: %s", err_desc);
-//				req->delay_tm = time(NULL) + 30;  // Retry In 30s
+				//				req->delay_tm = time(NULL) + 30;  // Retry In 30s
 				req->req_type = SUBMIT_COMPLETE;
 				g_bounty_error_cnt++;
 			}
@@ -1275,7 +1471,7 @@ static void *miner_thread(void *userdata) {
 			sprintf(gpow_str, "%08X%08X%08X...", (g_pow_target[0]), (g_pow_target[1]), (g_pow_target[2]));
 
 			applog(LOG_NOTICE, "CPU%d: Submitting POW Solution", thr_id);
-			applog(LOG_DEBUG, "DEBUG: Hash - %s  Tgt - %s",hash_str, gpow_str);
+			applog(LOG_DEBUG, "DEBUG: Hash - %s  Tgt - %s", hash_str, gpow_str);
 			wc = (struct workio_cmd *) calloc(1, sizeof(*wc));
 			if (!wc) {
 				applog(LOG_ERR, "ERROR: Unable to allocate workio_cmd.  Shutting down thread for CPU%d", thr_id);
@@ -1299,6 +1495,242 @@ out:
 	if (vm_mem) free(vm_mem);
 	if (vm_state) free(vm_state);
 	if (vm_stack) free(vm_stack);
+	tq_freeze(mythr->q);
+
+	return NULL;
+}
+
+static void *opencl_miner_thread(void *userdata) {
+	struct thr_info *mythr = (struct thr_info *) userdata;
+	int thr_id = mythr->id;
+	int32_t *vm_mem = NULL;
+	uint32_t *vm_out = NULL, *vm_input = NULL;
+	struct work work;
+	struct workio_cmd *wc = NULL;
+	char s[16];
+	long hashes_done;
+	struct timeval tv_start, tv_end, diff;
+	int rc = 0, err;
+	unsigned char msg[41];
+	uint32_t *msg32 = (uint32_t *)msg;
+	uint32_t *workid32;
+	double eval_rate;
+	struct instance *inst = NULL;
+	char hash[32];
+	unsigned char hash_str[65];
+	unsigned char gpow_str[65];
+	unsigned char filename[50];
+	uint32_t *mult32 = (uint32_t *)work.multiplicator;
+
+	uint32_t *hash32 = (uint32_t *)hash;
+
+	// Set lower priority
+	if (!opt_norenice)
+		thread_low_priority();
+
+	// Inialize OpenCL
+	if (!initialize_opencl()) {
+		applog(LOG_ERR, "ERROR: Unable to initialize OpenCL");
+		goto out;
+	}
+
+	// Initialize Arrays To Hold Values For All Cores
+	vm_mem = (int32_t *)calloc(ocl_cores * VM_MEMORY_SIZE, sizeof(int32_t));
+	vm_out = (uint32_t *)calloc(ocl_cores, sizeof(uint32_t));
+	vm_input = (uint32_t *)calloc(24, sizeof(uint32_t));
+
+	if (!vm_mem || !vm_out || !vm_input) {
+		applog(LOG_ERR, "ERROR: Unable to allocate VM memory");
+		goto out;
+	}
+
+	hashes_done = 0;
+	memset(&work, 0, sizeof(work));
+	gettimeofday((struct timeval *) &tv_start, NULL);
+
+	while (1) {
+
+		// No Work Available
+		if (!g_work.work_id) {
+			if (work.work_id)
+				memset(&work, 0, sizeof(struct work));
+			sleep(1);
+			continue;
+		}
+
+		// Check If We Are Mining The Most Current Work
+		if (work.work_id != g_work.work_id) {
+
+			// Copy Global Work Into Local Thread Work
+			memcpy((void *)&work, (void *)&g_work, sizeof(struct work));
+			work.thr_id = thr_id;
+
+			mult32[6] = genrand_int32();
+			mult32[7] = genrand_int32();
+
+			// Create A Compiled VM Instance For The Thread
+			FILE *fp;
+			char *source_str;
+			size_t source_size;
+
+			sprintf(filename, "./work/%s.cl", work.work_str);
+
+			/* Load the source code containing the kernel*/
+			fp = fopen(filename, "r");
+			if (!fp) {
+				applog(LOG_ERR, "ERROR: Failed to load OpenCL source\n");
+				goto out;
+			}
+			source_str = (char*)malloc(MAX_SOURCE_SIZE);
+			source_size = fread(source_str, 1, MAX_SOURCE_SIZE, fp);
+			source_str[source_size] = 0;
+			fclose(fp);
+
+			kernel_initialize = create_opencl_kernel(device_id, context, source_str, "initialize");
+			kernel_execute = create_opencl_kernel(device_id, context, source_str, "execute");
+
+			prepare_opencl_kernels();
+
+		}
+
+		work_restart[thr_id].restart = 0;
+
+		// Increment multiplicator
+		mult32[0] = 0;
+		mult32[1] += 1;
+
+		// Get Values For VM Inputs
+		get_opencl_base_data(&work, vm_input);
+
+		// Send Random Inputs To OpenCL Buffer
+		err = clEnqueueWriteBuffer(queue, base_data, CL_TRUE, 0, 96 * sizeof(char), vm_input, 0, NULL, NULL);
+		if (err != CL_SUCCESS) {
+			applog(LOG_ERR, "ERROR: Unable to write 'vm_input' to OpenCL Buffer\n");
+			goto out;
+		}
+
+		// First run the wave front to generate personalized int messages
+		size_t sz_ptr = ocl_cores;
+		size_t front_length = 1;
+		err = clEnqueueNDRangeKernel(queue, kernel_initialize, 1, NULL, &sz_ptr, &front_length /* MAKE THIS MORE EFFICIENT worrkgroup_size */, 0, NULL, NULL);
+		if (err) {
+			applog(LOG_ERR, "ERROR: Unable to run 'initialize' kernel\n");
+			goto out;
+		}
+
+		// Run OpenCL VM
+		err = clEnqueueNDRangeKernel(queue, kernel_execute, 1, NULL, &sz_ptr, &front_length /* MAKE THIS MORE EFFICIENT worrkgroup_size */, 0, NULL, NULL);
+		if (err) {
+			applog(LOG_ERR, "ERROR: Unable to run 'execute' kernel\n");
+			goto out;
+		}
+
+		// Get VM Output
+		err = clEnqueueReadBuffer(queue, output, CL_TRUE, 0, ocl_cores * sizeof(uint32_t), vm_out, 0, NULL, NULL);
+		if (err != CL_SUCCESS) {
+			applog(LOG_ERR, "ERROR: Unable to read VM output\n");
+			goto out;
+		}
+
+		for (int i = 0; i < ocl_cores; i++) {
+
+//			printf("vm_out[%d] = %d\n", i, vm_out[i]);
+
+			// Check For Bounty Solutions
+			if (vm_out[i] == 2) {
+				applog(LOG_NOTICE, "CORE%d: Submitting Bounty Solution", i);
+
+				// Create Announcement Message
+				workid32 = (uint32_t *)&work.work_id;
+				memcpy(&msg[0], &workid32[1], 4);	// Swap First 4 Bytes Of Long
+				memcpy(&msg[4], &workid32[0], 4);	// With Second 4 Bytes Of Long
+				memcpy(&msg[8], work.multiplicator, 32);
+				msg[40] = 1;
+				msg32[0] = swap32(msg32[0]);
+				msg32[1] = swap32(msg32[1]);
+
+				// Create Announcment Hash
+				sha256(msg, 41, work.announcement_hash);
+
+				// Create Submit Request
+				wc = (struct workio_cmd *) calloc(1, sizeof(*wc));
+				if (!wc) {
+					applog(LOG_ERR, "ERROR: Unable to allocate workio_cmd.  Shutting down thread for CORE%d", i);
+					goto out;
+				}
+
+				wc->cmd = SUBMIT_BTY_ANN;
+				wc->thr = mythr;
+				memcpy(&wc->work, &work, sizeof(struct work));
+
+				// Add Solution To Queue
+				if (!tq_push(thr_info[work_thr_id].q, wc)) {
+					applog(LOG_ERR, "ERROR: Unable to add solution to queue.  Shutting down thread for CORE%d", i);
+					free(wc);
+					goto out;
+				}
+			}
+
+			// Check For POW Solutions
+			else if (vm_out[i] == 1) {
+
+				sprintf(hash_str, "%08X%08X%08X...", swap32(hash32[0]), swap32(hash32[1]), swap32(hash32[2]));
+				sprintf(gpow_str, "%08X%08X%08X...", (g_pow_target[0]), (g_pow_target[1]), (g_pow_target[2]));
+
+				applog(LOG_NOTICE, "CORE%d: Submitting POW Solution", i);
+				applog(LOG_DEBUG, "DEBUG: Hash - %s  Tgt - %s", hash_str, gpow_str);
+				wc = (struct workio_cmd *) calloc(1, sizeof(*wc));
+				if (!wc) {
+					applog(LOG_ERR, "ERROR: Unable to allocate workio_cmd.  Shutting down thread for CORE%d", i);
+					goto out;
+				}
+
+				wc->cmd = SUBMIT_POW;
+				wc->thr = mythr;
+				memcpy(&wc->work, &work, sizeof(struct work));
+
+				// Add Solution To Queue
+				if (!tq_push(thr_info[work_thr_id].q, wc)) {
+					applog(LOG_ERR, "ERROR: Unable to add solution to queue.  Shutting down thread for CORE%d", i);
+					free(wc);
+					goto out;
+				}
+			}
+		}
+
+		hashes_done += ocl_cores;
+
+		// Record Elapsed Time
+		gettimeofday(&tv_end, NULL);
+		timeval_subtract(&diff, &tv_end, &tv_start);
+		if (diff.tv_sec >= 5) {
+
+			mult32[6] = genrand_int32();
+			mult32[7] = genrand_int32();
+
+			eval_rate = (double)(hashes_done / (diff.tv_sec + diff.tv_usec * 1e-6));
+			if (!opt_quiet) {
+				sprintf(s, eval_rate >= 1000.0 ? "%0.2f kEval/s" : "%0.2f Eval/s", (eval_rate >= 1000.0) ? eval_rate / 1000 : eval_rate);
+				applog(LOG_INFO, "CPU%d: %s", thr_id, s);
+			}
+			gettimeofday((struct timeval *) &tv_start, NULL);
+			hashes_done = 0;
+		}
+	}
+
+out:
+	if (vm_mem) free(vm_mem);
+	if (vm_state) free(vm_input);
+
+/*
+	clReleaseMemObject(base_data);
+	clReleaseMemObject(input);
+	clReleaseMemObject(output);
+	clReleaseKernel(kernel_execute);
+	clReleaseKernel(kernel_initialize);
+	clReleaseCommandQueue(queue);
+	clReleaseContext(context);
+*/
 	tq_freeze(mythr->q);
 
 	return NULL;
@@ -1719,6 +2151,16 @@ int main(int argc, char **argv) {
 	if (!opt_n_threads)
 		opt_n_threads = num_cpus;
 
+	if (use_opencl) {
+		opt_n_threads = 1;
+
+		// Calculate # of OpenCL Cores
+		//
+		// Todo:  Add logic to calculate # cores here
+		//
+		ocl_cores = 10;
+	}
+
 	if (!rpc_url)
 		rpc_url = strdup("http://127.0.0.1:6876/nxt");
 
@@ -1788,7 +2230,11 @@ int main(int argc, char **argv) {
 		return 1;
 	}
 
-	applog(LOG_INFO, "Attempting to start %d miner threads", opt_n_threads);
+	if (use_opencl)
+		applog(LOG_INFO, "Attempting to start miner thread with %d OpenCL cores", ocl_cores);
+	else
+		applog(LOG_INFO, "Attempting to start %d miner threads", opt_n_threads);
+
 	thr_idx = 0;
 
 	// Start Mining Threads
@@ -1799,13 +2245,21 @@ int main(int argc, char **argv) {
 		thr->q = tq_new();
 		if (!thr->q)
 			return 1;
-		err = thread_create(thr, miner_thread);
+		if (use_opencl)
+			err = thread_create(thr, opencl_miner_thread);
+		else
+			err = thread_create(thr, miner_thread);
 		if (err) {
 			applog(LOG_ERR, "CPU: %d mining thread create failed!", i);
 			return 1;
 		}
 	}
-	applog(LOG_INFO, "%d mining threads started", opt_n_threads);
+
+	if (use_opencl)
+		applog(LOG_INFO, "Miner thread with %d OpenCL cores started", ocl_cores);
+	else
+		applog(LOG_INFO, "%d mining threads started", opt_n_threads);
+
 	gettimeofday(&g_miner_start_time, NULL);
 
 	// Start Longpoll Thread
