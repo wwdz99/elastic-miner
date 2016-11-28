@@ -203,7 +203,7 @@ void free_compiler(struct instance* inst) {
 */
 
 extern bool create_opencl_source(char *work_str) {
-	char *code, filename[50];
+	char *code = NULL, filename[50];
 	FILE* f;
 
 	sprintf(filename, "./work/%s.cl", work_str);
@@ -352,7 +352,11 @@ extern bool create_opencl_source(char *work_str) {
 
 	fprintf(f, "__kernel void initialize(global uint*input, global uint* base_data) {\n");
 	fprintf(f, "\tint j;\n");
-	fprintf(f, "\tint i = get_global_id(0); // Index in the wavefront\n");
+	fprintf(f, "\tint w = get_global_id(0); // Index in the wavefront Dim1\n");
+	fprintf(f, "\tint q = get_global_id(1); // Index in the wavefront Dim2\n");
+	fprintf(f, "\tint i = q*get_global_size(0)+w; // Index in the wavefront Total\n");
+
+
 	fprintf(f, "\tglobal uint* pointer_to_block = &input[i * 64000];\n\n");
 	fprintf(f, "\t__private uint local_hash_storage[4];\n");
 	fprintf(f, "\t__private uint base_data_copy_local[20];\n\n");
@@ -415,7 +419,7 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "\treturn x;\n");
 	fprintf(f, "}\n\n");
 
-	fprintf(f, "__kernel void execute (global int* input, global uint* output) {\n");
+	fprintf(f, "__kernel void execute (global uint* input, global uint* output) {\n");
 	fprintf(f, "\tint i = get_global_id(0); // this is the index in the wavefront\n");
 	fprintf(f, "\tglobal uint* mem = &input[i * 64000];\n");
 	fprintf(f, "\tglobal uint* out = &output[i];\n\n");
@@ -437,14 +441,15 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "\tvm_state[3] = 0;\n\n");
 
 	fprintf(f, "\t//The following code created by ElasticPL to C parser\n");
-	code = convert_ast_to_opencl();
+	//code = convert_ast_to_opencl();
 
-	if (!code)
-		return false;
+	//if (!code)
+	//	return false;
 
-	fprintf(f, &code[0]);
 
-	fprintf(f, "\tif (bounty_found) {\n");
+	//fprintf(f, code);
+
+	fprintf(f, "\tbool bounty_found=false;if (bounty_found) {\n");
 	fprintf(f, "\t\tout[0] = 2;\n");
 	fprintf(f, "\t}\n");
 	fprintf(f, "\telse {\n");
@@ -463,7 +468,7 @@ extern bool create_opencl_source(char *work_str) {
 
 	fprintf(f, "\t\t// POW Solution Found\n");
 	fprintf(f, "\t\tif (swap32(hash[0]) <= target[0])\n");
-	fprintf(f, "\t\t\tout[0] = 1;\n");
+	fprintf(f, "\t\t\tout[0] = 0;\n"); // TODO FIXME SET TO 1
 	fprintf(f, "\t\telse \n");
 	fprintf(f, "\t\t\tout[0] = 0;\n");
 	fprintf(f, "\t}\n");
@@ -476,6 +481,7 @@ extern bool create_opencl_source(char *work_str) {
 	}
 
 	fclose(f);
-	free(code);
+	if(code!=NULL)
+		free(code);
 	return true;
 }

@@ -131,6 +131,9 @@ struct work_restart *work_restart = NULL;
 #include <CL/cl.h>
 
 int ocl_cores = 0;
+size_t dimensions = 0;
+size_t* sizes;
+
 
 // OpenCL Buffers
 static cl_mem base_data;
@@ -151,12 +154,25 @@ static bool prepare_opencl_kernels() {
 	int err;
 
 	// Create Buffers
-	base_data = clCreateBuffer(context, CL_MEM_READ_WRITE, 96 * sizeof(char), NULL, NULL);
+	base_data = clCreateBuffer(context, CL_MEM_READ_ONLY, 96 * sizeof(char), NULL, NULL);
+	
+
+	if (err != CL_SUCCESS) {
+		applog(LOG_ERR, "Unable to create OpenCL buffers: base_data / %d", err);
+		return false;
+	}
+
 	input = clCreateBuffer(context, CL_MEM_READ_WRITE, ocl_cores * VM_MEMORY_SIZE * sizeof(int32_t), NULL, NULL);
+	
+	if (err != CL_SUCCESS) {
+		applog(LOG_ERR, "Unable to create OpenCL buffers: input / %d", err);
+		return false;
+	}
+
 	output = clCreateBuffer(context, CL_MEM_READ_WRITE, ocl_cores * sizeof(uint32_t), NULL, NULL);
 
-	if (!input || !base_data || !output) {
-		applog(LOG_ERR, "Unable to create OpenCL buffers");
+	if (err != CL_SUCCESS) {
+		applog(LOG_ERR, "Unable to create OpenCL buffers: output / %d", err);
 		return false;
 	}
 
@@ -245,6 +261,33 @@ static bool initialize_opencl() {
 		return false;
 	}
 
+	size_t global_mem ;
+	clGetDeviceInfo(device_id, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(size_t), &global_mem, NULL);
+	applog(LOG_DEBUG, "  CL_DEVICE_GLOBAL_MEM_SIZE = %zu\n", global_mem);
+
+	  
+
+	clGetDeviceInfo(device_id,  CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS , sizeof(size_t), &dimensions, NULL);
+	applog(LOG_DEBUG, "   CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS  = %zu\n", dimensions);
+
+
+	sizes = (size_t*)malloc(sizeof(size_t)*dimensions);
+
+	clGetDeviceInfo(device_id,  CL_DEVICE_MAX_WORK_ITEM_SIZES , sizeof(size_t)*dimensions, sizes, NULL);
+	for(int i=0;i<dimensions;++i)
+		applog(LOG_DEBUG, "   CL_DEVICE_MAX_WORK_ITEM_SIZES dim %d = %zu\n", i, sizes[i]);
+
+	// Calculate optimal core number
+	// GLOB MEM NEEDED: 96 + (x * VM_MEMORY_SIZE * sizeof(int32_t)) + (x * sizeof(uint32_t))
+	double calc = ((double)global_mem - 96.0 - 650*1024*1024 /*Some 650 M space for who knows what*/) / ((double)VM_MEMORY_SIZE * sizeof(int32_t) + sizeof(int32_t));
+	size_t bound = (size_t)calc;
+	applog(LOG_INFO, "Global GPU Memory = %zu, Using # Cores = %zu\n", global_mem,bound);
+
+	ocl_cores = (int)bound;
+	
+
+
+
 	context = clCreateContext(0, 1, &device_id, NULL, NULL, &err);
 	if (!context) {
 		applog(LOG_ERR, "Unable to create OpenCL context");
@@ -253,7 +296,7 @@ static bool initialize_opencl() {
 
 	queue = clCreateCommandQueue(context, device_id, 0, &err);
 	if (!queue) {
-		applog(LOG_ERR, "Unable to create OpenCL command queue");
+		applog(LOG_ERR, "Unable to create OpenCL command queue: %d",err);
 		return false;
 	}
 
@@ -1507,7 +1550,7 @@ static void *opencl_miner_thread(void *userdata) {
 	uint32_t *vm_out = NULL, *vm_input = NULL;
 	struct work work;
 	struct workio_cmd *wc = NULL;
-	char s[16];
+	char s[50];
 	long hashes_done;
 	struct timeval tv_start, tv_end, diff;
 	int rc = 0, err;
@@ -1591,6 +1634,8 @@ static void *opencl_miner_thread(void *userdata) {
 
 			prepare_opencl_kernels();
 
+			
+
 		}
 
 		work_restart[thr_id].restart = 0;
@@ -1610,16 +1655,25 @@ static void *opencl_miner_thread(void *userdata) {
 		}
 
 		// First run the wave front to generate personalized int messages
-		size_t sz_ptr = ocl_cores;
-		size_t front_length = 1;
-		err = clEnqueueNDRangeKernel(queue, kernel_initialize, 1, NULL, &sz_ptr, &front_length /* MAKE THIS MORE EFFICIENT worrkgroup_size */, 0, NULL, NULL);
+		size_t first_dim = (ocl_cores>sizes[0])?sizes[0]:ocl_cores;
+		size_t second_dim = 1;
+		if(dimensions>=2){
+			second_dim = (ocl_cores>sizes[0])?(ceil((double)ocl_cores/(double)sizes[0])):1;
+		}
+
+		size_t global[2] = {first_dim, second_dim};
+		size_t local[2]  = {128, 64};
+
+		// printf("Dimensions: (ocl cores %d, dims %d) %zu %zu\n",ocl_cores,dimensions,global[0],global[1]);
+
+		err = clEnqueueNDRangeKernel(queue, kernel_initialize, 1, NULL, &global, &local /* MAKE THIS MORE EFFICIENT worrkgroup_size */, 0, NULL, NULL);
 		if (err) {
-			applog(LOG_ERR, "ERROR: Unable to run 'initialize' kernel\n");
+			applog(LOG_ERR, "ERROR: Unable to run 'initialize' kernel: %d\n",err);
 			goto out;
 		}
 
 		// Run OpenCL VM
-		err = clEnqueueNDRangeKernel(queue, kernel_execute, 1, NULL, &sz_ptr, &front_length /* MAKE THIS MORE EFFICIENT worrkgroup_size */, 0, NULL, NULL);
+		err = clEnqueueNDRangeKernel(queue, kernel_execute, 1, NULL, &global, &local  /* MAKE THIS MORE EFFICIENT worrkgroup_size */, 0, NULL, NULL);
 		if (err) {
 			applog(LOG_ERR, "ERROR: Unable to run 'execute' kernel\n");
 			goto out;
@@ -2153,12 +2207,6 @@ int main(int argc, char **argv) {
 
 	if (use_opencl) {
 		opt_n_threads = 1;
-
-		// Calculate # of OpenCL Cores
-		//
-		// Todo:  Add logic to calculate # cores here
-		//
-		ocl_cores = 10;
 	}
 
 	if (!rpc_url)
@@ -2238,6 +2286,7 @@ int main(int argc, char **argv) {
 	thr_idx = 0;
 
 	// Start Mining Threads
+	printf("I will create %d threads\n",opt_n_threads);
 	for (i = 0; i < opt_n_threads; i++) {
 		thr = &thr_info[thr_idx];
 
@@ -2245,8 +2294,9 @@ int main(int argc, char **argv) {
 		thr->q = tq_new();
 		if (!thr->q)
 			return 1;
-		if (use_opencl)
+		if (use_opencl){
 			err = thread_create(thr, opencl_miner_thread);
+		}
 		else
 			err = thread_create(thr, miner_thread);
 		if (err) {

@@ -303,6 +303,7 @@ extern bool compile_and_link(char* file_name);
 extern void create_instance(struct instance* inst, char *file_name);
 extern void free_compiler(struct instance* inst);
 extern bool create_opencl_source(char *work_str);
+static char* convert_opencl(ast* exp);
 
 int curve25519_donna(uint8_t *mypublic, const uint8_t *secret, const uint8_t *basepoint);
 
