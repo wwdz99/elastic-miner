@@ -429,13 +429,13 @@ static char* convert_opencl(ast* exp) {
 			if (exp->value < 0 || exp->value > VM_MEMORY_SIZE)
 				sprintf(result, "0");
 			else
-				sprintf(result, "%d", exp->value);
+				sprintf(result, "%d", (uint32_t)exp->value); // IS THIS CORRECT? TODO FIXME
 			break;
 		case NODE_VAR_CONST:
 			if (exp->value < 0 || exp->value > VM_MEMORY_SIZE)
 				sprintf(result, "mem[0]");
 			else
-				sprintf(result, "mem[%d]", exp->value);
+				sprintf(result, "mem[%d]", (uint32_t)exp->value);
 			break;
 		case NODE_VAR_EXP:
 			sprintf(result, "mem[%s]", lval);
@@ -755,24 +755,35 @@ static char* convert_opencl(ast* exp) {
 }
 
 static char* append_strings(char * old, char * new) {
-	if (new == NULL && old != NULL) return old;
-	if (old == NULL && new != NULL) return new;
-	if (new == NULL && old == NULL) return NULL;
 
-	// find the size of the string to allocate
-	const size_t old_len = strlen(old), new_len = strlen(new);
-	const size_t out_len = old_len + new_len + 1;
+	char* out = NULL;
 
-	// allocate a pointer to the new string
-	char *out = malloc(out_len);
-
-	// concat both strings and return
-	memcpy(out, old, old_len);
-	memcpy(out + old_len, new, new_len + 1);
+	if (new == NULL && old != NULL) {
+		out = calloc(strlen(old)+1,sizeof(char));
+		strcpy(out, old);
+	}
+	else if (old == NULL && new != NULL){
+		out = calloc(strlen(new)+1,sizeof(char));
+		strcpy(out, new);
+	}
+	else if (new == NULL && old == NULL){
+		// pass
+	}else{
+		// find the size of the string to allocate
+		const size_t old_len = strlen(old), new_len = strlen(new);
+		const size_t out_len = old_len + new_len + 1;
+		// allocate a pointer to the new string
+		out = malloc(out_len);
+		// concat both strings and return
+		memcpy(out, old, old_len);
+		strcpy(out + old_len, new);
+	}
 
 	// Free here
-	free(old);
-	free(new);
+	if(old!=NULL)
+		free(old);
+	if(new!=NULL)
+		free(new);
 
 	return out;
 }
