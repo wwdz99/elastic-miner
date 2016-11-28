@@ -629,8 +629,7 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 
 		// POW Solution Found
 		if (swap32(hash32[0]) <= g_pow_target[0]) {
-			if (swap32(hash32[1]) <= g_pow_target[1])
-				rc = 2;
+			rc = 2;
 		}
 		else
 			rc = 0;
