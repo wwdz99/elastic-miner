@@ -72,7 +72,7 @@ bool g_need_work = false;
 char g_work_nm[50];
 char g_work_id[22];
 uint64_t g_cur_work_id;
-unsigned char g_pow_target_str[65];
+unsigned char g_pow_target_str[33];
 uint32_t g_pow_target[8];
 
 __thread _ALIGN(64) *vm_mem = NULL;
@@ -625,7 +625,7 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 		for (i = 0; i < VM_INPUTS; i++)
 			msg32[i + 4] = swap32(work->vm_input[i]);
 
-		sha256(msg, 64, hash);
+		MD5(msg, 64, hash);
 
 		// POW Solution Found
 		if (swap32(hash32[0]) <= g_pow_target[0]) {
@@ -1004,7 +1004,7 @@ static int work_decode(const json_t *val, struct work *work) {
 	strncpy(work->work_nm, g_work_package[best_pkg].work_nm, 49);
 
 	// Convert Hex Target To Int Array
-	rc = hex2ints(work->pow_target, 8, tgt, strlen(tgt));
+	rc = hex2ints(work->pow_target, 4, tgt, strlen(tgt));
 	if (!rc) {
 		applog(LOG_ERR, "Invalid Target in JSON response for work_id: %s", work->work_str);
 		return 0;
