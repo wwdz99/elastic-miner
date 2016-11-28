@@ -12,8 +12,12 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
-#include <malloc.h>
 
+#ifndef __APPLE__
+#include <malloc.h>
+#else
+#import <malloc/malloc.h>
+#endif
 #include "sha2.h"
 #include "elasticpl_crypto.h"
 
