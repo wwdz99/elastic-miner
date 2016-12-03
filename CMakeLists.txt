@@ -189,6 +189,7 @@ include_directories(${OPENCL_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR} ${PROJECT_SOURC
 set(SRC_LIST	xel_miner.c
 				xel_compiler.c
 				util.c
+				ocl.c
 				./ElasticPL/ElasticPL.c
 				./ElasticPL/ElasticPLTokenManager.c
 				./ElasticPL/ElasticPLParser.c
