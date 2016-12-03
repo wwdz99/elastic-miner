@@ -488,7 +488,7 @@ static void *test_vm_thread(void *userdata) {
 	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
 	vm_stack_idx = -1;
 	if (!vm_mem || !vm_stack) {
-		applog(LOG_ERR, "CPU%d: Unable to allocate VM memory", thr_id);
+		applog(LOG_ERR, "%s: Unable to allocate VM memory", mythr->name);
 		exit(EXIT_FAILURE);
 	}
 
@@ -1122,13 +1122,13 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 	if (req->req_type == SUBMIT_BTY_ANN) {
 		if (err_desc) {
 			if (strstr(err_desc, "Duplicate unconfirmed transaction:")) {
-				applog(LOG_NOTICE, "CPU%d: %s***** Bounty Discarded *****", req->thr_id, CL_YLW);
+				applog(LOG_NOTICE, "%s: %s***** Bounty Discarded *****", thr_info[req->thr_id].name, CL_YLW);
 				applog(LOG_DEBUG, "Work ID: %s - No more bounty announcement slots available", req->work_str, err_desc);
 				//				req->delay_tm = time(NULL) + 30;  // Retry In 30s
 				req->req_type = SUBMIT_COMPLETE;
 			}
 			else {
-				applog(LOG_NOTICE, "CPU%d: %s***** Bounty Rejected *****", req->thr_id, CL_RED);
+				applog(LOG_NOTICE, "%s: %s***** Bounty Rejected *****", thr_info[req->thr_id].name, CL_RED);
 				applog(LOG_DEBUG, "Reason: %s", err_desc);
 				//				req->delay_tm = time(NULL) + 30;  // Retry In 30s
 				req->req_type = SUBMIT_COMPLETE;
@@ -1144,12 +1144,12 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 			req->req_type = SUBMIT_BOUNTY;
 		}
 		else if (accepted && !strcmp(accepted, "deprecated")) {
-			applog(LOG_NOTICE, "CPU%d: %s***** Bounty Rejected - Deprecated *****", req->thr_id, CL_RED);
+			applog(LOG_NOTICE, "%s: %s***** Bounty Rejected - Deprecated *****", thr_info[req->thr_id].name, CL_RED);
 			g_bounty_deprecated_cnt++;
 			req->req_type = SUBMIT_COMPLETE;
 		}
 		else if (req->retries++ > 20) {		// Timeout After 10 Min
-			applog(LOG_NOTICE, "CPU%d: %s***** Bounty Timed Out *****", req->thr_id, CL_RED);
+			applog(LOG_NOTICE, "%s: %s***** Bounty Timed Out *****", thr_info[req->thr_id].name, CL_RED);
 			g_bounty_timeout_cnt++;
 			req->req_type = SUBMIT_COMPLETE;
 		}
@@ -1161,16 +1161,16 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 	else if (req->req_type == SUBMIT_BOUNTY) {
 		if (err_desc) {
 			if (strstr(err_desc, "Duplicate unconfirmed transaction:")) {
-				applog(LOG_NOTICE, "CPU%d: %s***** Bounty Discarded *****", req->thr_id, CL_YLW);
+				applog(LOG_NOTICE, "%s: %s***** Bounty Discarded *****", thr_info[req->thr_id].name, CL_YLW);
 				applog(LOG_DEBUG, "Work ID: %s - Work is already closed, you missed the reveal period", req->work_str, err_desc);
 			}
 			else {
-				applog(LOG_NOTICE, "CPU%d: %s***** Bounty Rejected! *****", req->thr_id, CL_RED);
+				applog(LOG_NOTICE, "%s: %s***** Bounty Rejected! *****", thr_info[req->thr_id].name, CL_RED);
 				g_bounty_rejected_cnt++;
 			}
 		}
 		else {
-			applog(LOG_NOTICE, "CPU%d: %s***** Bounty Claimed! *****", req->thr_id, CL_GRN);
+			applog(LOG_NOTICE, "%s: %s***** Bounty Claimed! *****", thr_info[req->thr_id].name, CL_GRN);
 			g_bounty_accepted_cnt++;
 		}
 		req->req_type = SUBMIT_COMPLETE;
@@ -1178,17 +1178,18 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 	else if (req->req_type == SUBMIT_POW) {
 		if (err_desc) {
 			if (strstr(err_desc, "Duplicate unconfirmed transaction:")) {
-				applog(LOG_NOTICE, "CPU%d: %s***** POW Discarded! *****", req->thr_id, CL_YLW);
+				applog(LOG_NOTICE, "%s: %s***** POW Discarded! *****", thr_info[req->thr_id].name, CL_YLW);
 				applog(LOG_INFO, "Work ID: %s -%s", req->work_str, err_desc + 34);
 				g_pow_discarded_cnt++;
 			}
 			else {
-				applog(LOG_NOTICE, "CPU%d: %s***** POW Rejected: %s! *****", req->thr_id, CL_RED, err_desc);
+				applog(LOG_NOTICE, "%s: %s***** POW Rejected! *****", thr_info[req->thr_id].name, CL_RED);
+				applog(LOG_INFO, "Work ID: %s, Reason: %s", req->work_str, err_desc);
 				g_pow_rejected_cnt++;
 			}
 		}
 		else {
-			applog(LOG_NOTICE, "CPU%d: %s***** POW Accepted! *****", req->thr_id, CL_CYN);
+			applog(LOG_NOTICE, "%s: %s***** POW Accepted! *****", thr_info[req->thr_id].name, CL_CYN);
 			g_pow_accepted_cnt++;
 		}
 		req->req_type = SUBMIT_COMPLETE;
@@ -1231,7 +1232,7 @@ static void *miner_thread(void *userdata) {
 	vm_stack_idx = -1;
 
 	if (!vm_mem || !vm_state || !vm_stack) {
-		applog(LOG_ERR, "CPU%d: Unable to allocate VM memory", thr_id);
+		applog(LOG_ERR, "%s: Unable to allocate VM memory", mythr->name);
 		goto out;
 	}
 
@@ -1278,7 +1279,7 @@ static void *miner_thread(void *userdata) {
 			eval_rate = (double)(hashes_done / (diff.tv_sec + diff.tv_usec * 1e-6));
 			if (!opt_quiet) {
 				sprintf(s, eval_rate >= 1000.0 ? "%0.2f kEval/s" : "%0.2f Eval/s", (eval_rate >= 1000.0) ? eval_rate / 1000 : eval_rate);
-				applog(LOG_INFO, "CPU%d: %s", thr_id, s);
+				applog(LOG_INFO, "%s: %s", mythr->name, s);
 			}
 			gettimeofday((struct timeval *) &tv_start, NULL);
 			hashes_done = 0;
@@ -1286,7 +1287,7 @@ static void *miner_thread(void *userdata) {
 
 		// Submit Work That Meets Bounty Criteria
 		if (rc == 1) {
-			applog(LOG_NOTICE, "CPU%d: Submitting Bounty Solution", thr_id);
+			applog(LOG_NOTICE, "%s: Submitting Bounty Solution", mythr->name);
 
 			// Create Announcement Message
 			workid32 = (uint32_t *)&work.work_id;
@@ -1303,7 +1304,7 @@ static void *miner_thread(void *userdata) {
 			// Create Submit Request
 			wc = (struct workio_cmd *) calloc(1, sizeof(*wc));
 			if (!wc) {
-				applog(LOG_ERR, "ERROR: Unable to allocate workio_cmd.  Shutting down thread for CPU%d", thr_id);
+				applog(LOG_ERR, "ERROR: Unable to allocate workio_cmd.  Shutting down thread for %s", mythr->name);
 				goto out;
 			}
 
@@ -1313,7 +1314,7 @@ static void *miner_thread(void *userdata) {
 
 			// Add Solution To Queue
 			if (!tq_push(thr_info[work_thr_id].q, wc)) {
-				applog(LOG_ERR, "ERROR: Unable to add solution to queue.  Shutting down thread for CPU%d", thr_id);
+				applog(LOG_ERR, "ERROR: Unable to add solution to queue.  Shutting down thread for %s", mythr->name);
 				free(wc);
 				goto out;
 			}
@@ -1324,11 +1325,11 @@ static void *miner_thread(void *userdata) {
 			sprintf(hash_str, "%08X%08X%08X%08X", swap32(hash32[0]), swap32(hash32[1]), swap32(hash32[2]), swap32(hash32[3]));
 			sprintf(gpow_str, "%08X%08X%08X%08X", g_pow_target[0], g_pow_target[1], g_pow_target[2], g_pow_target[3]);
 
-			applog(LOG_NOTICE, "CPU%d: Submitting POW Solution", thr_id);
+			applog(LOG_NOTICE, "%s: Submitting POW Solution", mythr->name);
 			applog(LOG_DEBUG, "DEBUG: Hash - %s  Tgt - %s", hash_str, gpow_str);
 			wc = (struct workio_cmd *) calloc(1, sizeof(*wc));
 			if (!wc) {
-				applog(LOG_ERR, "ERROR: Unable to allocate workio_cmd.  Shutting down thread for CPU%d", thr_id);
+				applog(LOG_ERR, "ERROR: Unable to allocate workio_cmd.  Shutting down thread for %s", mythr->name);
 				goto out;
 			}
 
@@ -1338,7 +1339,7 @@ static void *miner_thread(void *userdata) {
 
 			// Add Solution To Queue
 			if (!tq_push(thr_info[work_thr_id].q, wc)) {
-				applog(LOG_ERR, "ERROR: Unable to add solution to queue.  Shutting down thread for CPU%d", thr_id);
+				applog(LOG_ERR, "ERROR: Unable to add solution to queue.  Shutting down thread for %s", mythr->name);
 				free(wc);
 				goto out;
 			}
@@ -1360,11 +1361,10 @@ static void *opencl_miner_thread(void *userdata) {
 	uint32_t *vm_out = NULL, *vm_input = NULL;
 	struct work work;
 	struct workio_cmd *wc = NULL;
-	char s[50];
 	uint64_t hashes_done;
 	struct timeval tv_start, tv_end, diff;
 	int rc = 0, err, i, j;
-	unsigned char *ocl_source, msg[41];
+	unsigned char *ocl_source, str[50], msg[41];
 	uint32_t *msg32 = (uint32_t *)msg;
 	uint32_t *workid32;
 	double eval_rate;
@@ -1445,60 +1445,22 @@ static void *opencl_miner_thread(void *userdata) {
 		work_restart[thr_id].restart = 0;
 
 		// Increment multiplicator
-		mult32[0] = 0;
+		mult32[0] = 0;	// OpenCL Code Will Set This To Core ID
 		mult32[1] += 1;
 
 		// Get Values For VM Inputs
 		get_opencl_base_data(&work, vm_input);
 
+		// Execute The VM
 		if (!execute_kernel(vm_input, vm_out))
 			goto out;
 
-		//// Send Random Inputs To OpenCL Buffer
-		//err = clEnqueueWriteBuffer(queue, base_data, CL_TRUE, 0, 96 * sizeof(char), vm_input, 0, NULL, NULL);
-		//if (err != CL_SUCCESS) {
-		//	applog(LOG_ERR, "ERROR: Unable to write 'vm_input' to OpenCL Buffer\n");
-		//	goto out;
-		//}
-
-		//// First run the wave front to generate personalized int messages
-		//size_t first_dim = (ocl_cores > sizes[0]) ? sizes[0] : ocl_cores;
-		//size_t second_dim = 1;
-		//if (dimensions >= 2) {
-		//	second_dim = (ocl_cores>sizes[0]) ? (ceil((double)ocl_cores / (double)sizes[0])) : 1;
-		//}
-
-		//size_t global[2] = { first_dim, second_dim };
-		//size_t local[2] = { 128, 64 };
-
-		//// printf("Dimensions: (ocl cores %d, dims %d) %zu %zu\n",ocl_cores,dimensions,global[0],global[1]);
-
-		//err = clEnqueueNDRangeKernel(queue, kernel_initialize, 1, NULL, &global, &local /* MAKE THIS MORE EFFICIENT worrkgroup_size */, 0, NULL, NULL);
-		//if (err) {
-		//	applog(LOG_ERR, "ERROR: Unable to run 'initialize' kernel: %d\n", err);
-		//	goto out;
-		//}
-
-		//// Run OpenCL VM
-		//err = clEnqueueNDRangeKernel(queue, kernel_execute, 1, NULL, &global, &local  /* MAKE THIS MORE EFFICIENT worrkgroup_size */, 0, NULL, NULL);
-		//if (err) {
-		//	applog(LOG_ERR, "ERROR: Unable to run 'execute' kernel\n");
-		//	goto out;
-		//}
-
-		//// Get VM Output
-		//err = clEnqueueReadBuffer(queue, output, CL_TRUE, 0, ocl_cores * sizeof(uint32_t), vm_out, 0, NULL, NULL);
-		//if (err != CL_SUCCESS) {
-		//	applog(LOG_ERR, "ERROR: Unable to read VM output\n");
-		//	goto out;
-		//}
-
-
+		// Check VM Output For Solutions
 		for (i = 0; i < ocl_cores; i++) {
 
 			// Check For Bounty Solutions
 			if (vm_out[i] == 2) {
-				applog(LOG_NOTICE, "CORE%d: Submitting Bounty Solution", i);
+				applog(LOG_NOTICE, "%s - %d: Submitting Bounty Solution", mythr->name, i);
 
 // Debug
 				err = clEnqueueReadBuffer(queue, input, CL_TRUE, i * VM_MEMORY_SIZE * sizeof(uint32_t), 40 * sizeof(uint32_t), &x[0], 0, NULL, NULL);
@@ -1528,7 +1490,7 @@ static void *opencl_miner_thread(void *userdata) {
 				// Create Submit Request
 				wc = (struct workio_cmd *) calloc(1, sizeof(*wc));
 				if (!wc) {
-					applog(LOG_ERR, "ERROR: Unable to allocate workio_cmd.  Shutting down thread for CORE%d", i);
+					applog(LOG_ERR, "ERROR: Unable to allocate workio_cmd.  Shutting down thread for %s", mythr->name);
 					goto out;
 				}
 
@@ -1538,7 +1500,7 @@ static void *opencl_miner_thread(void *userdata) {
 
 				// Add Solution To Queue
 				if (!tq_push(thr_info[work_thr_id].q, wc)) {
-					applog(LOG_ERR, "ERROR: Unable to add solution to queue.  Shutting down thread for CORE%d", i);
+					applog(LOG_ERR, "ERROR: Unable to add solution to queue.  Shutting down thread for %s", mythr->name);
 					free(wc);
 					goto out;
 				}
@@ -1562,11 +1524,11 @@ static void *opencl_miner_thread(void *userdata) {
 //				sprintf(hash_str, "%08X%08X%08X%08X", swap32(hash32[0]), swap32(hash32[1]), swap32(hash32[2]), swap32(hash32[3]));
 				sprintf(gpow_str, "%08X%08X%08X%08X", g_pow_target[0], g_pow_target[1], g_pow_target[2], g_pow_target[3]);
 
-				applog(LOG_NOTICE, "CORE%d: Submitting POW Solution", i);
+				applog(LOG_NOTICE, "%s - %d: Submitting POW Solution", mythr->name, i);
 				applog(LOG_DEBUG, "DEBUG: Hash - %s  Tgt - %s", hash_str, gpow_str);
 				wc = (struct workio_cmd *) calloc(1, sizeof(*wc));
 				if (!wc) {
-					applog(LOG_ERR, "ERROR: Unable to allocate workio_cmd.  Shutting down thread for CORE%d", i);
+					applog(LOG_ERR, "ERROR: Unable to allocate workio_cmd.  Shutting down thread for %s", mythr->name);
 					goto out;
 				}
 
@@ -1578,7 +1540,7 @@ static void *opencl_miner_thread(void *userdata) {
 
 				// Add Solution To Queue
 				if (!tq_push(thr_info[work_thr_id].q, wc)) {
-					applog(LOG_ERR, "ERROR: Unable to add solution to queue.  Shutting down thread for CORE%d", i);
+					applog(LOG_ERR, "ERROR: Unable to add solution to queue.  Shutting down thread for %s", mythr->name);
 					free(wc);
 					goto out;
 				}
@@ -1597,8 +1559,8 @@ static void *opencl_miner_thread(void *userdata) {
 
 			if (!opt_quiet) {
 				eval_rate = (double)((hashes_done / (diff.tv_sec + (diff.tv_usec / 1000000.0))) / 1000.0);
-				sprintf(s, eval_rate >= 1000.0 ? "%0.2f mEval/s" : "%0.2f kEval/s", (eval_rate >= 1000.0) ? eval_rate / 1000 : eval_rate);
-				applog(LOG_INFO, "GPU%d: %s", thr_id, s);
+				sprintf(str, eval_rate >= 1000.0 ? "%0.2f mEval/s" : "%0.2f kEval/s", (eval_rate >= 1000.0) ? eval_rate / 1000 : eval_rate);
+				applog(LOG_INFO, "%s: %s", mythr->name, str);
 			}
 			gettimeofday((struct timeval *) &tv_start, NULL);
 			hashes_done = 0;
@@ -2130,11 +2092,14 @@ int main(int argc, char **argv) {
 			return 1;
 		if (opt_opencl) {
 			err = thread_create(thr, opencl_miner_thread);
+			sprintf(thr->name, "GPU%d", i);
 		}
-		else
+		else {
 			err = thread_create(thr, miner_thread);
+			sprintf(thr->name, "CPU%d", i);
+		}
 		if (err) {
-			applog(LOG_ERR, "CPU: %d mining thread create failed!", i);
+			applog(LOG_ERR, "%s mining thread create failed!", thr->name);
 			return 1;
 		}
 	}

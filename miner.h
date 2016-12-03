@@ -124,6 +124,7 @@ struct thr_info {
 	struct cpu_info cpu;
 	struct work work;
 	char* c_code;
+	char name[6];
 };
 
 struct work_restart {
