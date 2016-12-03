@@ -27,7 +27,8 @@ bool create_c_source() {
 	fprintf(f, "#include <stdlib.h>\n");
 	fprintf(f, "#include <limits.h>\n");
 	fprintf(f, "#include <time.h>\n");
-	fprintf(f, "#include \"../crypto/elasticpl_crypto.h\"\n\n");
+//	fprintf(f, "#include \"../crypto/elasticpl_crypto.h\"\n\n");
+	fprintf(f, "#include \"elasticpl_crypto.h\"\n\n");
 #ifdef _MSC_VER
 	fprintf(f, "__declspec(thread) int32_t* mem = NULL;\n");
 	fprintf(f, "__declspec(thread) uint32_t* vm_state = NULL;\n\n");
@@ -144,7 +145,7 @@ void create_instance(struct instance* inst, char *lib_name) {
 	sprintf(file_name, "./work/%s.dll", lib_name);
 	inst->hndl = LoadLibrary(file_name);
 	if (!inst->hndl) {
-		fprintf(stderr, "Unable to load library: '%s'", file_name);
+		fprintf(stderr, "Unable to load library: '%s' (Error - %d)", file_name, GetLastError());
 		exit(EXIT_FAILURE);
 	}
 	inst->initialize = (int(__cdecl *)(int32_t *, uint32_t *))GetProcAddress((HMODULE)inst->hndl, "initialize");
@@ -364,8 +365,8 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "\t// 32 Byte Multiplicator (First 4 Bytes = Index, Second 4 Bytes = Incremented Value)\n");
 	fprintf(f, "\t// 32 Byte Public Key\n");
 	fprintf(f, "\t//  8 Byte Work ID\n");
-	fprintf(f, "\t//  8 Byte Block ID\n\n");
-	fprintf(f, "\t// 16 Byte POW Target;\n");
+	fprintf(f, "\t//  8 Byte Block ID\n");
+	fprintf(f, "\t// 16 Byte POW Target;\n\n");
 	fprintf(f, "\t// Copy base_data so the multiplicator can be incremented locally\n");
 	fprintf(f, "\tfor (j = 0; j < 20; j++) // 80 bytes\n");
 	fprintf(f, "\t\tbase_data_copy_local[j] = base_data[j];\n\n");
@@ -441,15 +442,17 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "\tvm_state[3] = 0;\n\n");
 
 	fprintf(f, "\t//The following code created by ElasticPL to C parser\n");
-	//code = convert_ast_to_opencl();
 
-	//if (!code)
-	//	return false;
+	code = convert_ast_to_opencl();
 
+	if (!code)
+		return false;
 
-	//fprintf(f, code);
+	fprintf(f, code);
 
-	fprintf(f, "\tbool bounty_found=false;if (bounty_found) {\n");
+//	fprintf(f, "\tbool bounty_found=false;if (bounty_found) {\n");
+//	fprintf(f, "\tif (!bounty_found) {\n");
+	fprintf(f, "\tif (bounty_found) {\n");
 	fprintf(f, "\t\tout[0] = 2;\n");
 	fprintf(f, "\t}\n");
 	fprintf(f, "\telse {\n");
@@ -461,14 +464,22 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "\t\t// Get MD5 hash of base_data\n");
 	fprintf(f, "\t\tmd5((char*)&msg[0], 64, &hash[0]);\n\n");
 
+	// Debugging
+	fprintf(f, "\t\t// Temp Dump For Debugging\n");
+	fprintf(f, "\t\tmem[12] = vm_state[0];\n");
+	fprintf(f, "\t\tmem[13] = vm_state[1];\n");
+	fprintf(f, "\t\tmem[14] = vm_state[2];\n");
+	fprintf(f, "\t\tmem[15] = vm_state[3];\n\n");
+
 	fprintf(f, "\t\tmem[16] = swap32(hash[0]);\n");
 	fprintf(f, "\t\tmem[17] = swap32(hash[1]);\n");
 	fprintf(f, "\t\tmem[18] = swap32(hash[2]);\n");
 	fprintf(f, "\t\tmem[19] = swap32(hash[3]);\n\n");
+	// Debugging
 
 	fprintf(f, "\t\t// POW Solution Found\n");
 	fprintf(f, "\t\tif (swap32(hash[0]) <= target[0])\n");
-	fprintf(f, "\t\t\tout[0] = 0;\n"); // TODO FIXME SET TO 1
+	fprintf(f, "\t\t\tout[0] = 1;\n");
 	fprintf(f, "\t\telse \n");
 	fprintf(f, "\t\t\tout[0] = 0;\n");
 	fprintf(f, "\t}\n");
@@ -481,7 +492,7 @@ extern bool create_opencl_source(char *work_str) {
 	}
 
 	fclose(f);
-	if(code!=NULL)
+	if (code != NULL)
 		free(code);
 	return true;
 }

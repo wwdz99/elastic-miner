@@ -15,7 +15,6 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
-#include <CL/cl.h>
 
 #ifdef WIN32
 #include <windows.h>
@@ -55,6 +54,8 @@ extern __thread int vm_stack_idx;
 extern __thread uint32_t *vm_state;
 extern __thread bool vm_bounty;
 
+#include <CL/cl.h>
+
 extern bool opt_debug;
 extern bool opt_debug_epl;
 extern bool opt_debug_vm;
@@ -63,10 +64,7 @@ extern bool opt_quiet;
 extern int opt_timeout;
 extern int opt_n_threads;
 extern bool opt_test_vm;
-extern bool opt_opencl_cpu;
-extern bool opt_opencl_nvdia;
-extern bool opt_opencl_amd;
-extern bool use_opencl;
+extern bool opt_opencl;
 
 extern struct work_restart *work_restart;
 
@@ -105,7 +103,7 @@ struct work {
 	uint64_t work_id;
 	unsigned char work_str[22];
 	unsigned char work_nm[50];
-	uint32_t pow_target[8];
+	uint32_t pow_target[4];
 	int32_t vm_input[12];
 	unsigned char multiplicator[32];
 	unsigned char announcement_hash[32];
@@ -244,6 +242,36 @@ enum {
 #define CL_LCY  "\x1B[01;36m" /* light cyan */
 #define CL_WHT  "\x1B[01;37m" /* white */
 
+
+
+
+extern int ocl_cores;
+extern size_t dimensions;
+extern size_t* sizes;
+
+
+// OpenCL Buffers
+extern cl_mem base_data;
+extern cl_mem input;
+extern cl_mem output;
+
+// OpenCL State
+extern cl_command_queue queue;
+
+// OpenCL Kernels
+extern cl_kernel kernel_initialize;
+extern cl_kernel kernel_execute;
+
+extern cl_device_id device_id;
+extern cl_context context;
+
+extern unsigned char* load_opencl_source(char *work_str);
+extern bool prepare_opencl_kernels(char *ocl_source);
+extern cl_kernel create_opencl_kernel(cl_device_id device_id, cl_context context, const char *source, const char *name);
+extern bool initialize_opencl(void);
+extern bool execute_kernel(uint32_t *vm_input, uint32_t *vm_out);
+
+
 struct thread_q;
 
 struct thread_q *tq_new(void);
@@ -280,11 +308,8 @@ static bool submit_work(CURL *curl, struct submit_req *req);
 static bool delete_submit_req(int idx);
 static bool add_submit_req(struct work *work, enum submit_commands req_type);
 
-static bool get_opencl_base_data(struct work *work, uint32_t *vm_input);
-static bool prepare_opencl_kernels(void);
-static cl_kernel create_opencl_kernel(cl_device_id device_id, cl_context context, const char *source, const char *name);
-static bool initialize_opencl(void);
 static void *opencl_miner_thread(void *userdata);
+static bool get_opencl_base_data(struct work *work, uint32_t *vm_input);
 
 // Function Prototypes - util.c
 extern void applog(int prio, const char *fmt, ...);
