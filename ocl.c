@@ -11,6 +11,7 @@
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #define _GNU_SOURCE
 
+#include <math.h>
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -153,26 +154,51 @@ extern cl_kernel create_opencl_kernel(cl_device_id device_id, cl_context context
 }
 
 extern bool initialize_opencl() {
-	int i;
+	int i, j;
 
 	cl_platform_id platforms[100];
+	cl_uint err;
 	cl_uint platforms_n = 0;
+	cl_uint devices_n = 0;
+	uint32_t global_mem;
+	size_t compute_units = 0;
+	size_t max_work_size = 0;
+	int max_cores = 0;
+	char buffer[10240];
+
 	CL_CHECK(clGetPlatformIDs(100, platforms, &platforms_n));
 
 	applog(LOG_DEBUG, "=== %d OpenCL platform(s) found: ===", platforms_n);
 	for (i = 0; i < platforms_n; i++) {
-		char buffer[10240];
 		applog(LOG_DEBUG, "  -- %d --", i);
-		CL_CHECK(clGetPlatformInfo(platforms[i], CL_PLATFORM_PROFILE, 10240, buffer, NULL));
+		CL_CHECK(clGetPlatformInfo(platforms[i], CL_PLATFORM_PROFILE, sizeof(buffer), buffer, NULL));
 		applog(LOG_DEBUG, "  PROFILE = %s", buffer);
-		CL_CHECK(clGetPlatformInfo(platforms[i], CL_PLATFORM_VERSION, 10240, buffer, NULL));
+		CL_CHECK(clGetPlatformInfo(platforms[i], CL_PLATFORM_VERSION, sizeof(buffer), buffer, NULL));
 		applog(LOG_DEBUG, "  VERSION = %s", buffer);
-		CL_CHECK(clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, 10240, buffer, NULL));
+		CL_CHECK(clGetPlatformInfo(platforms[i], CL_PLATFORM_NAME, sizeof(buffer), buffer, NULL));
 		applog(LOG_DEBUG, "  NAME = %s", buffer);
-		CL_CHECK(clGetPlatformInfo(platforms[i], CL_PLATFORM_VENDOR, 10240, buffer, NULL));
+		CL_CHECK(clGetPlatformInfo(platforms[i], CL_PLATFORM_VENDOR, sizeof(buffer), buffer, NULL));
 		applog(LOG_DEBUG, "  VENDOR = %s", buffer);
-		CL_CHECK(clGetPlatformInfo(platforms[i], CL_PLATFORM_EXTENSIONS, 10240, buffer, NULL));
+		CL_CHECK(clGetPlatformInfo(platforms[i], CL_PLATFORM_EXTENSIONS, sizeof(buffer), buffer, NULL));
 		applog(LOG_DEBUG, "  EXTENSIONS = %s", buffer);
+
+		err = clGetDeviceIDs(platforms[i], CL_DEVICE_TYPE_ALL, 0, NULL, &devices_n);
+		if (err != CL_SUCCESS) {
+			applog(LOG_ERR, "Error: Unable to get devices from OpenCL Platform %d (Error: %d)", i, err);
+			return false;
+		}
+
+		if (devices_n) {
+			applog(LOG_DEBUG, "  DEVICES:");
+			cl_device_id *devices = (cl_device_id *)malloc(devices_n * sizeof(cl_device_id));
+
+			clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, devices_n, devices, NULL);
+			for (j = 0; j < devices_n; j++) {
+				clGetDeviceInfo(devices[j], CL_DEVICE_NAME, sizeof(buffer), buffer, NULL);
+				applog(LOG_DEBUG, "    %d - %s", j, buffer);
+			}
+			free(devices);
+		}
 	}
 
 	if (platforms_n == 0) {
@@ -180,24 +206,24 @@ extern bool initialize_opencl() {
 		return false;
 	}
 
-	cl_device_id devices[100];
-	cl_uint devices_n = 0;
-
-	int err;
 	err = clGetDeviceIDs(platforms[0], CL_DEVICE_TYPE_ALL, 1, &device_id, NULL);
 	if (err != CL_SUCCESS) {
 		applog(LOG_ERR, "Unable to enumerate OpenCL device IDs");
 		return false;
 	}
 
-	size_t global_mem;
 	clGetDeviceInfo(device_id, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(size_t), &global_mem, NULL);
 	applog(LOG_DEBUG, "  CL_DEVICE_GLOBAL_MEM_SIZE = %zu", global_mem);
 
-
-
 	clGetDeviceInfo(device_id, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(size_t), &dimensions, NULL);
 	applog(LOG_DEBUG, "  CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS  = %zu", dimensions);
+
+	clGetDeviceInfo(device_id, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &max_work_size, NULL);
+	applog(LOG_DEBUG, "  CL_DEVICE_MAX_WORK_GROUP_SIZE  = %zu", max_work_size);
+
+	clGetDeviceInfo(device_id, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(size_t), &compute_units, NULL);
+	applog(LOG_DEBUG, "  CL_DEVICE_MAX_COMPUTE_UNITS  = %zu", compute_units);
+
 
 
 	sizes = (size_t*)malloc(sizeof(size_t)*dimensions);
@@ -211,13 +237,9 @@ extern bool initialize_opencl() {
 	double calc = ((double)global_mem - 96.0 - 650 * 1024 * 1024 /*Some 650 M space for who knows what*/) / ((double)VM_MEMORY_SIZE * sizeof(int32_t) + sizeof(int32_t));
 	size_t bound = (size_t)calc;
 
-	ocl_cores = (int)bound;
-
-// TODO: Fix
-	ocl_cores = (bound < 1500) ? bound : 1500;
-// TODO: Fix
-
-	applog(LOG_INFO, "Global GPU Memory = %zu, Using # Cores = %zu", global_mem, ocl_cores);
+	max_cores = (compute_units - 1) * 64; // Max 64 Shaders Per Compute Unit
+	ocl_cores = (bound < max_cores) ? (int)bound : max_cores;
+	applog(LOG_INFO, "Global GPU Memory = %d, Using %d Cores", global_mem, ocl_cores);
 
 	context = clCreateContext(0, 1, &device_id, NULL, NULL, &err);
 	if (!context) {
@@ -256,14 +278,14 @@ extern bool execute_kernel(uint32_t *vm_input, uint32_t *vm_out) {
 	//printf("Dimensions: (ocl cores %d, dims %d) %zu %zu\n",ocl_cores,dimensions,global[0],global[1]);
 
 	// Initialize OpenCL VM Data w/ Random Inputs
-	err = clEnqueueNDRangeKernel(queue, kernel_initialize, 1, NULL, &global, &local, 0, NULL, NULL);
+	err = clEnqueueNDRangeKernel(queue, kernel_initialize, 1, NULL, &global[0], &local[0], 0, NULL, NULL);
 	if (err) {
 		applog(LOG_ERR, "ERROR: Unable to run 'initialize' kernel: %d", err);
 		return false;
 	}
 
 	// Run OpenCL VM
-	err = clEnqueueNDRangeKernel(queue, kernel_execute, 1, NULL, &global, &local  /* MAKE THIS MORE EFFICIENT worrkgroup_size */, 0, NULL, NULL);
+	err = clEnqueueNDRangeKernel(queue, kernel_execute, 1, NULL, &global[0], &local[0], 0, NULL, NULL);
 	if (err) {
 		applog(LOG_ERR, "ERROR: Unable to run 'execute' kernel: %d", err);
 		return false;
