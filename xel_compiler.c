@@ -422,7 +422,9 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "}\n\n");
 
 	fprintf(f, "__kernel void execute (global uint* input, global uint* output) {\n");
-	fprintf(f, "\tint i = get_global_id(0); // this is the index in the wavefront\n");
+	fprintf(f, "\tint w = get_global_id(0); // Index in the wavefront Dim1\n");
+	fprintf(f, "\tint q = get_global_id(1); // Index in the wavefront Dim2\n");
+	fprintf(f, "\tint i = q*get_global_size(0)+w; // Index in the wavefront Total\n");
 	fprintf(f, "\tglobal uint* mem = &input[i * 64000];\n");
 	fprintf(f, "\tglobal uint* out = &output[i];\n\n");
 	fprintf(f, "\t__private char msg[64];\n");
