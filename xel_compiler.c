@@ -469,10 +469,10 @@ extern bool create_opencl_source(char *work_str) {
 
 	// Debugging
 	fprintf(f, "\t\t// Temp Dump For Debugging\n");
-	fprintf(f, "\t\tmem[12] = vm_state[0];\n");
-	fprintf(f, "\t\tmem[13] = vm_state[1];\n");
-	fprintf(f, "\t\tmem[14] = vm_state[2];\n");
-	fprintf(f, "\t\tmem[15] = vm_state[3];\n\n");
+	fprintf(f, "\t\tmem[12] = target[0];\n");
+	fprintf(f, "\t\tmem[13] = target[1];\n");
+	fprintf(f, "\t\tmem[14] = target[2];\n");
+	fprintf(f, "\t\tmem[15] = target[3];\n\n");
 
 	fprintf(f, "\t\tmem[16] = swap32(hash[0]);\n");
 	fprintf(f, "\t\tmem[17] = swap32(hash[1]);\n");
@@ -481,10 +481,13 @@ extern bool create_opencl_source(char *work_str) {
 	// Debugging
 
 	fprintf(f, "\t\t// POW Solution Found\n");
-	fprintf(f, "\t\tif (swap32(hash[0]) <= target[0])\n");
-	fprintf(f, "\t\t\tout[0] = 1;\n");
-	fprintf(f, "\t\telse \n");
-	fprintf(f, "\t\t\tout[0] = 0;\n");
+	fprintf(f, "\t\tfor (i = 0; i < 4; i++)\n");
+	fprintf(f, "\t\tif (swap32(hash[i]) < target[i]){\n");
+	fprintf(f, "\t\t\tout[0] = 1; return;\n");
+	fprintf(f, "\t\t}else{\n");
+	fprintf(f, "\t\t\tout[0] = 0; return;\n");
+	fprintf(f, "\t\t}\n");
+
 	fprintf(f, "\t}\n");
 	fprintf(f, "}\n");
 
