@@ -121,16 +121,16 @@ bool compile_and_link(char* lib_name) {
 	system(str);
 #else
 #ifdef __MINGW32__
-	ret = system("gcc -c -march=native -Ofast -msse -msse2 -msse3 -mmmx -m3dnow -DBUILDING_EXAMPLE_DLL ./work/work_lib.c -o ./work/work_lib.o");
+	ret = system("gcc -I./crypto -c -march=native -Ofast -msse -msse2 -msse3 -mmmx -m3dnow -DBUILDING_EXAMPLE_DLL ./work/work_lib.c -o ./work/work_lib.o");
 	sprintf(str, "gcc -shared -o ./work/%s.dll ./work/work_lib.o -L./crypto -lelasticpl_crypto -lcrypto", lib_name);
 	ret = system(str);
 #else
 #ifdef __arm__
-	ret = system("gcc -c -std=c99 -Ofast -fPIC ./work/work_lib.c -o ./work/work_lib.o");
+	ret = system("gcc -I./crypto -c -std=c99 -Ofast -fPIC ./work/work_lib.c -o ./work/work_lib.o");
 	sprintf(str, "gcc -std=c99 -shared -Wl,-soname,./work/%s.so.1 -o ./work/%s.so ./work/work_lib.o -L./crypto -lelasticpl_crypto -lcrypto", lib_name, lib_name);
 	ret = system(str);
 #else
-	ret = system("gcc -c -march=native -Ofast -fPIC ./work/work_lib.c -o ./work/work_lib.o");
+	ret = system("gcc -I./crypto -c -march=native -Ofast -fPIC ./work/work_lib.c -o ./work/work_lib.o");
 	sprintf(str, "gcc -shared -Wl,-soname,./work/%s.so.1 -o ./work/%s.so ./work/work_lib.o -L./crypto -lelasticpl_crypto -lcrypto", lib_name, lib_name);
 	ret = system(str);
 #endif
