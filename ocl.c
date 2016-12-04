@@ -213,7 +213,7 @@ extern bool initialize_opencl() {
 	}
 
 	clGetDeviceInfo(device_id, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(size_t), &global_mem, NULL);
-	applog(LOG_DEBUG, "  CL_DEVICE_GLOBAL_MEM_SIZE = %zu", global_mem);
+	applog(LOG_DEBUG, "  CL_DEVICE_GLOBAL_MEM_SIZE = %lu", global_mem);
 
 	clGetDeviceInfo(device_id, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(size_t), &dimensions, NULL);
 	applog(LOG_DEBUG, "  CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS  = %zu", dimensions);
@@ -239,7 +239,7 @@ extern bool initialize_opencl() {
 
 	max_cores = (compute_units - 1) * 64; // Max 64 Shaders Per Compute Unit
 	ocl_cores = (bound < max_cores) ? (int)bound : max_cores;
-	applog(LOG_INFO, "Global GPU Memory = %d, Using %d Cores", global_mem, ocl_cores);
+	applog(LOG_INFO, "Global GPU Memory = %lu, Using %d Cores", global_mem, ocl_cores);
 
 	context = clCreateContext(0, 1, &device_id, NULL, NULL, &err);
 	if (!context) {
