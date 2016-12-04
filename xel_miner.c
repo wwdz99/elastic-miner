@@ -583,7 +583,6 @@ static bool get_vm_input(struct work *work) {
 }
 
 static bool get_opencl_base_data(struct work *work, uint32_t *vm_input) {
-	int i;
 	char msg[80];
 	uint32_t *msg32 = (uint32_t *)msg;
 	uint32_t *workid32 = (uint32_t *)&work->work_id;

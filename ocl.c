@@ -42,7 +42,6 @@ cl_device_id device_id;
 cl_context context;
 
 extern unsigned char* load_opencl_source(char *work_str) {
-	int err;
 	unsigned char filename[50], *ocl_source = NULL;
 	FILE *fp;
 	size_t bytes;
@@ -76,7 +75,7 @@ extern unsigned char* load_opencl_source(char *work_str) {
 }
 
 extern bool prepare_opencl_kernels(char *ocl_source) {
-	int err;
+	cl_int err;
 
 	// Create Kernels
 	kernel_initialize = create_opencl_kernel(device_id, context, ocl_source, "initialize");
@@ -106,15 +105,15 @@ extern bool prepare_opencl_kernels(char *ocl_source) {
 	}
 
 	// Set Argurments For Kernels
-	err = clSetKernelArg(kernel_initialize, 0, sizeof(cl_mem), &input);
-	err |= clSetKernelArg(kernel_initialize, 1, sizeof(cl_mem), &base_data);
+	err = clSetKernelArg(kernel_initialize, 0, sizeof(cl_mem), (const void*)&input);
+	err |= clSetKernelArg(kernel_initialize, 1, sizeof(cl_mem), (const void*)&base_data);
 	if (err != CL_SUCCESS) {
 		applog(LOG_ERR, "Unable to set OpenCL argurments for 'initialize'");
 		return false;
 	}
 
-	err = clSetKernelArg(kernel_execute, 0, sizeof(cl_mem), &input);
-	err |= clSetKernelArg(kernel_execute, 1, sizeof(cl_mem), &output);
+	err = clSetKernelArg(kernel_execute, 0, sizeof(cl_mem), (const void*)&input);
+	err |= clSetKernelArg(kernel_execute, 1, sizeof(cl_mem), (const void*)&output);
 	if (err != CL_SUCCESS) {
 		applog(LOG_ERR, "Unable to set OpenCL argurments for 'execute'");
 		return false;
@@ -256,7 +255,7 @@ extern bool initialize_opencl() {
 	return true;
 }
 
-extern bool execute_kernel(uint32_t *vm_input, uint32_t *vm_out) {
+extern bool execute_kernel(const uint32_t *vm_input, uint32_t *vm_out) {
 	int err;
 
 	// Copy Random Inputs To OpenCL Buffer
@@ -269,11 +268,11 @@ extern bool execute_kernel(uint32_t *vm_input, uint32_t *vm_out) {
 	size_t first_dim = (ocl_cores > sizes[0]) ? sizes[0] : ocl_cores;
 	size_t second_dim = 1;
 	if (dimensions >= 2) {
-		second_dim = (ocl_cores>sizes[0]) ? (ceil((double)ocl_cores / (double)sizes[0])) : 1;
+		second_dim = (size_t)(ocl_cores>sizes[0]) ? (ceil((double)ocl_cores / (double)sizes[0])) : 1;
 	}
 
-	size_t global[2] = { first_dim, second_dim };
-	size_t local[2] = { 128, 64 };
+	const size_t global[2] = { first_dim, second_dim };
+	const size_t local[2] = { 128, 64 };
 
 	//printf("Dimensions: (ocl cores %d, dims %d) %zu %zu\n",ocl_cores,dimensions,global[0],global[1]);
 

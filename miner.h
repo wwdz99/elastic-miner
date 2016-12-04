@@ -270,7 +270,7 @@ extern unsigned char* load_opencl_source(char *work_str);
 extern bool prepare_opencl_kernels(char *ocl_source);
 extern cl_kernel create_opencl_kernel(cl_device_id device_id, cl_context context, const char *source, const char *name);
 extern bool initialize_opencl(void);
-extern bool execute_kernel(uint32_t *vm_input, uint32_t *vm_out);
+extern bool execute_kernel(const uint32_t *vm_input, uint32_t *vm_out);
 
 
 struct thread_q;
