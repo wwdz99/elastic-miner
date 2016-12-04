@@ -63,13 +63,13 @@ static char* convert(ast* exp) {
 			if (exp->value < 0 || exp->value > VM_MEMORY_SIZE)
 				sprintf(result, "0");
 			else
-				sprintf(result, "%d", exp->value);
+				sprintf(result, "%zu", exp->value);
 			break;
 		case NODE_VAR_CONST:
 			if (exp->value < 0 || exp->value > VM_MEMORY_SIZE)
 				sprintf(result, "mem[0]");
 			else
-				sprintf(result, "mem[%d]", exp->value);
+				sprintf(result, "mem[%zu]", exp->value);
 			break;
 		case NODE_VAR_EXP:
 			sprintf(result, "mem[%s]", lval);

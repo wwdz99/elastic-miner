@@ -48,7 +48,7 @@
 #define MAX_SOURCE_SIZE 1024 * 256	// 256K
 #define VM_INPUTS 12
 
-extern __thread _ALIGN(64) *vm_mem;
+extern __thread _ALIGN(64) uint32_t *vm_mem;
 extern __thread vm_stack_item *vm_stack;
 extern __thread int vm_stack_idx;
 extern __thread uint32_t *vm_state;
@@ -271,7 +271,7 @@ extern bool prepare_opencl_kernels(char *ocl_source);
 extern cl_kernel create_opencl_kernel(cl_device_id device_id, cl_context context, const char *source, const char *name);
 extern bool initialize_opencl(void);
 extern bool execute_kernel(const uint32_t *vm_input, uint32_t *vm_out);
-
+extern char* convert_ast_to_opencl();
 
 struct thread_q;
 

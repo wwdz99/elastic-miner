@@ -154,7 +154,6 @@ extern cl_kernel create_opencl_kernel(cl_device_id device_id, cl_context context
 
 extern bool initialize_opencl() {
 	int i, j;
-
 	cl_platform_id platforms[100];
 	cl_uint err;
 	cl_uint platforms_n = 0;

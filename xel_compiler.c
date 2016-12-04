@@ -87,14 +87,14 @@ bool create_c_source() {
 	if (!code)
 		return false;
 
-	fprintf(f, &code[0]);
+	fprintf(f, "%s", &code[0]);
 
 	fprintf(f, "\treturn rc;\n");
 	fprintf(f, "}\n");
 
 	if (opt_test_vm) {
 		fprintf(stdout, "\n********************************************************************************\n");
-		fprintf(stdout, code);
+		fprintf(stdout, "%s", code);
 		fprintf(stdout, "\n********************************************************************************\n");
 	}
 
@@ -105,6 +105,7 @@ bool create_c_source() {
 
 bool compile_and_link(char* lib_name) {
 	char str[1000];
+	int ret = 0;
 
 	applog(LOG_DEBUG, "DEBUG: Converting ElasticPL to C");
 
@@ -120,18 +121,18 @@ bool compile_and_link(char* lib_name) {
 	system(str);
 #else
 #ifdef __MINGW32__
-	system("gcc -c -march=native -Ofast -msse -msse2 -msse3 -mmmx -m3dnow -DBUILDING_EXAMPLE_DLL ./work/work_lib.c -o ./work/work_lib.o");
+	ret = system("gcc -c -march=native -Ofast -msse -msse2 -msse3 -mmmx -m3dnow -DBUILDING_EXAMPLE_DLL ./work/work_lib.c -o ./work/work_lib.o");
 	sprintf(str, "gcc -shared -o ./work/%s.dll ./work/work_lib.o -L./crypto -lelasticpl_crypto -lcrypto", lib_name);
-	system(str);
+	ret = system(str);
 #else
 #ifdef __arm__
-	system("gcc -c -std=c99 -Ofast -fPIC ./work/work_lib.c -o ./work/work_lib.o");
+	ret = system("gcc -c -std=c99 -Ofast -fPIC ./work/work_lib.c -o ./work/work_lib.o");
 	sprintf(str, "gcc -std=c99 -shared -Wl,-soname,./work/%s.so.1 -o ./work/%s.so ./work/work_lib.o -L./crypto -lelasticpl_crypto -lcrypto", lib_name, lib_name);
-	system(str);
+	ret = system(str);
 #else
-	system("gcc -c -march=native -Ofast -fPIC ./work/work_lib.c -o ./work/work_lib.o");
+	ret = system("gcc -c -march=native -Ofast -fPIC ./work/work_lib.c -o ./work/work_lib.o");
 	sprintf(str, "gcc -shared -Wl,-soname,./work/%s.so.1 -o ./work/%s.so ./work/work_lib.o -L./crypto -lelasticpl_crypto -lcrypto", lib_name, lib_name);
-	system(str);
+	ret = system(str);
 #endif
 #endif
 #endif
@@ -448,7 +449,7 @@ extern bool create_opencl_source(char *work_str) {
 	if (!code)
 		return false;
 
-	fprintf(f, code);
+	fprintf(f, "%s", code);
 
 //	fprintf(f, "\tbool bounty_found=false;if (bounty_found) {\n");
 //	fprintf(f, "\tif (!bounty_found) {\n");
@@ -487,7 +488,7 @@ extern bool create_opencl_source(char *work_str) {
 
 	if (opt_test_vm) {
 		fprintf(stdout, "\n********************************************************************************\n");
-		fprintf(stdout, code);
+		fprintf(stdout, "%s", code);
 		fprintf(stdout, "\n********************************************************************************\n");
 	}
 

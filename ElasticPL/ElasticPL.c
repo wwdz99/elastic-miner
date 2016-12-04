@@ -82,7 +82,7 @@ extern void dump_vm_ast(ast* root) {
 		dump_vm_ast(root->right);
 
 		if (root->type == NODE_CONSTANT || root->type == NODE_VAR_CONST)
-			sprintf(val, "%d", root->value);
+			sprintf(val, "%ld", root->value);
 		else
 			strcpy(val, "");
 
