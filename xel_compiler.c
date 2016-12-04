@@ -484,9 +484,10 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "\t\tfor (i = 0; i < 4; i++)\n");
 	fprintf(f, "\t\tif (swap32(hash[i]) < target[i]){\n");
 	fprintf(f, "\t\t\tout[0] = 1; return;\n");
-	fprintf(f, "\t\t}else{\n");
+	fprintf(f, "\t\t}else if(swap32(hash[i]) > target[i]){\n");
 	fprintf(f, "\t\t\tout[0] = 0; return;\n");
 	fprintf(f, "\t\t}\n");
+	fprintf(f, "\t\tout[0] = 0;\n");
 
 	fprintf(f, "\t}\n");
 	fprintf(f, "}\n");
