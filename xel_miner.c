@@ -35,6 +35,7 @@
 #include <sys/resource.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
+#include <ctype.h> // avoid implicit declaration of tolower
 #endif
 
 
@@ -82,7 +83,7 @@ uint32_t g_pow_target[4];
 //unsigned char g_pow_target_str[65];
 //uint32_t g_pow_target[8];
 
-__thread _ALIGN(64) *vm_mem = NULL;
+__thread _ALIGN(64) uint32_t *vm_mem = NULL;
 __thread uint32_t *vm_state = NULL;
 __thread vm_stack_item *vm_stack = NULL;
 __thread int vm_stack_idx;
@@ -455,7 +456,7 @@ static bool load_test_file(char *buf) {
 	len = ftell(fp);
 
 	if (len > MAX_SOURCE_SIZE - 4) {
-		fprintf(stderr, "ERROR: Test file exceeds max size (%d): %d bytes\n", MAX_SOURCE_SIZE, len);
+		fprintf(stderr, "ERROR: Test file exceeds max size (%d): %zu bytes\n", MAX_SOURCE_SIZE, len);
 		fclose(fp);
 		return false;
 	}
@@ -2074,7 +2075,7 @@ int main(int argc, char **argv) {
 	}
 
 	if (opt_opencl)
-		applog(LOG_INFO, "Attempting to start miner thread with %d OpenCL cores", ocl_cores);
+		applog(LOG_INFO, "Attempting to start OpenCL loop");
 	else
 		applog(LOG_INFO, "Attempting to start %d miner threads", opt_n_threads);
 
@@ -2104,7 +2105,7 @@ int main(int argc, char **argv) {
 	}
 
 	if (opt_opencl)
-		applog(LOG_INFO, "Miner thread with %d OpenCL cores started", ocl_cores);
+		applog(LOG_INFO, "OpenCL loop started");
 	else
 		applog(LOG_INFO, "%d mining threads started", opt_n_threads);
 

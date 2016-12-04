@@ -154,7 +154,6 @@ extern cl_kernel create_opencl_kernel(cl_device_id device_id, cl_context context
 
 extern bool initialize_opencl() {
 	int i, j;
-
 	cl_platform_id platforms[100];
 	cl_uint err;
 	cl_uint platforms_n = 0;
@@ -236,7 +235,7 @@ extern bool initialize_opencl() {
 	double calc = ((double)global_mem - 96.0 - 650 * 1024 * 1024 /*Some 650 M space for who knows what*/) / ((double)VM_MEMORY_SIZE * sizeof(int32_t) + sizeof(int32_t));
 	size_t bound = (size_t)calc;
 
-	max_cores = (compute_units - 1) * 64; // Max 64 Shaders Per Compute Unit
+	max_cores = 1024; //(compute_units - 1) * 64; // Max 64 Shaders Per Compute Unit
 	ocl_cores = (bound < max_cores) ? (int)bound : max_cores;
 	applog(LOG_INFO, "Global GPU Memory = %lu, Using %d Cores", global_mem, ocl_cores);
 

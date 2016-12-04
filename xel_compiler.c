@@ -87,14 +87,14 @@ bool create_c_source() {
 	if (!code)
 		return false;
 
-	fprintf(f, &code[0]);
+	fprintf(f, "%s", &code[0]);
 
 	fprintf(f, "\treturn rc;\n");
 	fprintf(f, "}\n");
 
 	if (opt_test_vm) {
 		fprintf(stdout, "\n********************************************************************************\n");
-		fprintf(stdout, code);
+		fprintf(stdout, "%s", code);
 		fprintf(stdout, "\n********************************************************************************\n");
 	}
 
@@ -105,6 +105,7 @@ bool create_c_source() {
 
 bool compile_and_link(char* lib_name) {
 	char str[1000];
+	int ret = 0;
 
 	applog(LOG_DEBUG, "DEBUG: Converting ElasticPL to C");
 
@@ -120,18 +121,18 @@ bool compile_and_link(char* lib_name) {
 	system(str);
 #else
 #ifdef __MINGW32__
-	system("gcc -c -march=native -Ofast -msse -msse2 -msse3 -mmmx -m3dnow -DBUILDING_EXAMPLE_DLL ./work/work_lib.c -o ./work/work_lib.o");
+	ret = system("gcc -I./crypto -c -march=native -Ofast -msse -msse2 -msse3 -mmmx -m3dnow -DBUILDING_EXAMPLE_DLL ./work/work_lib.c -o ./work/work_lib.o");
 	sprintf(str, "gcc -shared -o ./work/%s.dll ./work/work_lib.o -L./crypto -lelasticpl_crypto -lcrypto", lib_name);
-	system(str);
+	ret = system(str);
 #else
 #ifdef __arm__
-	system("gcc -c -std=c99 -Ofast -fPIC ./work/work_lib.c -o ./work/work_lib.o");
+	ret = system("gcc -I./crypto -c -std=c99 -Ofast -fPIC ./work/work_lib.c -o ./work/work_lib.o");
 	sprintf(str, "gcc -std=c99 -shared -Wl,-soname,./work/%s.so.1 -o ./work/%s.so ./work/work_lib.o -L./crypto -lelasticpl_crypto -lcrypto", lib_name, lib_name);
-	system(str);
+	ret = system(str);
 #else
-	system("gcc -c -march=native -Ofast -fPIC ./work/work_lib.c -o ./work/work_lib.o");
+	ret = system("gcc -I./crypto -c -march=native -Ofast -fPIC ./work/work_lib.c -o ./work/work_lib.o");
 	sprintf(str, "gcc -shared -Wl,-soname,./work/%s.so.1 -o ./work/%s.so ./work/work_lib.o -L./crypto -lelasticpl_crypto -lcrypto", lib_name, lib_name);
-	system(str);
+	ret = system(str);
 #endif
 #endif
 #endif
@@ -421,7 +422,9 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "}\n\n");
 
 	fprintf(f, "__kernel void execute (global uint* input, global uint* output) {\n");
-	fprintf(f, "\tint i = get_global_id(0); // this is the index in the wavefront\n");
+	fprintf(f, "\tint w = get_global_id(0); // Index in the wavefront Dim1\n");
+	fprintf(f, "\tint q = get_global_id(1); // Index in the wavefront Dim2\n");
+	fprintf(f, "\tint i = q*get_global_size(0)+w; // Index in the wavefront Total\n");
 	fprintf(f, "\tglobal uint* mem = &input[i * 64000];\n");
 	fprintf(f, "\tglobal uint* out = &output[i];\n\n");
 	fprintf(f, "\t__private char msg[64];\n");
@@ -448,7 +451,7 @@ extern bool create_opencl_source(char *work_str) {
 	if (!code)
 		return false;
 
-	fprintf(f, code);
+	fprintf(f, "%s", code);
 
 //	fprintf(f, "\tbool bounty_found=false;if (bounty_found) {\n");
 //	fprintf(f, "\tif (!bounty_found) {\n");
@@ -466,10 +469,10 @@ extern bool create_opencl_source(char *work_str) {
 
 	// Debugging
 	fprintf(f, "\t\t// Temp Dump For Debugging\n");
-	fprintf(f, "\t\tmem[12] = vm_state[0];\n");
-	fprintf(f, "\t\tmem[13] = vm_state[1];\n");
-	fprintf(f, "\t\tmem[14] = vm_state[2];\n");
-	fprintf(f, "\t\tmem[15] = vm_state[3];\n\n");
+	fprintf(f, "\t\tmem[12] = target[0];\n");
+	fprintf(f, "\t\tmem[13] = target[1];\n");
+	fprintf(f, "\t\tmem[14] = target[2];\n");
+	fprintf(f, "\t\tmem[15] = target[3];\n\n");
 
 	fprintf(f, "\t\tmem[16] = swap32(hash[0]);\n");
 	fprintf(f, "\t\tmem[17] = swap32(hash[1]);\n");
@@ -478,16 +481,20 @@ extern bool create_opencl_source(char *work_str) {
 	// Debugging
 
 	fprintf(f, "\t\t// POW Solution Found\n");
-	fprintf(f, "\t\tif (swap32(hash[0]) <= target[0])\n");
-	fprintf(f, "\t\t\tout[0] = 1;\n");
-	fprintf(f, "\t\telse \n");
-	fprintf(f, "\t\t\tout[0] = 0;\n");
+	fprintf(f, "\t\tfor (i = 0; i < 4; i++)\n");
+	fprintf(f, "\t\tif (swap32(hash[i]) < target[i]){\n");
+	fprintf(f, "\t\t\tout[0] = 1; return;\n");
+	fprintf(f, "\t\t}else if(swap32(hash[i]) > target[i]){\n");
+	fprintf(f, "\t\t\tout[0] = 0; return;\n");
+	fprintf(f, "\t\t}\n");
+	fprintf(f, "\t\tout[0] = 0;\n");
+
 	fprintf(f, "\t}\n");
 	fprintf(f, "}\n");
 
 	if (opt_test_vm) {
 		fprintf(stdout, "\n********************************************************************************\n");
-		fprintf(stdout, code);
+		fprintf(stdout, "%s", code);
 		fprintf(stdout, "\n********************************************************************************\n");
 	}
 
