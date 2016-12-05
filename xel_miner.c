@@ -73,9 +73,9 @@ char g_work_nm[50];
 char g_work_id[22];
 uint64_t g_cur_work_id;
 unsigned char g_pow_target_str[33];
-uint32_t g_pow_target[8];
+uint32_t g_pow_target[4];
 
-__thread _ALIGN(64) *vm_mem = NULL;
+__thread _ALIGN(64) int32_t	*vm_mem = NULL;
 __thread uint32_t *vm_state = NULL;
 __thread vm_stack_item *vm_stack = NULL;
 __thread int vm_stack_idx;
@@ -578,25 +578,18 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 	uint32_t *mult32 = (uint32_t *)work->multiplicator;
 	uint32_t *hash32 = (uint32_t *)hash;
 
-
-	mult32[0] = thr_id;
-	mult32[6] = genrand_int32();
-	mult32[7] = genrand_int32();
-
-	//	RAND_bytes(&mult32[6], 8);
-	//	RAND_bytes(&mult32[7], 4);
+	mult32[0] = thr_id;				// Ensures Each Thread Is Unique
+	mult32[1] = 0;					// Value Will Be Incremented On Each Pass
+	mult32[6] = genrand_int32();	// Random Number
+	mult32[7] = genrand_int32();	// Random Number
 
 	while (1) {
 		// Check If New Work Is Available
 		if (work_restart[thr_id].restart)
 			return 0;
 
-		// Increment mult32
-		mult32[7] = mult32[7] + 1;
-		if (mult32[7] == INT32_MAX) {
-			mult32[7] = 0;
-			mult32[6] = mult32[6] + 1;
-		}
+		// Increment Multiplicator
+		mult32[2] += 1;
 
 		// Get Values For VM Inputs
 		get_vm_input(work);
@@ -627,18 +620,21 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 
 		MD5(msg, 64, hash);
 
-		// POW Solution Found
-		if (swap32(hash32[0]) <= g_pow_target[0]) {
-			rc = 2;
+		// Check For POW Solution
+		for (i = 0; i < 4; i++) {
+
+			hash32[i] = swap32(hash32[i]);
+
+			if (hash32[i] <= work->pow_target[i]) {
+				return 2;	// POW Solution Found
+			}
+			else {
+				if (hash32[i] > work->pow_target[i])
+					break;
+			}
 		}
-		else
-			rc = 0;
 
 		(*hashes_done)++;
-
-		if (rc == 2) {
-			return rc;
-		}
 
 		// Only Run For 1s Before Returning To Miner Thread
 		if ((time(NULL) - t_start) >= 1)
@@ -734,8 +730,8 @@ static bool get_work(CURL *curl) {
 	if (rc > 0) {
 		strncpy(g_work_id, work.work_str, 21);
 		strncpy(g_work_nm, work.work_nm, 49);
-		sprintf(g_pow_target_str, "%08X%08X%08X...", work.pow_target[0], work.pow_target[1], work.pow_target[2]);
-		memcpy(g_pow_target, work.pow_target, 8 * sizeof(uint32_t));
+		sprintf(g_pow_target_str, "%08X%08X%08X%08X", work.pow_target[0], work.pow_target[1], work.pow_target[2], work.pow_target[3]);
+		memcpy(g_pow_target, work.pow_target, 4 * sizeof(uint32_t));
 		memcpy(&g_work, &work, sizeof(struct work));
 
 		// Restart Miner Threads If Work Package Changes
@@ -1060,6 +1056,9 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 		applog(LOG_DEBUG, "DEBUG: Time to submit solution: %.2f ms", (1000.0 * diff.tv_sec) + (0.001 * diff.tv_usec));
 	}
 
+	// Hide Passphrase
+	data[strlen(data) - strlen(passphrase)] = 0;
+
 	applog(LOG_DEBUG, "DEBUG: Submit request - %s %s", url, data);
 
 	accepted = (char *)json_string_value(json_object_get(val, "approved"));
@@ -1073,7 +1072,6 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 			if (strstr(err_desc, "Duplicate unconfirmed transaction:")) {
 				applog(LOG_NOTICE, "CPU%d: %s***** Bounty Discarded *****", req->thr_id, CL_YLW);
 				applog(LOG_DEBUG, "Work ID: %s - No more bounty announcement slots available", req->work_str, err_desc);
-//				req->delay_tm = time(NULL) + 30;  // Retry In 30s
 				req->req_type = SUBMIT_COMPLETE;
 			}
 			else {
@@ -1214,6 +1212,10 @@ static void *miner_thread(void *userdata) {
 				inst->initialize(vm_mem, vm_state);
 			}
 		}
+		// Otherwise, Just Update POW Target
+		else {
+			memcpy(&work.pow_target, &g_work.pow_target, 4 * sizeof(uint32_t));
+		}
 
 		work_restart[thr_id].restart = 0;
 
@@ -1270,11 +1272,8 @@ static void *miner_thread(void *userdata) {
 
 		// Submit Work That Meets POW Target
 		if (rc == 2) {
-			sprintf(hash_str, "%08X%08X%08X...", swap32(hash32[0]), swap32(hash32[1]), swap32(hash32[2]));
-			sprintf(gpow_str, "%08X%08X%08X...", (g_pow_target[0]), (g_pow_target[1]), (g_pow_target[2]));
-
 			applog(LOG_NOTICE, "CPU%d: Submitting POW Solution", thr_id);
-			applog(LOG_DEBUG, "DEBUG: Hash - %s  Tgt - %s",hash_str, gpow_str);
+			applog(LOG_DEBUG, "DEBUG: Hash - %08X%08X%08X...  Tgt - %s", hash32[0], hash32[1], hash32[2], g_pow_target_str);
 			wc = (struct workio_cmd *) calloc(1, sizeof(*wc));
 			if (!wc) {
 				applog(LOG_ERR, "ERROR: Unable to allocate workio_cmd.  Shutting down thread for CPU%d", thr_id);

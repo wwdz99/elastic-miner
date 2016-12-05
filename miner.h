@@ -100,7 +100,7 @@ struct work {
 	uint64_t work_id;
 	unsigned char work_str[22];
 	unsigned char work_nm[50];
-	uint32_t pow_target[8];
+	uint32_t pow_target[4];
 	int32_t vm_input[12];
 	unsigned char multiplicator[32];
 	unsigned char announcement_hash[32];
@@ -282,7 +282,7 @@ extern bool hex2ints(uint32_t *p, int array_sz, const char *hex, int len);
 extern bool ascii85dec(unsigned char *str, int strsz, const char *ascii85);
 static void databuf_free(struct data_buffer *db);
 static size_t all_data_cb(const void *ptr, size_t size, size_t nmemb, void *user_data);
-extern json_t* json_rpc_call(CURL *curl, const char *url, const char *userpass, const char *req, int *curl_err);
+extern json_t* json_rpc_call(CURL *curl, const char *url, const char *userpass, char *req, int *curl_err);
 
 extern unsigned long genrand_int32(void);
 extern void init_genrand(unsigned long s);
