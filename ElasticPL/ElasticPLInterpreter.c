@@ -22,15 +22,24 @@ char blk_old[4096];
 
 uint32_t wcet_block;
 
+bool use_crypto_function;
+
 extern char* convert_ast_to_c() {
 	blk_new[0] = 0;
 	blk_old[0] = 0;
+
+	use_crypto_function = false;
 
 	char* ret = NULL;
 	int i;
 	for (i = 0; i < vm_ast_cnt; i++) {
 		ret = append_strings(ret, convert(vm_ast[i]));
 	}
+
+	// The Current OpenCL Code Can't Run The Crypto Functions
+	if (opt_opencl && use_crypto_function)
+		return NULL;
+
 	return ret;
 }
 
@@ -63,13 +72,13 @@ static char* convert(ast* exp) {
 			if (exp->value < 0 || exp->value > VM_MEMORY_SIZE)
 				sprintf(result, "0");
 			else
-				sprintf(result, "%zu", exp->value);
+				sprintf(result, "%lu", exp->value);
 			break;
 		case NODE_VAR_CONST:
 			if (exp->value < 0 || exp->value > VM_MEMORY_SIZE)
 				sprintf(result, "mem[0]");
 			else
-				sprintf(result, "mem[%zu]", exp->value);
+				sprintf(result, "mem[%lu]", exp->value);
 			break;
 		case NODE_VAR_EXP:
 			sprintf(result, "mem[%s]", lval);
@@ -181,7 +190,10 @@ static char* convert(ast* exp) {
 			sprintf(result, "m(-%s)", lval);
 			break;
 		case NODE_VERIFY:
-			sprintf(result, "\n\trc = m(%s != 0 ? 1 : 0);\n\n", lval);
+			if (opt_opencl)
+				sprintf(result, "\n\tuint bounty_found = m(%s != 0 ? 1 : 0);\n\n", lval);
+			else
+				sprintf(result, "\n\trc = m(%s != 0 ? 1 : 0);\n\n", lval);
 			break;
 		case NODE_PARAM:
 			if (!blk_old[0])
@@ -194,557 +206,253 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_SHA256:
 			sprintf(result, "\tm(epl_sha256( %s, mem ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SHA512:
 			sprintf(result, "\tm(epl_sha512( %s, mem ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_WHIRLPOOL:
 			sprintf(result, "\tm(epl_whirlpool( %s, mem ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_MD5:
 			sprintf(result, "\tm(epl_md5( %s, mem ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP192K_PTP:
 			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp192k1, 24 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP192K_PA:
 			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp192k1, 25, 49 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP192K_PS:
 			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp192k1, 25, 49 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP192K_PSM:
 			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp192k1, 25, 49 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP192K_PN:
 			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp192k1, 25, 49 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP192R_PTP:
 			sprintf(result, "SECP192R1PrivToPub( %s );\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP192R_PA:
 			sprintf(result, "SECP192R1PointAdd( %s );\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP192R_PS:
 			sprintf(result, "SECP192R1PointSub( %s );\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP192R_PSM:
 			sprintf(result, "SECP192R1PointScalarMult( %s );\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP192R_PN:
 			sprintf(result, "SECP192R1PointNegate( %s );\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP224K_PTP:
 			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp224k1, 28 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP224K_PA:
 			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp224k1, 29, 57 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP224K_PS:
 			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp224k1, 29, 57 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP224K_PSM:
 			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp224k1, 29, 57 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP224K_PN:
 			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp224k1, 29, 57 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP224R_PTP:
 			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp224r1, 28 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP224R_PA:
 			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp224r1, 29, 57 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP224R_PS:
 			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp224r1, 29, 57 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP224R_PSM:
 			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp224r1, 29, 57 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP224R_PN:
 			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp224r1, 29, 57 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP256K_PTP:
 			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp256k1, 32 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP256K_PA:
 			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp256k1, 33, 65 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP256K_PS:
 			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp256k1, 33, 65 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP256K_PSM:
 			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp256k1, 33, 65 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP256K_PN:
 			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp256k1, 33, 65 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP256R_PTP:
 //Missing
 			sprintf(result, "SECP256R1PrivToPub( %s );\n", rval);
 //Missing
+			use_crypto_function = true;
 			break;
 		case NODE_SECP256R_PA:
 			sprintf(result, "SECP256R1PointAdd( %s );\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP256R_PS:
 			sprintf(result, "SECP256R1PointSub( %s );\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP256R_PSM:
 			sprintf(result, "SECP256R1PointScalarMult( %s );\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP256R_PN:
 			sprintf(result, "SECP256R1PointNegate( %s );\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP384R_PTP:
 			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp384r1, 48 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP384R_PA:
 			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp384r1, 49, 97 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP384R_PS:
 			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp384r1, 49, 97 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP384R_PSM:
 			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp384r1, 49, 97 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_SECP384R_PN:
 			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp384r1, 49, 97 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_PRM192V1_PTP:
 			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v1, 24 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_PRM192V1_PA:
 			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime192v1, 25, 49 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_PRM192V1_PS:
 			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime192v1, 25, 49 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_PRM192V1_PSM:
 			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime192v1, 25, 49 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_PRM192V1_PN:
 			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime192v1, 25, 49 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_PRM192V2_PTP:
 			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v2, 24 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_PRM192V2_PA:
 			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime192v2, 25, 49 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_PRM192V2_PS:
 			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime192v2, 25, 49 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_PRM192V2_PSM:
 			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime192v2, 25, 49 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_PRM192V2_PN:
 			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime192v2, 25, 49 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_PRM192V3_PTP:
 			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v3, 24 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_PRM192V3_PA:
 			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime192v3, 25, 49 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_PRM192V3_PS:
 			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime192v3, 25, 49 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_PRM192V3_PSM:
 			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime192v3, 25, 49 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_PRM192V3_PN:
 			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime192v3, 25, 49 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_PRM256V1_PTP:
 			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime256v1, 32 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_PRM256V1_PA:
 			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime256v1, 33, 65 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_PRM256V1_PS:
 			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime256v1, 33, 65 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_PRM256V1_PSM:
 			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime256v1, 33, 65 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_PRM256V1_PN:
 			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime256v1, 33, 65 ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_TIGER:
 			sprintf(result, "Tiger( %s );\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_RIPEMD160:
 			sprintf(result, "\tm(epl_ripemd160( %s, mem ));\n", rval);
+			use_crypto_function = true;
 			break;
 		case NODE_RIPEMD128:
 			sprintf(result, "RIPEMD128( %s );\n", rval);
-			break;
-		default:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - Unsupported Operation (%d)\n\");\n", exp->type);
-		}
-	}
-
-	return result;
-}
-
-extern char* convert_ast_to_opencl() {
-	blk_new[0] = 0;
-	blk_old[0] = 0;
-
-	char* ret = NULL;
-	int i;
-	for (i = 0; i < vm_ast_cnt; i++) {
-		ret = append_strings(ret, convert_opencl(vm_ast[i]));
-	}
-	return ret;
-}
-
-// Use Post Order Traversal To Translate The Expressions In The AST to OpenCL
-static char* convert_opencl(ast* exp) {
-	char* lval = 0;
-	char* rval = 0;
-	char* tmp = 0;
-	char *result = malloc(sizeof(char) * 256);
-	result[0] = 0;
-
-	if (exp != NULL) {
-
-		// Reset Temp Block Strings
-		if (exp->type != NODE_BLOCK) {
-			blk_new[0] = 0;
-			blk_old[0] = 0;
-		}
-
-		if (exp->left != NULL) {
-			lval = convert_opencl(exp->left);
-		}
-
-		// Check For If Statement As Right Side Is Conditional
-		if (exp->type != NODE_IF)
-			rval = convert_opencl(exp->right);
-
-		switch (exp->type) {
-		case NODE_CONSTANT:
-			if (exp->value < 0 || exp->value > VM_MEMORY_SIZE)
-				sprintf(result, "0");
-			else
-				sprintf(result, "%d", (uint32_t)exp->value); // IS THIS CORRECT? TODO FIXME
-			break;
-		case NODE_VAR_CONST:
-			if (exp->value < 0 || exp->value > VM_MEMORY_SIZE)
-				sprintf(result, "mem[0]");
-			else
-				sprintf(result, "mem[%d]", (uint32_t)exp->value);
-			break;
-		case NODE_VAR_EXP:
-			sprintf(result, "mem[%s]", lval);
-			break;
-		case NODE_ASSIGN:
-			tmp = replace(lval, "mem[", "mem[m(");
-			free(lval);
-			lval = replace(tmp, "]", ")]");
-			free(tmp);
-			sprintf(result, "%s = m(%s);\n", lval, rval);
-			break;
-		case NODE_IF:
-			if (exp->right->type != NODE_ELSE) {
-				rval = convert_opencl(exp->right);				// If Body (No Else Condition)
-				result = realloc(result, strlen(lval) + strlen(rval) + 256);
-				sprintf(result, "if( %s ) {\n\t%s}\n", lval, rval);
-			}
-			else {
-				tmp = lval;
-				lval = convert_opencl(exp->right->left);		// If Body
-				rval = convert_opencl(exp->right->right);		// Else Body
-				result = realloc(result, strlen(lval) + strlen(rval) + 256);
-				sprintf(result, "if( %s ) {\n\t%s}\nelse {\n\t%s}\n", tmp, lval, rval);
-			}
-			break;
-		case NODE_ELSE:
-			break;
-		case NODE_REPEAT:
-			result = realloc(result, (2 * strlen(lval)) + strlen(rval) + 256);
-			sprintf(result, "if ( %s > 0 ) {\n\tint loop%d;\n\tfor (loop%d = 0; loop%d < ( %s ); loop%d++) {\n\t%s\t}\n}\n", lval, exp->token_num, exp->token_num, exp->token_num, lval, exp->token_num, rval);
-			break;
-		case NODE_BLOCK:
-			if (!blk_old[0])
-				sprintf(blk_new, "%s", lval);
-			else
-				sprintf(blk_new, "%s\t%s", lval, blk_old);
-			result = realloc(result, strlen(blk_new) + 1);
-			sprintf(result, "%s", blk_new);
-			strcpy(blk_old, blk_new);
-			break;
-		case NODE_ADD:
-			sprintf(result, "m(%s + %s)", lval, rval);
-			break;
-		case NODE_SUB:
-			sprintf(result, "m(%s - %s)", lval, rval);
-			break;
-		case NODE_MUL:
-			sprintf(result, "m(%s * %s)", lval, rval);
-			break;
-		case NODE_DIV:
-			sprintf(result, "((%s != 0) ? m(%s / %s) : m(0))", rval, lval, rval);
-			break;
-		case NODE_MOD:
-			sprintf(result, "((%s > 0) ? m(%s %%%% %s) : m(0))", rval, lval, rval);
-			break;
-		case NODE_LSHIFT:
-			sprintf(result, "m(%s << %s)", lval, rval);
-			break;
-		case NODE_LROT:
-			sprintf(result, "m(rotl32( %s, %s %%%% 32))", lval, rval);
-			break;
-		case NODE_RSHIFT:
-			sprintf(result, "m(%s >> %s)", lval, rval);
-			break;
-		case NODE_RROT:
-			sprintf(result, "m(rotr32( %s, %s %%%% 32))", lval, rval);
-			break;
-		case NODE_NOT:
-			sprintf(result, "m(!%s)", lval);
-			break;
-		case NODE_COMPL:
-			sprintf(result, "m(~%s)", lval);
-			break;
-		case NODE_AND:
-			sprintf(result, "m(%s >! %s)", lval, rval);		// Required To Match Java Results
-															//			sprintf(result, "m(%s && %s)", lval, rval);
-			break;
-		case NODE_OR:
-			sprintf(result, "m(%s || %s)", lval, rval);
-			break;
-		case NODE_BITWISE_AND:
-			sprintf(result, "m(%s & %s)", lval, rval);
-			break;
-		case NODE_BITWISE_XOR:
-			sprintf(result, "m(%s ^ %s)", lval, rval);
-			break;
-		case NODE_BITWISE_OR:
-			sprintf(result, "m(%s | %s)", lval, rval);
-			break;
-		case NODE_EQ:
-			sprintf(result, "m(%s == %s)", lval, rval);
-			break;
-		case NODE_NE:
-			sprintf(result, "m(%s != %s)", lval, rval);
-			break;
-		case NODE_GT:
-			sprintf(result, "m(%s > %s)", lval, rval);
-			break;
-		case NODE_LT:
-			sprintf(result, "m(%s < %s)", lval, rval);
-			break;
-		case NODE_GE:
-			sprintf(result, "m(%s >= %s)", lval, rval);
-			break;
-		case NODE_LE:
-			sprintf(result, "m(%s <= %s)", lval, rval);
-			break;
-		case NODE_NEG:
-			sprintf(result, "m(-%s)", lval);
-			break;
-		case NODE_VERIFY:
-			sprintf(result, "\n\tuint bounty_found = m(%s != 0 ? 1 : 0);\n\n", lval);
-			break;
-		case NODE_PARAM:
-			if (!blk_old[0])
-				sprintf(blk_new, "%s", lval);
-			else
-				sprintf(blk_new, "%s, %s", lval, blk_old);
-			result = realloc(result, strlen(blk_new) + 1);
-			sprintf(result, "%s", blk_new);
-			strcpy(blk_old, blk_new);
-			break;
-		case NODE_SHA256:
-			sprintf(result, "\tm(epl_sha256( %s, mem )); - Not Supported\n", rval);
-			break;
-		case NODE_SHA512:
-			sprintf(result, "\tm(epl_sha512( %s, mem )); - Not Supported\n", rval);
-			break;
-		case NODE_WHIRLPOOL:
-			sprintf(result, "\tm(epl_whirlpool( %s, mem )); - Not Supported\n", rval);
-			break;
-		case NODE_MD5:
-			sprintf(result, "\tm(epl_md5( %s, mem )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP192K_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp192k1, 24 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP192K_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp192k1, 25, 49 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP192K_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp192k1, 25, 49 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP192K_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp192k1, 25, 49 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP192K_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp192k1, 25, 49 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP192R_PTP:
-			sprintf(result, "// SECP192R1PrivToPub( %s ); - Not Supported\n", rval);
-			break;
-		case NODE_SECP192R_PA:
-			sprintf(result, "// SECP192R1PointAdd( %s ); - Not Supported\n", rval);
-			break;
-		case NODE_SECP192R_PS:
-			sprintf(result, "// SECP192R1PointSub( %s ); - Not Supported\n", rval);
-			break;
-		case NODE_SECP192R_PSM:
-			sprintf(result, "// SECP192R1PointScalarMult( %s ); - Not Supported\n", rval);
-			break;
-		case NODE_SECP192R_PN:
-			sprintf(result, "// SECP192R1PointNegate( %s ); - Not Supported\n", rval);
-			break;
-		case NODE_SECP224K_PTP:
-			sprintf(result, "\t// m(epl_ec_priv_to_pub( %s, mem, NID_secp224k1, 28 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP224K_PA:
-			sprintf(result, "\t// m(epl_ec_add( %s, mem, NID_secp224k1, 29, 57 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP224K_PS:
-			sprintf(result, "\t// m(epl_ec_sub( %s, mem, NID_secp224k1, 29, 57 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP224K_PSM:
-			sprintf(result, "\t// m(epl_ec_mult( %s, mem, NID_secp224k1, 29, 57 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP224K_PN:
-			sprintf(result, "\t// m(epl_ec_neg( %s, mem, NID_secp224k1, 29, 57 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP224R_PTP:
-			sprintf(result, "\t// m(epl_ec_priv_to_pub( %s, mem, NID_secp224r1, 28 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP224R_PA:
-			sprintf(result, "\t// m(epl_ec_add( %s, mem, NID_secp224r1, 29, 57 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP224R_PS:
-			sprintf(result, "\t// m(epl_ec_sub( %s, mem, NID_secp224r1, 29, 57 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP224R_PSM:
-			sprintf(result, "\t// m(epl_ec_mult( %s, mem, NID_secp224r1, 29, 57 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP224R_PN:
-			sprintf(result, "\t// m(epl_ec_neg( %s, mem, NID_secp224r1, 29, 57 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP256K_PTP:
-			sprintf(result, "\t// m(epl_ec_priv_to_pub( %s, mem, NID_secp256k1, 32 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP256K_PA:
-			sprintf(result, "\t// m(epl_ec_add( %s, mem, NID_secp256k1, 33, 65 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP256K_PS:
-			sprintf(result, "\t// m(epl_ec_sub( %s, mem, NID_secp256k1, 33, 65 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP256K_PSM:
-			sprintf(result, "\t// m(epl_ec_mult( %s, mem, NID_secp256k1, 33, 65 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP256K_PN:
-			sprintf(result, "\t// m(epl_ec_neg( %s, mem, NID_secp256k1, 33, 65 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP256R_PTP:
-			//Missing
-			sprintf(result, "// SECP256R1PrivToPub( %s ); - Not Supported\n", rval);
-			//Missing
-			break;
-		case NODE_SECP256R_PA:
-			sprintf(result, "// SECP256R1PointAdd( %s ); - Not Supported\n", rval);
-			break;
-		case NODE_SECP256R_PS:
-			sprintf(result, "// SECP256R1PointSub( %s ); - Not Supported\n", rval);
-			break;
-		case NODE_SECP256R_PSM:
-			sprintf(result, "// SECP256R1PointScalarMult( %s ); - Not Supported\n", rval);
-			break;
-		case NODE_SECP256R_PN:
-			sprintf(result, "// SECP256R1PointNegate( %s ); - Not Supported\n", rval);
-			break;
-		case NODE_SECP384R_PTP:
-			sprintf(result, "\t// m(epl_ec_priv_to_pub( %s, mem, NID_secp384r1, 48 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP384R_PA:
-			sprintf(result, "\t// m(epl_ec_add( %s, mem, NID_secp384r1, 49, 97 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP384R_PS:
-			sprintf(result, "\t// m(epl_ec_sub( %s, mem, NID_secp384r1, 49, 97 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP384R_PSM:
-			sprintf(result, "\t// m(epl_ec_mult( %s, mem, NID_secp384r1, 49, 97 )); - Not Supported\n", rval);
-			break;
-		case NODE_SECP384R_PN:
-			sprintf(result, "\t// m(epl_ec_neg( %s, mem, NID_secp384r1, 49, 97 )); - Not Supported\n", rval);
-			break;
-		case NODE_PRM192V1_PTP:
-			sprintf(result, "\t// m(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v1, 24 )); - Not Supported\n", rval);
-			break;
-		case NODE_PRM192V1_PA:
-			sprintf(result, "\t// m(epl_ec_add( %s, mem, NID_X9_62_prime192v1, 25, 49 )); - Not Supported\n", rval);
-			break;
-		case NODE_PRM192V1_PS:
-			sprintf(result, "\t// m(epl_ec_sub( %s, mem, NID_X9_62_prime192v1, 25, 49 )); - Not Supported\n", rval);
-			break;
-		case NODE_PRM192V1_PSM:
-			sprintf(result, "\t// m(epl_ec_mult( %s, mem, NID_X9_62_prime192v1, 25, 49 )); - Not Supported\n", rval);
-			break;
-		case NODE_PRM192V1_PN:
-			sprintf(result, "\t// m(epl_ec_neg( %s, mem, NID_X9_62_prime192v1, 25, 49 )); - Not Supported\n", rval);
-			break;
-		case NODE_PRM192V2_PTP:
-			sprintf(result, "\t// m(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v2, 24 )); - Not Supported\n", rval);
-			break;
-		case NODE_PRM192V2_PA:
-			sprintf(result, "\t// m(epl_ec_add( %s, mem, NID_X9_62_prime192v2, 25, 49 )); - Not Supported\n", rval);
-			break;
-		case NODE_PRM192V2_PS:
-			sprintf(result, "\t// m(epl_ec_sub( %s, mem, NID_X9_62_prime192v2, 25, 49 )); - Not Supported\n", rval);
-			break;
-		case NODE_PRM192V2_PSM:
-			sprintf(result, "\t// m(epl_ec_mult( %s, mem, NID_X9_62_prime192v2, 25, 49 )); - Not Supported\n", rval);
-			break;
-		case NODE_PRM192V2_PN:
-			sprintf(result, "\t// m(epl_ec_neg( %s, mem, NID_X9_62_prime192v2, 25, 49 )); - Not Supported\n", rval);
-			break;
-		case NODE_PRM192V3_PTP:
-			sprintf(result, "\t// m(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v3, 24 )); - Not Supported\n", rval);
-			break;
-		case NODE_PRM192V3_PA:
-			sprintf(result, "\t// m(epl_ec_add( %s, mem, NID_X9_62_prime192v3, 25, 49 )); - Not Supported\n", rval);
-			break;
-		case NODE_PRM192V3_PS:
-			sprintf(result, "\t// m(epl_ec_sub( %s, mem, NID_X9_62_prime192v3, 25, 49 )); - Not Supported\n", rval);
-			break;
-		case NODE_PRM192V3_PSM:
-			sprintf(result, "\t// m(epl_ec_mult( %s, mem, NID_X9_62_prime192v3, 25, 49 )); - Not Supported\n", rval);
-			break;
-		case NODE_PRM192V3_PN:
-			sprintf(result, "\t// m(epl_ec_neg( %s, mem, NID_X9_62_prime192v3, 25, 49 )); - Not Supported\n", rval);
-			break;
-		case NODE_PRM256V1_PTP:
-			sprintf(result, "\t// m(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime256v1, 32 )); - Not Supported\n", rval);
-			break;
-		case NODE_PRM256V1_PA:
-			sprintf(result, "\t// m(epl_ec_add( %s, mem, NID_X9_62_prime256v1, 33, 65 )); - Not Supported\n", rval);
-			break;
-		case NODE_PRM256V1_PS:
-			sprintf(result, "\t// m(epl_ec_sub( %s, mem, NID_X9_62_prime256v1, 33, 65 )); - Not Supported\n", rval);
-			break;
-		case NODE_PRM256V1_PSM:
-			sprintf(result, "\t// m(epl_ec_mult( %s, mem, NID_X9_62_prime256v1, 33, 65 )); - Not Supported\n", rval);
-			break;
-		case NODE_PRM256V1_PN:
-			sprintf(result, "\t// m(epl_ec_neg( %s, mem, NID_X9_62_prime256v1, 33, 65 )); - Not Supported\n", rval);
-			break;
-		case NODE_TIGER:
-			sprintf(result, "// Tiger( %s ); - Not Supported\n", rval);
-			break;
-		case NODE_RIPEMD160:
-			sprintf(result, "\t// m(epl_ripemd160( %s, mem )); - Not Supported\n", rval);
-			break;
-		case NODE_RIPEMD128:
-			sprintf(result, "// RIPEMD128( %s ); - Not Supported\n", rval);
+			use_crypto_function = true;
 			break;
 		default:
 			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - Unsupported Operation (%d)\n\");\n", exp->type);
