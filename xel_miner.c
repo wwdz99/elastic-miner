@@ -1442,7 +1442,7 @@ static void *opencl_miner_thread(void *userdata) {
 		get_opencl_base_data(&work, vm_input);
 
 		// Execute The VM
-		if (!execute_kernel(thr_id, vm_input, vm_out))
+		if (!execute_kernel(&gpu[thr_id], vm_input, vm_out))
 			goto out;
 
 		// Check VM Output For Solutions
@@ -1492,7 +1492,7 @@ static void *opencl_miner_thread(void *userdata) {
 
 				// Get Hash From Kernel Data
 				if (opt_debug) {
-					dump_opencl_kernel_data(thr_id, &hash32[0], i, 16, 4);
+					dump_opencl_kernel_data(&gpu[thr_id], &hash32[0], i, 16, 4);
 					applog(LOG_DEBUG, "DEBUG: Hash - %08X%08X%08X%08X  Tgt - %08X%08X%08X%08X", hash32[0], hash32[1], hash32[2], hash32[3], work.pow_target[0], work.pow_target[1], work.pow_target[2], work.pow_target[3]);
 				}
 

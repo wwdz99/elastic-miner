@@ -257,8 +257,10 @@ extern int init_opencl_devices(void);
 extern unsigned char* load_opencl_source(char *work_str);
 extern bool init_opencl_kernel(int gpu_id, char *ocl_source);
 extern cl_kernel create_opencl_kernel(cl_device_id device_id, cl_context context, const char *source, const char *name);
-extern bool execute_kernel(int id, const uint32_t *vm_input, uint32_t *vm_out);
-extern bool dump_opencl_kernel_data(int id, int32_t *data, int idx, int offset, int len);
+extern bool create_opencl_buffers(struct opencl_device *gpu);
+extern bool calc_opencl_worksize(struct opencl_device *gpu);
+extern bool execute_kernel(struct opencl_device *gpu, const uint32_t *vm_input, uint32_t *vm_out);
+extern bool dump_opencl_kernel_data(struct opencl_device *gpu, int32_t *data, int idx, int offset, int len);
 extern char* convert_ast_to_opencl();
 
 struct thread_q;
