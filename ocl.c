@@ -295,8 +295,8 @@ extern bool execute_kernel(struct opencl_device *gpu, const uint32_t *vm_input, 
 	}
 
 	// Run OpenCL VM
-//	ret = clEnqueueNDRangeKernel(gpu->queue, gpu->kernel_execute, gpu->work_dim, NULL, &gpu->global_size[0], &gpu->local_size[0], 0, NULL, NULL);
-	ret = clEnqueueNDRangeKernel(gpu->queue, gpu->kernel_execute, gpu->work_dim, NULL, &gpu->global_size[0], NULL, 0, NULL, NULL);
+	ret = clEnqueueNDRangeKernel(gpu->queue, gpu->kernel_execute, gpu->work_dim, NULL, &gpu->global_size[0], &gpu->local_size[0], 0, NULL, NULL);
+//	ret = clEnqueueNDRangeKernel(gpu->queue, gpu->kernel_execute, gpu->work_dim, NULL, &gpu->global_size[0], NULL, 0, NULL, NULL);
 	if (ret) {
 		applog(LOG_ERR, "ERROR: Unable to run 'execute' kernel (Error: %d)", ret);
 		return false;
