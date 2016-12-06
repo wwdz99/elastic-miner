@@ -55,53 +55,45 @@ extern unsigned char* load_opencl_source(char *work_str) {
 	return ocl_source;
 }
 
-extern bool init_opencl_kernel(int id, char *ocl_source) {
-	cl_int err;
+extern bool init_opencl_kernel(struct opencl_device *gpu, char *ocl_source) {
+	cl_int ret;
 
-	// Create Kernel
-	gpu[id].kernel_execute = create_opencl_kernel(gpu[id].device_id, gpu[id].context, ocl_source, "execute");
+	// Load OpenCL Source Code
+	cl_program program = clCreateProgramWithSource(gpu->context, 1, &ocl_source, NULL, &ret);
+	if (ret != CL_SUCCESS) {
+		applog(LOG_ERR, "Unable to load OpenCL program (Error: %d)", ret);
+		return false;
+	}
+
+	// Compile OpenCL Source Code
+	ret = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
+	if (ret != CL_SUCCESS) {
+		size_t len;
+		char buffer[2048];
+		clGetProgramBuildInfo(program, gpu->device_id, CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
+		applog(LOG_ERR, "Unable to compile OpenCL program (Error: %d) -\n%s", ret, buffer);
+		return false;
+	}
+
+	// Create OpenCL Kernel
+	gpu->kernel_execute = clCreateKernel(program, "execute", &ret);
+	if (!gpu->kernel_execute || ret != CL_SUCCESS) {
+		applog(LOG_ERR, "Unable to create OpenCL kernel (Error: %d)", ret);
+		clReleaseProgram(program);
+		return false;
+	}
 
 	// Set Argurments For Kernel
-	err  = clSetKernelArg(gpu[id].kernel_execute, 0, sizeof(cl_mem), (const void*)&gpu[id].vm_input);
-	err |= clSetKernelArg(gpu[id].kernel_execute, 1, sizeof(cl_mem), (const void*)&gpu[id].vm_mem);
-	err |= clSetKernelArg(gpu[id].kernel_execute, 2, sizeof(cl_mem), (const void*)&gpu[id].vm_out);
+	ret  = clSetKernelArg(gpu->kernel_execute, 0, sizeof(cl_mem), (const void*)&gpu->vm_input);
+	ret |= clSetKernelArg(gpu->kernel_execute, 1, sizeof(cl_mem), (const void*)&gpu->vm_mem);
+	ret |= clSetKernelArg(gpu->kernel_execute, 2, sizeof(cl_mem), (const void*)&gpu->vm_out);
 
-	if (err != CL_SUCCESS) {
-		applog(LOG_ERR, "Unable to set OpenCL argurments for 'execute' kernel (Error: %d)", err);
+	if (ret != CL_SUCCESS) {
+		applog(LOG_ERR, "Unable to set OpenCL argurments for 'execute' kernel (Error: %d)", ret);
 		return false;
 	}
 
 	return true;
-}
-
-extern cl_kernel create_opencl_kernel(cl_device_id device_id, cl_context context, const char *source, const char *name) {
-	int err;
-
-	// Load OpenCL Source Code
-	cl_program program = clCreateProgramWithSource(context, 1, &source, NULL, &err);
-	if (err != CL_SUCCESS) {
-		applog(LOG_ERR, "Unable to load OpenCL program");
-		return NULL;
-	}
-
-	// Compile OpenCL Source Code
-	err = clBuildProgram(program, 0, NULL, NULL, NULL, NULL);
-	if (err != CL_SUCCESS) {
-		size_t len;
-		char buffer[2048];
-		clGetProgramBuildInfo(program, device_id, CL_PROGRAM_BUILD_LOG, sizeof(buffer), buffer, &len);
-		applog(LOG_ERR, "Unable to compile OpenCL program -\n%s", buffer);
-	}
-
-	// Create OpenCL Kernel
-	cl_kernel kernel = clCreateKernel(program, name, &err);
-	if (!kernel || err != CL_SUCCESS) {
-		applog(LOG_ERR, "Unable to create OpenCL kernel");
-		clReleaseProgram(program);
-		return NULL;
-	}
-
-	return kernel;
 }
 
 extern int init_opencl_devices() {
@@ -121,14 +113,14 @@ extern int init_opencl_devices() {
 		return 0;
 	}
 
-	applog(LOG_DEBUG, "=== %d OpenCL platform(s) found: ===", platforms_n);
-
 	gpu = (struct opencl_device *)malloc(platforms_n * sizeof(struct opencl_device));
 
 	if (!gpu) {
 		applog(LOG_ERR, "ERROR: Unable to allocate GPU devices!");
 		return 0;
 	}
+
+	applog(LOG_DEBUG, "=== %d OpenCL platform(s) found: ===", platforms_n);
 
 	for (i = 0; i < platforms_n; i++) {
 
@@ -211,7 +203,6 @@ extern int init_opencl_devices() {
 }
 
 extern bool calc_opencl_worksize(struct opencl_device *gpu) {
-	cl_uint ret;
 	uint32_t max_threads = 1024;
 	uint32_t global_mem = 0;
 	size_t compute_units = 0;
@@ -296,7 +287,6 @@ extern bool execute_kernel(struct opencl_device *gpu, const uint32_t *vm_input, 
 
 	// Run OpenCL VM
 	ret = clEnqueueNDRangeKernel(gpu->queue, gpu->kernel_execute, gpu->work_dim, NULL, &gpu->global_size[0], &gpu->local_size[0], 0, NULL, NULL);
-//	ret = clEnqueueNDRangeKernel(gpu->queue, gpu->kernel_execute, gpu->work_dim, NULL, &gpu->global_size[0], NULL, 0, NULL, NULL);
 	if (ret) {
 		applog(LOG_ERR, "ERROR: Unable to run 'execute' kernel (Error: %d)", ret);
 		return false;

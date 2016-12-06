@@ -255,8 +255,7 @@ extern struct opencl_device *gpu;
 
 extern int init_opencl_devices(void);
 extern unsigned char* load_opencl_source(char *work_str);
-extern bool init_opencl_kernel(int gpu_id, char *ocl_source);
-extern cl_kernel create_opencl_kernel(cl_device_id device_id, cl_context context, const char *source, const char *name);
+extern bool init_opencl_kernel(struct opencl_device *gpu, char *ocl_source);
 extern bool create_opencl_buffers(struct opencl_device *gpu);
 extern bool calc_opencl_worksize(struct opencl_device *gpu);
 extern bool execute_kernel(struct opencl_device *gpu, const uint32_t *vm_input, uint32_t *vm_out);

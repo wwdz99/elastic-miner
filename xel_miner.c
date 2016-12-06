@@ -1362,15 +1362,13 @@ static void *opencl_miner_thread(void *userdata) {
 	struct workio_cmd *wc = NULL;
 	uint64_t hashes_done;
 	struct timeval tv_start, tv_end, diff;
-	int rc = 0, i, j;
+	int i, rc = 0;
 	unsigned char *ocl_source, str[50], msg[64];
 	uint32_t *msg32 = (uint32_t *)msg;
 	uint32_t *workid32;
 	double eval_rate;
 	struct instance *inst = NULL;
 	char hash[32];
-	unsigned char hash_str[65];
-	unsigned char gpow_str[65];
 	uint32_t *mult32 = (uint32_t *)work.multiplicator;
 	uint32_t *hash32 = (uint32_t *)hash;
 
@@ -1419,7 +1417,7 @@ static void *opencl_miner_thread(void *userdata) {
 				continue;
 			}
 
-			if (!init_opencl_kernel(thr_id, ocl_source)) {
+			if (!init_opencl_kernel(&gpu[thr_id], ocl_source)) {
 				memset(&work, 0, sizeof(struct work));
 				free(ocl_source);
 				sleep(15);
