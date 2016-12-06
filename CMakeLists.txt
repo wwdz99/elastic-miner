@@ -157,10 +157,6 @@ MARK_AS_ADVANCED(
   OPENCL_INCLUDE_DIRS
 )
 
-IF(OPENCL_FOUND)
-	add_definitions(-DUSE_OPENCL)
-ENDIF(OPENCL_FOUND)
-
 message(STATUS "OpenCL found: ${OPENCL_FOUND}")
 message(STATUS "OpenCL includes: ${OPENCL_INCLUDE_DIRS}")
 message(STATUS "OpenCL CXX includes: ${OPENCL_HAS_CPP_BINDINGS}")
@@ -186,7 +182,12 @@ ENDIF (CURL_FOUND)
 add_subdirectory(compat/jansson)
 add_subdirectory(crypto)
 
-include_directories(${OPENCL_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/algo ${PROJECT_SOURCE_DIR}/compat/jansson ${CURL_INCLUDE_DIR} ${OPENSSL_INCLUDE_DIR})
+IF (OPENCL_FOUND)
+	add_definitions(-DUSE_OPENCL)
+	include_directories(${OPENCL_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/algo ${PROJECT_SOURCE_DIR}/compat/jansson ${CURL_INCLUDE_DIR} ${OPENSSL_INCLUDE_DIR})
+ELSE (OPENCL_FOUND)
+	include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/algo ${PROJECT_SOURCE_DIR}/compat/jansson ${CURL_INCLUDE_DIR} ${OPENSSL_INCLUDE_DIR})
+ENDIF(OPENCL_FOUND)
 
 set(SRC_LIST	xel_miner.c
 				xel_compiler.c
@@ -210,7 +211,11 @@ ELSE ( WIN32 )
 	add_executable(${TARGET_NAME} ${SRC_LIST})
 ENDIF ( WIN32 )
 
-target_link_libraries(${TARGET_NAME} crypto pthread ${CURL_LIBRARIES} ${OPENCL_LIBRARIES} jansson)
+IF (OPENCL_FOUND)
+	target_link_libraries(${TARGET_NAME} crypto pthread ${CURL_LIBRARIES} ${OPENCL_LIBRARIES} jansson)
+ELSE (OPENCL_FOUND)
+	target_link_libraries(${TARGET_NAME} crypto pthread ${CURL_LIBRARIES} jansson)
+ENDIF(OPENCL_FOUND)
 
 IF(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
 	target_link_libraries(${TARGET_NAME} m dl)
