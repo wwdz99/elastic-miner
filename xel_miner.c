@@ -1579,9 +1579,6 @@ static void *opencl_miner_thread(void *userdata) {
 					free(wc);
 					goto out;
 				}
-
-				break;
-
 			}
 		}
 
