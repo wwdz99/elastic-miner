@@ -16,6 +16,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include <CL/cl.h>
+
 #ifdef WIN32
 #include <windows.h>
 #define sleep(secs) Sleep((secs) * 1000)
@@ -48,13 +50,11 @@
 #define MAX_SOURCE_SIZE 1024 * 256	// 256K
 #define VM_INPUTS 12
 
-extern __thread _ALIGN(64) uint32_t *vm_mem;
+extern __thread _ALIGN(64) int32_t *vm_mem;
 extern __thread vm_stack_item *vm_stack;
 extern __thread int vm_stack_idx;
 extern __thread uint32_t *vm_state;
 extern __thread bool vm_bounty;
-
-#include <CL/cl.h>
 
 extern bool opt_debug;
 extern bool opt_debug_epl;
@@ -109,22 +109,12 @@ struct work {
 	unsigned char announcement_hash[32];
 };
 
-struct cpu_info {
-	int thr_id;
-	int accepted;
-	int rejected;
-	double khashes;
-};
-
 struct thr_info {
 	int id;
+	char name[6];
 	pthread_t pth;
 	pthread_attr_t attr;
 	struct thread_q	*q;
-	struct cpu_info cpu;
-	struct work work;
-	char* c_code;
-	char name[6];
 };
 
 struct work_restart {
@@ -245,32 +235,29 @@ enum {
 
 
 
+struct opencl_device {
+	unsigned char name[100];
+	cl_platform_id platform_id;
+	cl_device_id device_id;
+	cl_context context;
+	cl_command_queue queue;
+	cl_kernel kernel_execute;
+	cl_uint work_dim;
+	int threads;
+	size_t global_size[2];
+	size_t local_size[2];
+	cl_mem vm_input;
+	cl_mem vm_mem;
+	cl_mem vm_out;
+};
 
-extern int ocl_cores;
-extern size_t dimensions;
-extern size_t* sizes;
+extern struct opencl_device *gpu;
 
-
-// OpenCL Buffers
-extern cl_mem base_data;
-extern cl_mem input;
-extern cl_mem output;
-
-// OpenCL State
-extern cl_command_queue queue;
-
-// OpenCL Kernels
-extern cl_kernel kernel_initialize;
-extern cl_kernel kernel_execute;
-
-extern cl_device_id device_id;
-extern cl_context context;
-
+extern int init_opencl_devices(void);
 extern unsigned char* load_opencl_source(char *work_str);
-extern bool prepare_opencl_kernels(char *ocl_source);
+extern bool init_opencl_kernel(int gpu_id, char *ocl_source);
 extern cl_kernel create_opencl_kernel(cl_device_id device_id, cl_context context, const char *source, const char *name);
-extern bool initialize_opencl(void);
-extern bool execute_kernel(const uint32_t *vm_input, uint32_t *vm_out);
+extern bool execute_kernel(int id, const uint32_t *vm_input, uint32_t *vm_out);
 extern char* convert_ast_to_opencl();
 
 struct thread_q;
