@@ -110,7 +110,7 @@ bool compile_and_link(char* lib_name) {
 	applog(LOG_DEBUG, "DEBUG: Converting ElasticPL to C");
 
 	if (!create_c_source()) {
-		applog(LOG_ERR, "Unable to convert ElasticPL to C");
+		applog(LOG_ERR, "Unable to convert ElasticPL to %s code", opt_opencl ? "OpenCL" : "C");
 		return false;
 	}
 
@@ -442,7 +442,7 @@ extern bool create_opencl_source(char *work_str) {
 
 	fprintf(f, "\t//The following code created by ElasticPL to C parser\n");
 
-	code = convert_ast_to_opencl();
+	code = convert_ast_to_c();
 
 	if (!code)
 		return false;

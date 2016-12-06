@@ -263,8 +263,6 @@ extern bool dump_opencl_kernel_data(struct opencl_device *gpu, int32_t *data, in
 static void *opencl_miner_thread(void *userdata);
 #endif
 
-extern char* convert_ast_to_opencl();
-
 struct thread_q;
 
 struct thread_q *tq_new(void);
