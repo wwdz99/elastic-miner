@@ -307,10 +307,10 @@ extern bool execute_kernel(int id, const uint32_t *vm_input, uint32_t *vm_out) {
 	return true;
 }
 
-extern bool dump_opencl_kernel_data(int id, int32_t *data, int idx, int len) {
+extern bool dump_opencl_kernel_data(int id, int32_t *data, int idx, int offset, int len) {
 	int err;
 
-	err = clEnqueueReadBuffer(gpu[id].queue, gpu[id].vm_mem, CL_TRUE, idx * VM_MEMORY_SIZE * sizeof(int32_t), len * sizeof(int32_t), &data[0], 0, NULL, NULL);
+	err = clEnqueueReadBuffer(gpu[id].queue, gpu[id].vm_mem, CL_TRUE, (idx * VM_MEMORY_SIZE * sizeof(int32_t)) + (offset * sizeof(int32_t)), len * sizeof(int32_t), &data[0], 0, NULL, NULL);
 	if (err != CL_SUCCESS) {
 		applog(LOG_ERR, "ERROR: Unable to read from OpenCL 'vm_mem' Buffer (Error: %d)", err);
 		return false;

@@ -258,7 +258,7 @@ extern unsigned char* load_opencl_source(char *work_str);
 extern bool init_opencl_kernel(int gpu_id, char *ocl_source);
 extern cl_kernel create_opencl_kernel(cl_device_id device_id, cl_context context, const char *source, const char *name);
 extern bool execute_kernel(int id, const uint32_t *vm_input, uint32_t *vm_out);
-extern bool dump_opencl_kernel_data(int id, int32_t *data, int idx, int len);
+extern bool dump_opencl_kernel_data(int id, int32_t *data, int idx, int offset, int len);
 extern char* convert_ast_to_opencl();
 
 struct thread_q;
