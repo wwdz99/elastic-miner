@@ -157,7 +157,9 @@ MARK_AS_ADVANCED(
   OPENCL_INCLUDE_DIRS
 )
 
-
+IF(OPENCL_FOUND)
+	add_definitions(-DUSE_OPENCL)
+ENDIF(OPENCL_FOUND)
 
 message(STATUS "OpenCL found: ${OPENCL_FOUND}")
 message(STATUS "OpenCL includes: ${OPENCL_INCLUDE_DIRS}")

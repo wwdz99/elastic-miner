@@ -72,8 +72,6 @@ int opt_n_threads = 0;
 static enum prefs opt_pref = PREF_PROFIT;
 char pref_workid[32];
 
-struct opencl_device *gpu;
-
 int num_cpus;
 bool g_need_work = false;
 char g_work_nm[50];
@@ -81,8 +79,6 @@ char g_work_id[22];
 uint64_t g_cur_work_id;
 unsigned char g_pow_target_str[33];
 uint32_t g_pow_target[4];
-//unsigned char g_pow_target_str[65];
-//uint32_t g_pow_target[8];
 
 __thread _ALIGN(64) int32_t *vm_mem = NULL;
 __thread uint32_t *vm_state = NULL;
@@ -127,7 +123,11 @@ int work_thr_id;
 struct thr_info *thr_info;
 struct work_restart *work_restart = NULL;
 
-extern uint32_t swap32(int a) {
+#ifdef USE_OPENCL
+struct opencl_device *gpu;
+#endif
+
+extern uint32_t swap32(uint32_t a) {
 	return ((a << 24) | ((a << 8) & 0x00FF0000) | ((a >> 8) & 0x0000FF00) | ((a >> 24) & 0x000000FF));
 }
 
@@ -1354,6 +1354,7 @@ out:
 	return NULL;
 }
 
+#ifdef USE_OPENCL
 static void *opencl_miner_thread(void *userdata) {
 	struct thr_info *mythr = (struct thr_info *) userdata;
 	int thr_id = mythr->id;
@@ -1556,6 +1557,7 @@ out:
 
 	return NULL;
 }
+#endif
 
 static void restart_threads(void)
 {
@@ -1944,7 +1946,7 @@ static int thread_create(struct thr_info *thr, void* func)
 
 int main(int argc, char **argv) {
 	struct thr_info *thr;
-	int i, err, thr_idx, num_gpus;
+	int i, err, thr_idx, num_gpus = 0;
 
 	fprintf(stdout, "** " PACKAGE_NAME " " PACKAGE_VERSION " **\n");
 
@@ -1969,12 +1971,21 @@ int main(int argc, char **argv) {
 	// Process Command Line Before Starting Any Threads
 	parse_cmdline(argc, argv);
 
+#ifdef USE_OPENCL
 	// Initialize GPU Devices
 	if (opt_opencl) {
 		num_gpus = init_opencl_devices();
 		if (num_gpus == 0)
 			return 1;
 	}
+#else
+	if (opt_opencl) {
+		applog(LOG_ERR, "ERROR: OpenCL not found on this system.  Running miner with compiled C code instead");
+		opt_opencl = false;
+		opt_compile = true;
+	}
+#endif
+
 
 	if (!opt_n_threads) {
 		if (!opt_opencl)
@@ -2065,7 +2076,9 @@ int main(int argc, char **argv) {
 		if (!thr->q)
 			return 1;
 		if (opt_opencl) {
+#ifdef USE_OPENCL
 			err = thread_create(thr, opencl_miner_thread);
+#endif
 			sprintf(thr->name, "GPU%d", i);
 		}
 		else {

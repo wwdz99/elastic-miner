@@ -16,8 +16,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <CL/cl.h>
-
 #ifdef WIN32
 #include <windows.h>
 #define sleep(secs) Sleep((secs) * 1000)
@@ -234,6 +232,8 @@ enum {
 #define CL_WHT  "\x1B[01;37m" /* white */
 
 
+#ifdef USE_OPENCL
+#include <CL/cl.h>
 
 struct opencl_device {
 	unsigned char name[100];
@@ -253,7 +253,7 @@ struct opencl_device {
 
 extern struct opencl_device *gpu;
 
-extern int init_opencl_devices(void);
+extern int init_opencl_devices();
 extern unsigned char* load_opencl_source(char *work_str);
 extern bool init_opencl_kernel(struct opencl_device *gpu, char *ocl_source);
 extern bool create_opencl_buffers(struct opencl_device *gpu);
@@ -261,6 +261,9 @@ extern bool calc_opencl_worksize(struct opencl_device *gpu);
 extern bool execute_kernel(struct opencl_device *gpu, const uint32_t *vm_input, uint32_t *vm_out);
 extern bool dump_opencl_kernel_data(struct opencl_device *gpu, int32_t *data, int idx, int offset, int len);
 extern char* convert_ast_to_opencl();
+static void *opencl_miner_thread(void *userdata);
+#endif
+
 
 struct thread_q;
 
@@ -278,7 +281,7 @@ static void *test_vm_thread(void *userdata);
 static void *workio_thread(void *userdata);
 static void restart_threads(void);
 
-extern uint32_t swap32(int a);
+extern uint32_t swap32(uint32_t a);
 static void parse_cmdline(int argc, char *argv[]);
 static void strhide(char *s);
 static void parse_arg(int key, char *arg);
@@ -298,7 +301,6 @@ static bool submit_work(CURL *curl, struct submit_req *req);
 static bool delete_submit_req(int idx);
 static bool add_submit_req(struct work *work, enum submit_commands req_type);
 
-static void *opencl_miner_thread(void *userdata);
 static bool get_opencl_base_data(struct work *work, uint32_t *vm_input);
 
 // Function Prototypes - util.c

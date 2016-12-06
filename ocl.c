@@ -8,6 +8,8 @@
 * any later version.
 */
 
+#ifdef USE_OPENCL
+
 #define CL_USE_DEPRECATED_OPENCL_1_2_APIS
 #define _GNU_SOURCE
 
@@ -59,7 +61,7 @@ extern bool init_opencl_kernel(struct opencl_device *gpu, char *ocl_source) {
 	cl_int ret;
 
 	// Load OpenCL Source Code
-	cl_program program = clCreateProgramWithSource(gpu->context, 1, &ocl_source, NULL, &ret);
+	cl_program program = clCreateProgramWithSource(gpu->context, 1, (const char **)&ocl_source, NULL, &ret);
 	if (ret != CL_SUCCESS) {
 		applog(LOG_ERR, "Unable to load OpenCL program (Error: %d)", ret);
 		return false;
@@ -313,3 +315,4 @@ extern bool dump_opencl_kernel_data(struct opencl_device *gpu, int32_t *data, in
 
 	return true;
 }
+#endif
