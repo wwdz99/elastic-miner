@@ -1362,8 +1362,9 @@ static void *opencl_miner_thread(void *userdata) {
 	struct workio_cmd *wc = NULL;
 	uint64_t hashes_done;
 	struct timeval tv_start, tv_end, diff;
-	int rc = 0, err, i, j;
-	unsigned char *ocl_source, str[50], msg[41];
+	int rc = 0, i, j;
+//	unsigned char *ocl_source, str[50], msg[41];
+	unsigned char *ocl_source, str[50], msg[64];
 	uint32_t *msg32 = (uint32_t *)msg;
 	uint32_t *workid32;
 	double eval_rate;
@@ -1374,8 +1375,23 @@ static void *opencl_miner_thread(void *userdata) {
 	uint32_t *mult32 = (uint32_t *)work.multiplicator;
 	uint32_t *hash32 = (uint32_t *)hash;
 
-	uint32_t x[100];
+	uint32_t dump[24];
 
+
+// Temp For Validation Only
+
+	// Initialize Global Variables
+	vm_mem = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
+	vm_state = calloc(4, sizeof(uint32_t));
+	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
+	vm_stack_idx = -1;
+
+	if (!vm_mem || !vm_state || !vm_stack) {
+		applog(LOG_ERR, "CPU%d: Unable to allocate VM memory", thr_id);
+		goto out;
+	}
+
+// Temp For Validation Only
 
 	// Set lower priority
 	if (!opt_norenice)
@@ -1456,14 +1472,10 @@ static void *opencl_miner_thread(void *userdata) {
 				applog(LOG_NOTICE, "%s - %d: Submitting Bounty Solution", mythr->name, i);
 
 // Debug
-				err = clEnqueueReadBuffer(gpu[thr_id].queue, gpu[thr_id].vm_mem, CL_TRUE, i * VM_MEMORY_SIZE * sizeof(uint32_t), 40 * sizeof(uint32_t), &x[0], 0, NULL, NULL);
-				if (err != CL_SUCCESS) {
-					printf("Unable to read enqueue buffer (ints message)");
-					goto out;
-				}
+//				dump_opencl_kernel_data(thr_id, dump, i, 24);
 
-				for (j = 0; j<24; j++)
-					printf("id: %d - x[%d] = %d, %08X\n", i, j, x[j], x[j]);
+//				for (j = 0; j<24; j++)
+//					printf("id: %d - x[%d] = %d, %08X\n", i, j, dump[j], dump[j]);
 // Debug
 
 				mult32[0] = i; // Update Multiplicator To Include Core ID That Found The Bounty
@@ -1503,29 +1515,59 @@ static void *opencl_miner_thread(void *userdata) {
 			else if (vm_out[i] == 1) {
 
 // Debug
-				err = clEnqueueReadBuffer(gpu[thr_id].queue, gpu[thr_id].vm_mem, CL_TRUE, i * VM_MEMORY_SIZE * sizeof(uint32_t), 40 * sizeof(uint32_t), &x[0], 0, NULL, NULL);
-				if (err != CL_SUCCESS) {
-					printf("Unable to read enqueue buffer (ints message)");
-					goto out;
-				}
+				dump_opencl_kernel_data(thr_id, dump, i, 24);
 
 				for (j = 0; j<24; j++)
-					printf("id: %d - x[%d] = %d, %08X\n", i, j, x[j], x[j]);
+					printf("id: %d - x[%d] = %d, %08X\n", i, j, dump[j], dump[j]);
 // Debug
 
-				sprintf(hash_str, "%08X%08X%08X%08X", x[16], x[17], x[18], x[19]);
+				sprintf(hash_str, "%08X%08X%08X%08X", dump[16], dump[17], dump[18], dump[19]);
 //				sprintf(hash_str, "%08X%08X%08X%08X", swap32(hash32[0]), swap32(hash32[1]), swap32(hash32[2]), swap32(hash32[3]));
 				sprintf(gpow_str, "%08X%08X%08X%08X", g_pow_target[0], g_pow_target[1], g_pow_target[2], g_pow_target[3]);
 
 				applog(LOG_NOTICE, "%s - %d: Submitting POW Solution", mythr->name, i);
 				applog(LOG_DEBUG, "DEBUG: Hash - %s  Tgt - %s", hash_str, gpow_str);
+
+				mult32[0] = swap32(i); // Update Multiplicator To Include Core ID That Found The POW
+
+
+// Debug - Recalculate Hash Using Internal Interpreter
+				get_vm_input(&work);
+
+				// Reset VM Memory / State
+				memcpy(vm_mem, work.vm_input, VM_INPUTS * sizeof(int));
+				memset(vm_state, 0, 4 * sizeof(int));
+
+				// Execute The VM Logic
+				rc = interpret_ast();
+
+				// Check For POW Result
+				memcpy(&msg[0], &vm_state[0], 16);
+				msg32[0] = swap32(msg32[0]);
+				msg32[1] = swap32(msg32[1]);
+				msg32[2] = swap32(msg32[2]);
+				msg32[3] = swap32(msg32[3]);
+
+				for (j = 0; j < VM_INPUTS; j++)
+					msg32[j + 4] = swap32(work.vm_input[j]);
+
+				MD5(msg, 64, hash);
+
+				applog(LOG_DEBUG, "DEBUG: Validation Work ID: %s", work.work_str);
+				applog(LOG_DEBUG, "DEBUG: Validation Multiplicator: %08X%08X%08X%08X%08X%08X%08X%08X", swap32(mult32[0]), swap32(mult32[1]), swap32(mult32[2]), swap32(mult32[3]), swap32(mult32[4]), swap32(mult32[5]), swap32(mult32[6]), swap32(mult32[7]));
+				applog(LOG_DEBUG, "DEBUG: Validation Hash: %08X%08X%08X%08X", swap32(hash32[0]), swap32(hash32[1]), swap32(hash32[2]), swap32(hash32[3]));
+
+
+// Debug
+
+
+
+
 				wc = (struct workio_cmd *) calloc(1, sizeof(*wc));
 				if (!wc) {
 					applog(LOG_ERR, "ERROR: Unable to allocate workio_cmd.  Shutting down thread for %s", mythr->name);
 					goto out;
 				}
-
-				mult32[0] = i; // Update Multiplicator To Include Core ID That Found The POW
 
 				wc->cmd = SUBMIT_POW;
 				wc->thr = mythr;
@@ -1537,6 +1579,9 @@ static void *opencl_miner_thread(void *userdata) {
 					free(wc);
 					goto out;
 				}
+
+				break;
+
 			}
 		}
 

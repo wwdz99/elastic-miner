@@ -348,7 +348,7 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "\tmd5_round(out, (uint*)key);\n");
 	fprintf(f, "}\n\n");
 
-	fprintf(f, "uint swap32(int a) {\n");
+	fprintf(f, "uint swap32(uint a) {\n");
 	fprintf(f, "\treturn ((a << 24) | ((a << 8) & 0x00FF0000) | ((a >> 8) & 0x0000FF00) | ((a >> 24) & 0x000000FF));\n");
 	fprintf(f, "}\n\n");
 
@@ -416,7 +416,8 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "\t\tbase_data_local[i] = base_data[i];\n\n");
 
 	fprintf(f, "\t// Update Index In The Input Data\n");
-	fprintf(f, "\tbase_data_local[0] = idx;\n\n");
+//	fprintf(f, "\tbase_data_local[0] = idx;\n\n");
+	fprintf(f, "\tbase_data_local[0] = swap32(idx);\n\n");
 
 	fprintf(f, "\t// Get MD5 Hash of 80 Byte Input\n");
 	fprintf(f, "\tmd5((char*)&base_data_local[0], 80, &hash[0]);\n\n");
@@ -493,7 +494,7 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "\t\t\t\treturn;\n");
 	fprintf(f, "\t\t\t}\n");
 	fprintf(f, "\t\t\telse {\n");
-	fprintf(f, "\t\t\t\tif (swap32(hash[i]) > target[i])\n");
+	fprintf(f, "\t\t\t\tif (hash[i] > target[i])\n");
 	fprintf(f, "\t\t\t\t\tbreak;\n");
 	fprintf(f, "\t\t\t}\n");
 	fprintf(f, "\t\t}\n");
