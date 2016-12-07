@@ -233,7 +233,12 @@ enum {
 
 
 #ifdef USE_OPENCL
+
+#ifdef __APPLE__
+#include <OpenCL/cl.h>
+#else
 #include <CL/cl.h>
+#endif
 
 struct opencl_device {
 	unsigned char name[100];
