@@ -1459,8 +1459,9 @@ static void *opencl_miner_thread(void *userdata) {
 		work_restart[thr_id].restart = 0;
 
 		// Increment multiplicator
-		mult32[0] = 0;	// OpenCL Code Will Set This To Core ID
-		mult32[1] += 1;
+		mult32[0] = thr_id;	// Ensures Each GPU Uses Different Inputs
+		mult32[1] = 0;		// Ensures Each GPU OpenCL Thread Uses Different Inputs
+		mult32[2] += 1;		// Ensures Each Evaluation Uses Different Inputs
 
 		// Get Values For VM Inputs
 		get_opencl_base_data(&work, vm_input);
@@ -1476,9 +1477,8 @@ static void *opencl_miner_thread(void *userdata) {
 			if (vm_out[i] == 2) {
 				applog(LOG_NOTICE, "%s - %d: Submitting Bounty Solution", mythr->name, i);
 
-				// Update Multiplicator To Include Core ID That Found The Bounty
-//				mult32[0] = i;
-				mult32[0] = swap32(i);
+				// Update Multiplicator To Include OpenCL Thread ID That Found The Bounty
+				mult32[1] = i;
 
 				// Create Announcement Message
 				workid32 = (uint32_t *)&work.work_id;
@@ -1522,9 +1522,8 @@ static void *opencl_miner_thread(void *userdata) {
 
 				applog(LOG_NOTICE, "%s - %d: Submitting POW Solution", mythr->name, i);
 
-				// Update Multiplicator To Include Core ID That Found The Bounty
-//				mult32[0] = i;
-				mult32[0] = swap32(i);
+				// Update Multiplicator To Include OpenCL Thread ID That Found The Bounty
+				mult32[1] = i;
 
 				wc = (struct workio_cmd *) calloc(1, sizeof(*wc));
 				if (!wc) {

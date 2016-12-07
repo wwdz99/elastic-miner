@@ -415,9 +415,8 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "\tfor (i = 0; i < 20; i++) // 80 bytes\n");
 	fprintf(f, "\t\tbase_data_local[i] = base_data[i];\n\n");
 
-	fprintf(f, "\t// Update Index In The Input Data\n");
-//	fprintf(f, "\tbase_data_local[0] = idx;\n\n");
-	fprintf(f, "\tbase_data_local[0] = swap32(idx);\n\n");
+	fprintf(f, "\t// Update OpenCL Thread ID In The Input Data\n");
+	fprintf(f, "\tbase_data_local[0] = idx;\n\n");
 
 	fprintf(f, "\t// Get MD5 Hash of 80 Byte Input\n");
 	fprintf(f, "\tmd5((char*)&base_data_local[0], 80, &hash[0]);\n\n");
@@ -476,15 +475,11 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "\t\tmem[18] = swap32(hash[2]);\n");
 	fprintf(f, "\t\tmem[19] = swap32(hash[3]);\n\n");
 
-	//fprintf(f, "\t\tmem[20] = vm_state[0];\n");
-	//fprintf(f, "\t\tmem[21] = vm_state[1];\n");
-	//fprintf(f, "\t\tmem[22] = vm_state[2];\n");
-	//fprintf(f, "\t\tmem[23] = vm_state[3];\n\n");
-	fprintf(f, "\t\tmem[20] = get_global_id(0);\n");
-	fprintf(f, "\t\tmem[21] = get_global_id(1);\n");
-	fprintf(f, "\t\tmem[22] = get_global_size(0);\n");
-	fprintf(f, "\t\tmem[23] = get_local_size(0);\n\n");
-	// Debugging
+	fprintf(f, "\t\tmem[20] = vm_state[0];\n");
+	fprintf(f, "\t\tmem[21] = vm_state[1];\n");
+	fprintf(f, "\t\tmem[22] = vm_state[2];\n");
+	fprintf(f, "\t\tmem[23] = vm_state[3];\n\n");
+	// End Debugging
 
 	fprintf(f, "\t\t// Check For POW Solutions\n");
 	fprintf(f, "\t\tfor (i = 0; i < 4; i++) {\n");
