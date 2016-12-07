@@ -901,7 +901,7 @@ static int work_decode(const json_t *val, struct work *work) {
 			if (!str || strlen(str) > MAX_SOURCE_SIZE || strlen(str) == 0) {
 				work_package.blacklisted = true;
 				applog(LOG_ERR, "ERROR: Invalid 'source' for work_id: %s", work_package.work_str);
-				return 0;
+				continue;
 			}
 
 			elastic_src = malloc(MAX_SOURCE_SIZE);
