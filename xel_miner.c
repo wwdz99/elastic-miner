@@ -67,6 +67,8 @@ static int opt_scantime = 60;  // Get New Work From Server At Least Every 60s
 bool opt_test_miner = false;
 bool opt_test_vm = false;
 bool opt_opencl = false;
+int opt_opencl_intensity;
+int opt_opencl_vwidth = 4;
 int opt_timeout = 30;
 int opt_n_threads = 0;
 static enum prefs opt_pref = PREF_PROFIT;
@@ -144,7 +146,9 @@ Options:\n\
                                 workid		 Specify work ID\n\
       --no-color              Don't display colored output\n\
       --no-compile            Use internal VM Interpreter instead of compiled C code\n\
-      --opencl	              Run VM using compiled OpenCL code \n\
+      --opencl	              Run VM using compiled OpenCL code\n\
+      --opencl-intensity <n>  (Not implemented yet)\n\
+      --opencl-vwidth <n>	  Vector width of local work size (1, 2, 4, 8, 16, 32, 64, 128)\n\
   -o, --url=URL               URL of mining server\n\
   -p, --pass <password>       Password for mining server\n\
   -P, --phrase <passphrase>   Secret Passphrase for Elastic account\n\
@@ -179,6 +183,8 @@ static struct option const options[] = {
 	{ "no-compile",		0, NULL, 1002 },
 	{ "no-renice",		0, NULL, 'X' },
 	{ "opencl",			0, NULL, 1006 },
+	{ "opencl-intensity", 1, NULL, 1008 },
+	{ "opencl-vwidth",	1, NULL, 1009 },
 	{ "pass",			1, NULL, 'p' },
 	{ "phrase",			1, NULL, 'P' },
 	{ "protocol",	    0, NULL, 1003 },
@@ -387,6 +393,19 @@ void parse_arg(int key, char *arg)
 	case 1007:
 		opt_debug = true;
 		opt_debug_epl = true;
+		break;
+	case 1008:
+		v = atoi(arg);
+		if (v < 1 || v > 100)
+			show_usage_and_exit(1);
+		opt_opencl_intensity = v;
+		break;
+	case 1009:
+		v = atoi(arg);
+		if (v == 1 || v == 2 || v == 4 || v == 8 || v == 16 || v == 32 || v == 64 || v == 128)
+			opt_opencl_vwidth = v;
+		else
+			show_usage_and_exit(1);
 		break;
 	default:
 		show_usage_and_exit(1);

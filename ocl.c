@@ -102,7 +102,7 @@ extern bool init_opencl_kernel(struct opencl_device *gpu, char *ocl_source) {
 }
 
 extern int init_opencl_devices() {
-	int i, j, k;
+	size_t i, j;
 	cl_platform_id platforms[100];
 	cl_uint ret;
 	cl_uint platforms_n = 0;
@@ -236,19 +236,19 @@ extern bool calc_opencl_worksize(struct opencl_device *gpu) {
 	applog(LOG_INFO, "Global GPU Memory = %lu, Using %d Threads", global_mem, gpu->threads);
 
 	// Calculate Worksize
-	dim1 = (gpu->threads > max_work_size) ? max_work_size : gpu->threads;
+	dim1 = ((size_t)gpu->threads > max_work_size) ? max_work_size : (size_t)gpu->threads;
 	dim2 = 1;
 	if (dimensions >= 2) {
 		dimensions = 2;
-		dim2 = (size_t)(gpu->threads > max_work_size) ? (ceil((double)gpu->threads / (double)max_work_size)) : 1;
+		dim2 = (size_t)((size_t)gpu->threads > max_work_size) ? (size_t)(ceil((double)gpu->threads / (double)max_work_size)) : 1;
 	}
 
 	gpu->work_dim = dimensions;
 
 	gpu->global_size[0] = dim1;
 	gpu->global_size[1] = dim2;
-	gpu->local_size[0] = 64;
-	gpu->local_size[1] = 4;
+	gpu->local_size[0] = (size_t)(max_work_size / ((opt_opencl_vwidth > dim2) ? dim2 : opt_opencl_vwidth));
+	gpu->local_size[1] = (opt_opencl_vwidth > dim2) ? dim2 : opt_opencl_vwidth;
 
 	return true;
 }

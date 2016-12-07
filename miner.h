@@ -63,6 +63,8 @@ extern int opt_timeout;
 extern int opt_n_threads;
 extern bool opt_test_vm;
 extern bool opt_opencl;
+extern int opt_opencl_intensity;
+extern int opt_opencl_vwidth;
 
 extern struct work_restart *work_restart;
 
