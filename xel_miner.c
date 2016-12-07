@@ -136,6 +136,7 @@ Usage: " PACKAGE_NAME " [OPTIONS]\n\
 Options:\n\
   -c, --config <file>         Use JSON-formated configuration file\n\
   -D, --debug                 Display debug output\n\
+      --debug-epl             Display EPL source code\n\
   -h, --help                  Display this help text and exit\n\
   -m, --mining PREF[:ID]      Mining preference for choosing work\n\
                                 profit       (Default) Estimate most profitable based on POW Reward / WCET\n\
@@ -171,6 +172,7 @@ static char const short_options[] = "c:Dk:hm:o:p:P:qr:R:s:t:T:u:VX";
 static struct option const options[] = {
 	{ "config",			1, NULL, 'c' },
 	{ "debug",			0, NULL, 'D' },
+	{ "debug-epl",		0, NULL, 1007 },
 	{ "help",			0, NULL, 'h' },
 	{ "mining",			1, NULL, 'm' },
 	{ "no-color",		0, NULL, 1001 },
@@ -381,6 +383,10 @@ void parse_arg(int key, char *arg)
 	case 1006:
 		opt_opencl = true;
 		opt_compile = false;
+		break;
+	case 1007:
+		opt_debug = true;
+		opt_debug_epl = true;
 		break;
 	default:
 		show_usage_and_exit(1);
@@ -892,7 +898,7 @@ static int work_decode(const json_t *val, struct work *work) {
 			str = (char *)json_string_value(json_object_get(pkg, "source"));
 
 			// Extract The ElasticPL Source Code
-			if (!str || strlen(str) > MAX_SOURCE_SIZE) {
+			if (!str || strlen(str) > MAX_SOURCE_SIZE || strlen(str) == 0) {
 				work_package.blacklisted = true;
 				applog(LOG_ERR, "ERROR: Invalid 'source' for work_id: %s", work_package.work_str);
 				return 0;
