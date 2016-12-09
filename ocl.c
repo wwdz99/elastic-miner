@@ -209,23 +209,34 @@ extern int init_opencl_devices() {
 
 extern bool calc_opencl_worksize(struct opencl_device *gpu) {
 	uint32_t max_threads = 1024;
-	uint32_t global_mem = 0;
-	size_t compute_units = 0;
+	cl_ulong global_mem = 0;
+	cl_ulong local_mem = 0;
+	cl_uint compute_units = 0;
+	cl_uint dimensions = 0;
+	cl_uint vwidth = 0;
 	size_t max_work_size = 0;
-	size_t dimensions = 0;
 	size_t dim1, dim2;
 
-	clGetDeviceInfo(gpu->device_id, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(size_t), &global_mem, NULL);
+	clGetDeviceInfo(gpu->device_id, CL_DEVICE_GLOBAL_MEM_SIZE, sizeof(cl_ulong), &global_mem, NULL);
 	applog(LOG_DEBUG, "  CL_DEVICE_GLOBAL_MEM_SIZE = %lu", global_mem);
 
-	clGetDeviceInfo(gpu->device_id, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(size_t), &dimensions, NULL);
+	clGetDeviceInfo(gpu->device_id, CL_DEVICE_LOCAL_MEM_SIZE, sizeof(cl_ulong), &local_mem, NULL);
+	applog(LOG_DEBUG, "  CL_DEVICE_LOCAL_MEM_SIZE  = %zu", local_mem);
+
+	clGetDeviceInfo(gpu->device_id, CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS, sizeof(cl_uint), &dimensions, NULL);
 	applog(LOG_DEBUG, "  CL_DEVICE_MAX_WORK_ITEM_DIMENSIONS  = %zu", dimensions);
 
 	clGetDeviceInfo(gpu->device_id, CL_DEVICE_MAX_WORK_GROUP_SIZE, sizeof(size_t), &max_work_size, NULL);
 	applog(LOG_DEBUG, "  CL_DEVICE_MAX_WORK_GROUP_SIZE  = %zu", max_work_size);
 
-	clGetDeviceInfo(gpu->device_id, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(size_t), &compute_units, NULL);
+	clGetDeviceInfo(gpu->device_id, CL_DEVICE_MAX_COMPUTE_UNITS, sizeof(cl_uint), &compute_units, NULL);
 	applog(LOG_DEBUG, "  CL_DEVICE_MAX_COMPUTE_UNITS  = %zu", compute_units);
+
+	clGetDeviceInfo(gpu->device_id, CL_DEVICE_PREFERRED_VECTOR_WIDTH_INT, sizeof(cl_uint), &vwidth, NULL);
+	applog(LOG_DEBUG, "  CL_DEVICE_PREFERRED_VECTOR_WIDTH_INT  = %zu", vwidth);
+	
+	// Calculate Max Threads (Must Be A Multiple Of Work Size)
+	max_threads = (uint32_t)((uint32_t)((opt_opencl_gthreads ? opt_opencl_gthreads : 1024) / max_work_size) * max_work_size);
 
 	// Calculate Num Threads For This Device
 	// GLOB MEM NEEDED: 96 + (x * VM_MEMORY_SIZE * sizeof(int32_t)) + (x * sizeof(uint32_t))
@@ -233,22 +244,41 @@ extern bool calc_opencl_worksize(struct opencl_device *gpu) {
 	size_t bound = (size_t)calc;
 
 	gpu->threads = (bound < max_threads) ? (int)bound : max_threads;
-	applog(LOG_INFO, "Global GPU Memory = %lu, Using %d Threads", global_mem, gpu->threads);
 
-	// Calculate Worksize
-	dim1 = ((size_t)gpu->threads > max_work_size) ? max_work_size : (size_t)gpu->threads;
-	dim2 = 1;
-	if (dimensions >= 2) {
-		dimensions = 2;
-		dim2 = (size_t)((size_t)gpu->threads > max_work_size) ? (size_t)(ceil((double)gpu->threads / (double)max_work_size)) : 1;
+	if (dimensions == 1 || opt_opencl_vwidth == 1) {
+		gpu->work_dim = 1;
+		gpu->global_size[0] = gpu->threads;
+		gpu->global_size[1] = 1;
+		gpu->local_size[0] = max_work_size;
+		gpu->local_size[1] = 1;
+	}
+	else {
+		gpu->work_dim = 2;
+		dim1 = ((size_t)gpu->threads > max_work_size) ? max_work_size : (size_t)gpu->threads;
+		dim2 = (size_t)(gpu->threads / dim1);
+		gpu->global_size[0] = dim1;
+		gpu->global_size[1] = dim2;
+
+		// Make Sure Local Size Y Value Is A Multiple Of Global Size
+		if (opt_opencl_vwidth && (dim2 % opt_opencl_vwidth != 0)) {
+				applog(LOG_ERR, "ERROR: Invalid opt_opencl_vwidth = %d.  Must be a multiple of '%d'", opt_opencl_vwidth, dim2);
+				return false;
+		}
+
+		gpu->local_size[1] = (size_t)(opt_opencl_vwidth ? opt_opencl_vwidth : dim2);;
+
+		// Calculate Local Size X Value
+		gpu->local_size[0] = max_work_size;
+		while ((gpu->local_size[0] * gpu->local_size[1]) > max_work_size) {
+			if (max_work_size % (gpu->local_size[0] * gpu->local_size[1]) == 0)
+				break;
+
+			gpu->local_size[0] = (size_t)(gpu->local_size[0] / 2);
+
+		}
 	}
 
-	gpu->work_dim = dimensions;
-
-	gpu->global_size[0] = dim1;
-	gpu->global_size[1] = dim2;
-	gpu->local_size[0] = (size_t)(max_work_size / ((opt_opencl_vwidth > dim2) ? dim2 : opt_opencl_vwidth));
-	gpu->local_size[1] = (opt_opencl_vwidth > dim2) ? dim2 : opt_opencl_vwidth;
+	applog(LOG_INFO, "Global GPU Memory = %llu, Using %d Threads - G{ %d, %d } L{ %d, %d }", global_mem , gpu->threads, gpu->global_size[0], gpu->global_size[1], gpu->local_size[0], gpu->local_size[1]);
 
 	return true;
 }
