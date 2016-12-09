@@ -416,7 +416,7 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "\t\tbase_data_local[i] = base_data[i];\n\n");
 
 	fprintf(f, "\t// Update OpenCL Thread ID In The Input Data\n");
-	fprintf(f, "\tbase_data_local[0] = idx;\n\n");
+	fprintf(f, "\tbase_data_local[1] = idx;\n\n");
 
 	fprintf(f, "\t// Get MD5 Hash of 80 Byte Input\n");
 	fprintf(f, "\tmd5((char*)&base_data_local[0], 80, &hash[0]);\n\n");
