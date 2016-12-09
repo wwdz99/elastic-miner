@@ -243,7 +243,7 @@ static int validate_token_list(SOURCE_TOKEN_LIST *token_list) {
 
 extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 	char c, literal[100];
-	int i, idx, len, token_id, line_num, token_list_sz, literal_idx;
+	int i, idx, len, token_id, line_num, token_list_sz, literal_idx, hex_val;
 
 	token_list_sz = sizeof(epl_token) / sizeof(epl_token[0]);
 
@@ -289,6 +289,13 @@ extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 		if (token_id >= 0) {
 
 			if (literal_idx > 0) {
+
+				// Check For Hex - If Found, Convert To Decimal String
+				if (literal[0] == '0' && literal[1] == 'x' && strlen(literal) > 2 && strlen(literal) <= 10) {
+					hex2ints(&hex_val, 1, literal + 2, strlen(literal) - 2);
+					sprintf(literal, "%d", hex_val);
+				}
+
 				add_token(token_list, -1, literal, line_num);
 				literal_idx = 0;
 				memset(literal, 0, 100);
