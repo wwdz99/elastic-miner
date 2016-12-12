@@ -49,10 +49,14 @@
 #define VM_INPUTS 12
 
 extern __thread _ALIGN(64) int32_t *vm_mem;
+extern __thread _ALIGN(64) float *vm_fmem;
 extern __thread vm_stack_item *vm_stack;
 extern __thread int vm_stack_idx;
 extern __thread uint32_t *vm_state;
 extern __thread bool vm_bounty;
+
+extern bool use_elasticpl_math;
+extern bool use_elasticpl_crypto;
 
 extern bool opt_debug;
 extern bool opt_debug_epl;

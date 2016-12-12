@@ -21,14 +21,22 @@ bool create_c_source() {
 	if (!f)
 		return false;
 
+	code = convert_ast_to_c();
+
+	if (!code)
+		return false;
+
 	fprintf(f, "#include <stdbool.h>\n");
 	fprintf(f, "#include <stdio.h>\n");
 	fprintf(f, "#include <stdint.h>\n");
 	fprintf(f, "#include <stdlib.h>\n");
 	fprintf(f, "#include <limits.h>\n");
 	fprintf(f, "#include <time.h>\n");
-	//	fprintf(f, "#include \"../crypto/elasticpl_crypto.h\"\n\n");
-	fprintf(f, "#include \"elasticpl_crypto.h\"\n\n");
+	if (use_elasticpl_math)
+		fprintf(f, "#include <math.h>\n");
+	if (use_elasticpl_crypto)
+		fprintf(f, "#include \"elasticpl_crypto.h\"\n");
+	fprintf(f, "\n");
 #ifdef _MSC_VER
 	fprintf(f, "__declspec(thread) int32_t* mem = NULL;\n");
 	fprintf(f, "__declspec(thread) uint32_t* vm_state = NULL;\n\n");
@@ -81,14 +89,7 @@ bool create_c_source() {
 #endif
 	fprintf(f, "\tint rc;\n\n");
 	fprintf(f, "//The following code created by ElasticPL to C parser\n");
-
-	code = convert_ast_to_c();
-
-	if (!code)
-		return false;
-
 	fprintf(f, "%s", &code[0]);
-
 	fprintf(f, "\treturn rc;\n");
 	fprintf(f, "}\n");
 

@@ -83,10 +83,14 @@ unsigned char g_pow_target_str[33];
 uint32_t g_pow_target[4];
 
 __thread _ALIGN(64) int32_t *vm_mem = NULL;
+__thread _ALIGN(64) float *vm_fmem = NULL;
 __thread uint32_t *vm_state = NULL;
 __thread vm_stack_item *vm_stack = NULL;
 __thread int vm_stack_idx;
 __thread bool vm_bounty;
+
+bool use_elasticpl_math;
+bool use_elasticpl_crypto;
 
 pthread_mutex_t applog_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t work_lock = PTHREAD_MUTEX_INITIALIZER;
