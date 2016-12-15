@@ -199,27 +199,31 @@ static char* convert(ast* exp) {
 			exp->is_float = l_float;
 			break;
 		case NODE_DIV_ASSIGN:
-			if (l_float && !r_float)
-				sprintf(result, "%s /= (float)(%s);\n", lval, rval);
+			if (!l_float && !r_float)
+				sprintf(result, "(((float)(%s) != 0.0) ? (float)(%s) /= (float)(%s) : 0.0);\n", rval, lval, rval);
+			else if (l_float && !r_float)
+				sprintf(result, "((%s != 0.0) ? %s /= (float)(%s) : 0.0);\n", rval, lval, rval);
 			else if (!l_float && r_float)
-				sprintf(result, "(float)%s /= %s;\n", lval, rval);
+				sprintf(result, "((float)(%s) != 0.0) ? (float)%s /= %s : 0.0);\n", rval, lval, rval);
 			else
-				sprintf(result, "%s /= %s;\n", lval, rval);
+				sprintf(result, "((%s != 0.0) ? %s /= %s : 0.0);\n", rval, lval, rval);
 			exp->is_float = true;
 			break;
 		case NODE_MOD_ASSIGN:
-			if (l_float && !r_float)
-				sprintf(result, "%s %%= (float)(%s);\n", lval, rval);
+			if (l_float && r_float)
+				sprintf(result, "(((int)(%s) > 0) ? %s %%= (int)(%s) : 0);\n", rval, lval, rval);
+			else if (l_float && !r_float)
+				sprintf(result, "((%s > 0) ? (int)(%s) %%= %s : 0);\n", rval, lval, rval);
 			else if (!l_float && r_float)
-				sprintf(result, "%s %%= (int)(%s);\n", lval, rval);
+				sprintf(result, "(((int)(%s) > 0) ? %s %%= (float)(%s) : 0);\n", rval, lval, rval);
 			else
-				sprintf(result, "%s %%= %s;\n", lval, rval);
-			exp->is_float = l_float;
+				sprintf(result, "((%s > 0) ? %s %%= %s : 0);\n", rval, lval, rval);
+			exp->is_float = false;
 			break;
 		case NODE_LSHFT_ASSIGN:
 			if (l_float && r_float)
 				sprintf(result, "(int)(%s) <<= (int)(%s);\n", lval, rval);
-			if (l_float && !r_float)
+			else if (l_float && !r_float)
 				sprintf(result, "(int)(%s) <<= %s;\n", lval, rval);
 			else if (!l_float && r_float)
 				sprintf(result, "%s <<= (int)(%s);\n", lval, rval);
@@ -230,7 +234,7 @@ static char* convert(ast* exp) {
 		case NODE_RSHFT_ASSIGN:
 			if (l_float && r_float)
 				sprintf(result, "(int)(%s) >>= (int)(%s);\n", lval, rval);
-			if (l_float && !r_float)
+			else if (l_float && !r_float)
 				sprintf(result, "(int)(%s) >>= %s;\n", lval, rval);
 			else if (!l_float && r_float)
 				sprintf(result, "%s >>= (int)(%s);\n", lval, rval);
@@ -241,7 +245,7 @@ static char* convert(ast* exp) {
 		case NODE_AND_ASSIGN:
 			if (l_float && r_float)
 				sprintf(result, "(int)(%s) &= (int)(%s);\n", lval, rval);
-			if (l_float && !r_float)
+			else if (l_float && !r_float)
 				sprintf(result, "(int)(%s) &= %s;\n", lval, rval);
 			else if (!l_float && r_float)
 				sprintf(result, "%s &= (int)(%s);\n", lval, rval);
@@ -252,7 +256,7 @@ static char* convert(ast* exp) {
 		case NODE_XOR_ASSIGN:
 			if (l_float && r_float)
 				sprintf(result, "(int)(%s) ^= (int)(%s);\n", lval, rval);
-			if (l_float && !r_float)
+			else if (l_float && !r_float)
 				sprintf(result, "(int)(%s) ^= %s;\n", lval, rval);
 			else if (!l_float && r_float)
 				sprintf(result, "%s ^= (int)(%s);\n", lval, rval);
@@ -263,7 +267,7 @@ static char* convert(ast* exp) {
 		case NODE_OR_ASSIGN:
 			if (l_float && r_float)
 				sprintf(result, "(int)(%s) |= (int)(%s);\n", lval, rval);
-			if (l_float && !r_float)
+			else if (l_float && !r_float)
 				sprintf(result, "(int)(%s) |= %s;\n", lval, rval);
 			else if (!l_float && r_float)
 				sprintf(result, "%s |= (int)(%s);\n", lval, rval);
@@ -304,30 +308,27 @@ static char* convert(ast* exp) {
 			exp->is_float = l_float;
 			break;
 		case NODE_DIV:
-			if (l_float && !r_float)
-				sprintf(result, "((%s != 0.0) ? %s /= (float)(%s) : 0.0)", rval, lval, rval);
+			if (!l_float && !r_float)
+				sprintf(result, "(((float)(%s) != 0.0) ? (float)(%s) / (float)(%s) : 0.0)", rval, lval, rval);
+			else if (l_float && !r_float)
+				sprintf(result, "((%s != 0.0) ? %s / (float)(%s) : 0.0)", rval, lval, rval);
 			else if (!l_float && r_float)
-				sprintf(result, "((float)(%s) != 0.0) ? %s /= %s : 0.0)", rval, lval, rval);
+				sprintf(result, "((float)(%s) != 0.0) ? (float)%s / %s : 0.0)", rval, lval, rval);
 			else
-				sprintf(result, "((%s != 0.0) ? %s /= %s : 0.0)", rval, lval, rval);
+				sprintf(result, "((%s != 0.0) ? %s / %s : 0.0)", rval, lval, rval);
 			exp->is_float = true;
-			// TBD
-//			sprintf(result, "((%s != 0) ? m(%s / %s) : m(0))", rval, lval, rval);
-//			exp->is_float = true;
 			break;
 		case NODE_MOD:
-//TBD
-//			sprintf(result, "((%s > 0) ? m(%s %%%% %s) : m(0))", rval, lval, rval);
-//			exp->is_float = l_float | r_float;
 			if (l_float && r_float)
-				sprintf(result, "(((int)(%s) > 0) ? %s /= (int)(%s) : 0)", rval, lval, rval);
-			if (l_float && !r_float)
-				sprintf(result, "(((int)%s > 0) ? (int)(%s) /= %s : 0)", rval, lval, rval);
+				sprintf(result, "(((int)(%s) > 0) ? (int)(%s) %% (int)(%s) : 0)", rval, lval, rval);
+			else if (l_float && !r_float)
+				sprintf(result, "((%s > 0) ? (int)(%s) %% %s : 0)", rval, lval, rval);
 			else if (!l_float && r_float)
-				sprintf(result, "((%s > 0) ? %s /= (float)(%s) : 0)", rval, lval, rval);
+				sprintf(result, "(((int)(%s) > 0) ? %s %% (int)(%s) : 0)", rval, lval, rval);
 			else
-				sprintf(result, "((%s > 0) ? %s /= %s : 0)", rval, lval, rval);
+				sprintf(result, "((%s > 0) ? %s %% %s : 0)", rval, lval, rval);
 			exp->is_float = false;
+			break;
 		case NODE_LSHIFT:
 			sprintf(result, "%s << %s", lval, rval);
 			exp->is_float = false;
@@ -375,7 +376,7 @@ static char* convert(ast* exp) {
 		case NODE_BITWISE_AND:
 			if (l_float && r_float)
 				sprintf(result, "(int)(%s) & (int)(%s)", lval, rval);
-			if (l_float && !r_float)
+			else if (l_float && !r_float)
 				sprintf(result, "(int)(%s) & %s", lval, rval);
 			else if (!l_float && r_float)
 				sprintf(result, "%s & (int)(%s)", lval, rval);
@@ -386,7 +387,7 @@ static char* convert(ast* exp) {
 		case NODE_BITWISE_XOR:
 			if (l_float && r_float)
 				sprintf(result, "(int)(%s) ^ (int)(%s)", lval, rval);
-			if (l_float && !r_float)
+			else if (l_float && !r_float)
 				sprintf(result, "(int)(%s) ^ %s", lval, rval);
 			else if (!l_float && r_float)
 				sprintf(result, "%s ^ (int)(%s)", lval, rval);
@@ -397,7 +398,7 @@ static char* convert(ast* exp) {
 		case NODE_BITWISE_OR:
 			if (l_float && r_float)
 				sprintf(result, "(int)(%s) | (int)(%s)", lval, rval);
-			if (l_float && !r_float)
+			else if (l_float && !r_float)
 				sprintf(result, "(int)(%s) | %s", lval, rval);
 			else if (!l_float && r_float)
 				sprintf(result, "%s | (int)(%s)", lval, rval);
