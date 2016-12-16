@@ -18,7 +18,7 @@ ast* d_stack_exp[10];
 int d_stack_op[10];
 
 
-static ast* add_exp(NODE_TYPE node_type, TOKEN_EXP exp_type, long value, float fvalue, int token_num, int line_num, bool is_float, ast* left, ast* right) {
+static ast* add_exp(NODE_TYPE node_type, TOKEN_EXP exp_type, long value, float fvalue, int token_num, int line_num, DATA_TYPE data_type, ast* left, ast* right) {
 	ast* e = calloc(1, sizeof(ast));
 	if (e) {
 		e->type = node_type;
@@ -28,7 +28,8 @@ static ast* add_exp(NODE_TYPE node_type, TOKEN_EXP exp_type, long value, float f
 		e->token_num = token_num;
 		e->line_num = line_num;
 		e->end_stmnt = false;
-		e->is_float = is_float;
+		e->data_type = data_type;
+		e->is_float = (data_type == DT_FLOAT);
 		e->left = left;
 		e->right = right;
 	}
@@ -185,10 +186,6 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
 			node_type = NODE_VAR_CONST;
 		else
 			node_type = NODE_VAR_EXP;
-		//if (stack_exp_idx >= 0 && stack_exp[stack_exp_idx]->type == NODE_CONSTANT)
-		//	node_type = token->is_float ? NODE_VARF_CONST : NODE_VAR_CONST;
-		//else
-		//	node_type = token->is_float ? NODE_VARF_EXP : NODE_VAR_EXP;
 		break;
 	case TOKEN_INCREMENT:
 		if (stack_exp_idx >= 0 && (stack_exp[stack_exp_idx]->token_num > token_num))
@@ -266,6 +263,37 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
 	case TOKEN_ABS:				node_type = NODE_ABS;			break;
 	case TOKEN_FABS:			node_type = NODE_FABS;			break;
 	case TOKEN_FMOD:			node_type = NODE_FMOD; 			break;
+	case TOKEN_BI_CONST:		node_type = NODE_BI_CONST;		break;
+	case TOKEN_BI_EXPR:			node_type = NODE_BI_EXPR;		break;
+	case TOKEN_BI_ADD:			node_type = NODE_BI_ADD;		break;
+	case TOKEN_BI_SUB:			node_type = NODE_BI_SUB;		break;
+	case TOKEN_BI_MUL:			node_type = NODE_BI_MUL;		break;
+	case TOKEN_BI_DIV:			node_type = NODE_BI_DIV;		break;
+	case TOKEN_BI_CEIL_DIV:		node_type = NODE_BI_CEIL_DIV;	break;
+	case TOKEN_BI_FLOOR_DIV:	node_type = NODE_BI_FLOOR_DIV;	break;
+	case TOKEN_BI_TRUNC_DIV:	node_type = NODE_BI_TRUNC_DIV;	break;
+	case TOKEN_BI_DIV_EXACT:	node_type = NODE_BI_DIV_EXACT;	break;
+	case TOKEN_BI_MOD:			node_type = NODE_BI_MOD;		break;
+	case TOKEN_BI_NEG:			node_type = NODE_BI_NEG;		break;
+	case TOKEN_BI_LSHIFT:		node_type = NODE_BI_LSHIFT;		break;
+	case TOKEN_BI_RSHIFT:		node_type = NODE_BI_RSHIFT;		break;
+	case TOKEN_BI_GCD:			node_type = NODE_BI_GCD;		break;
+	case TOKEN_BI_DIVISIBLE:	node_type = NODE_BI_DIVISIBLE;	break;
+	case TOKEN_BI_CNGR_MOD_P:	node_type = NODE_BI_CNGR_MOD_P;	break;
+	case TOKEN_BI_POW:			node_type = NODE_BI_POW;		break;
+	case TOKEN_BI_POW2:			node_type = NODE_BI_POW2;		break;
+	case TOKEN_BI_POW_MOD_P:	node_type = NODE_BI_POW_MOD_P;	break;
+	case TOKEN_BI_POW2_MOD_P:	node_type = NODE_BI_POW2_MOD_P;	break;
+	case TOKEN_BI_COMP:			node_type = NODE_BI_COMP;		break;
+	case TOKEN_BI_COMP_ABS:		node_type = NODE_BI_COMP_ABS;	break;
+	case TOKEN_BI_SIGN:			node_type = NODE_BI_SIGN;		break;
+	case TOKEN_BI_OR:			node_type = NODE_BI_OR;			break;
+	case TOKEN_BI_AND:			node_type = NODE_BI_AND;		break;
+	case TOKEN_BI_XOR:			node_type = NODE_BI_XOR;		break;
+	case TOKEN_BI_OR_INT:		node_type = NODE_BI_OR_INT;		break;
+	case TOKEN_BI_AND_INT:		node_type = NODE_BI_AND_INT;	break;
+	case TOKEN_BI_XOR_INT:		node_type = NODE_BI_XOR_INT;	break;
+	case TOKEN_BI_LEAST_32:		node_type = NODE_BI_LEAST_32;	break;
 	case TOKEN_SHA256:			node_type = NODE_SHA256;		break;
 	case TOKEN_SHA512:			node_type = NODE_SHA512;		break;
 	case TOKEN_WHIRLPOOL:	   	node_type = NODE_WHIRLPOOL;		break;
@@ -426,14 +454,14 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 		if (token->inputs > 0) {
 			// First Paramater
 			left = pop_exp();
-			exp = add_exp(NODE_PARAM, EXP_EXPRESSION, 0, 0.0, 0, 0, false, left, NULL);
+			exp = add_exp(NODE_PARAM, EXP_EXPRESSION, 0, 0.0, 0, 0, DT_NA, left, NULL);
 			push_exp(exp);
 
 			// Remaining Paramaters
 			for (i = 1; i < token->inputs; i++) {
 				right = pop_exp();
 				left = pop_exp();
-				exp = add_exp(NODE_PARAM, EXP_EXPRESSION, 0, 0.0, 0, 0, false, left, right);
+				exp = add_exp(NODE_PARAM, EXP_EXPRESSION, 0, 0.0, 0, 0, DT_NA, left, right);
 				push_exp(exp);
 			}
 			left = NULL;
@@ -445,7 +473,7 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 		}
 	}
 
-	exp = add_exp(node_type, token->exp, (long)value, (float) fvalue, token_num, token->line_num, token->is_float, left, right);
+	exp = add_exp(node_type, token->exp, (long)value, (float) fvalue, token_num, token->line_num, token->data_type, left, right);
 
 	if (exp)
 		push_exp(exp);
@@ -503,7 +531,7 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 		case TOKEN_TRUE:
 		case TOKEN_FALSE:
 			if (!create_exp(&token_list->token[i], i)) return false;
-			stack_exp[stack_exp_idx]->is_float = token_list->token[i].is_float;
+			stack_exp[stack_exp_idx]->data_type = token_list->token[i].data_type;
 			break;
 
 		case TOKEN_VAR_BEGIN:
@@ -531,9 +559,8 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 				if (!create_exp(&token_list->token[token_id], token_id)) return false;
 			}
 
-			// Determine If Variable Is Float or Int
-			if (token_list->token[stack_op[stack_op_idx]].is_float)
-				token_list->token[i].is_float = token_list->token[stack_op[stack_op_idx]].is_float;
+			// Set TOKEN_VAR_END To Match Data Type 
+			token_list->token[i].data_type = token_list->token[stack_op[stack_op_idx]].data_type;
 
 			pop_op();
 			if (!create_exp(&token_list->token[i], i)) return false;

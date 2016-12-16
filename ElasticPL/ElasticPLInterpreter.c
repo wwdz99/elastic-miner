@@ -23,18 +23,17 @@ char blk_old[4096];
 uint32_t wcet_block;
 
 extern char* convert_ast_to_c() {
+	char* ret = NULL;
+	int i;
+
 	blk_new[0] = 0;
 	blk_old[0] = 0;
 
 	use_elasticpl_crypto = false;
 	use_elasticpl_math = false;
 
-	char* ret = NULL;
-	int i;
-	for (i = 0; i < vm_ast_cnt; i++) {
+	for (i = 0; i < vm_ast_cnt; i++)
 		ret = append_strings(ret, convert(vm_ast[i]));
-		printf("%s\n\n",ret);
-	}
 
 	// The Current OpenCL Code Can't Run The Crypto Functions
 	if (opt_opencl && use_elasticpl_crypto)
@@ -51,8 +50,8 @@ static char* convert(ast* exp) {
 	char *result = malloc(sizeof(char) * 256);
 	result[0] = 0;
 
-	bool l_float = false;
-	bool r_float = false;
+	bool l_is_float = false;
+	bool r_is_float = false;
 
 	if (exp != NULL) {
 
@@ -72,54 +71,52 @@ static char* convert(ast* exp) {
 
 		// Check If Leafs Are Float Or Int To Determine If Casting Is Needed
 		if (exp->left != NULL)
-			l_float = exp->left->is_float;
+			l_is_float = (exp->left->data_type == DT_FLOAT);
 		if (exp->right != NULL)
-			r_float = exp->right->is_float;
+			r_is_float = (exp->right->data_type == DT_FLOAT);
 
 		switch (exp->type) {
 		case NODE_CONSTANT:
-			if (exp->is_float)
-				sprintf(result, "%f", exp->fvalue);
-			else
+			if (exp->data_type == DT_INT)
 				sprintf(result, "%d", exp->value);
+			else if (exp->data_type == DT_FLOAT)
+				sprintf(result, "%f", exp->fvalue);
+//			else if (exp->data_type == DT_BIGINT)
+//				sprintf(result, "%s", exp->value);
 			break;
 		case NODE_VAR_CONST:
 			if (exp->value < 0 || exp->value > VM_MEMORY_SIZE) {
-				if (exp->is_float)
+				if (exp->data_type == DT_INT)
+					sprintf(result, "m[0]");
+				else if (exp->data_type == DT_FLOAT)
 					sprintf(result, "f[0]");
-				else
-					sprintf(result, "mem[0]");
+				else if (exp->data_type == DT_BIGINT)
+					sprintf(result, "b[0]");
 			}
 			else {
-				if (exp->is_float)
+				if (exp->data_type == DT_INT)
+					sprintf(result, "m[%lu]", exp->value);
+				else if (exp->data_type == DT_FLOAT)
 					sprintf(result, "f[%lu]", exp->value);
-				else
-					sprintf(result, "mem[%lu]", exp->value);
+				else if (exp->data_type == DT_BIGINT)
+					sprintf(result, "b[%lu]", exp->value);
 			}
 			break;
 		case NODE_VAR_EXP:
-			if (exp->is_float)
+			if (exp->data_type == DT_INT)
+				sprintf(result, "m[%s]", lval);
+			else if (exp->data_type == DT_FLOAT)
 				sprintf(result, "f[%s]", lval);
-			else
-				sprintf(result, "mem[%s]", lval);
+			else if (exp->data_type == DT_BIGINT)
+				sprintf(result, "b[%s]", lval);
 			break;
 		case NODE_ASSIGN:
-			tmp = replace(lval, "mem[", "mem[m(");
-			free(lval);
-			lval = replace(tmp, "]", ")]");
-			free(tmp);
-			tmp = replace(lval, "f[", "f[m(");
-			free(lval);
-//			sprintf(result, "%s = m(%s);\n", lval, rval);
-//			sprintf(result, "%s = m(%s);\n", tmp, rval);
-
-			if (l_float && !r_float)
-				sprintf(result, "%s = (float)m(%s);\n", tmp, rval);
-			else if (!l_float && r_float)
-				sprintf(result, "%s = (int)m(%s);\n", tmp, rval);
+			if (l_is_float && !r_is_float)
+				sprintf(result, "%s = (float)(%s);\n", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s = (int)(%s);\n", lval, rval);
 			else
-				sprintf(result, "%s = m(%s);\n", tmp, rval);
-
+				sprintf(result, "%s = %s;\n", lval, rval);
 			break;
 		case NODE_IF:
 			if (exp->right->type != NODE_ELSE) {
@@ -160,164 +157,347 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_INCREMENT_R:
 			if (exp->end_stmnt)
-				sprintf(result, "m(++%s);\n", lval);
+				sprintf(result, "++%s;\n", lval);
 			else
-				sprintf(result, "m(++%s)", lval);
-			exp->is_float = l_float;
+				sprintf(result, "++%s", lval);
+			exp->is_float = l_is_float;
 			break;
 		case NODE_INCREMENT_L:
 			if (exp->end_stmnt)
-				sprintf(result, "m(%s++);\n", lval);
+				sprintf(result, "%s++;\n", lval);
 			else
-				sprintf(result, "m(%s++)", lval);
-			exp->is_float = l_float;
+				sprintf(result, "%s++", lval);
+			exp->is_float = l_is_float;
 			break;
 		case NODE_ADD:
-			sprintf(result, "m(%s + %s)", lval, rval);
-			exp->is_float = l_float | r_float;
+			if (l_is_float && !r_is_float)
+				sprintf(result, "%s + (float)(%s)", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "(float)(%s) + %s", lval, rval);
+			else
+				sprintf(result, "%s + %s", lval, rval);
+			exp->is_float = l_is_float;
 			break;
 		case NODE_ADD_ASSIGN:
-			sprintf(result, "m(%s) += m(%s);\n", lval, rval);
-			exp->is_float = l_float | r_float;
+			if (l_is_float && !r_is_float)
+				sprintf(result, "%s += (float)(%s);\n", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s += (int)(%s);\n", lval, rval);
+			else
+				sprintf(result, "%s += %s;\n", lval, rval);
+			exp->is_float = l_is_float;
 			break;
 		case NODE_SUB_ASSIGN:
-			sprintf(result, "m(%s) -= m(%s);\n", lval, rval);
-			exp->is_float = l_float | r_float;
+			if (l_is_float && !r_is_float)
+				sprintf(result, "%s -= (float)(%s);\n", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s -= (int)(%s);\n", lval, rval);
+			else
+				sprintf(result, "%s -= %s;\n", lval, rval);
+			exp->is_float = l_is_float;
 			break;
 		case NODE_MUL_ASSIGN:
-			sprintf(result, "m(%s) *= m(%s);\n", lval, rval);
-			exp->is_float = l_float | r_float;
+			if (l_is_float && !r_is_float)
+				sprintf(result, "%s *= (float)(%s);\n", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s *= (int)(%s);\n", lval, rval);
+			else
+				sprintf(result, "%s *= %s;\n", lval, rval);
+			exp->is_float = l_is_float;
 			break;
 		case NODE_DIV_ASSIGN:
-			sprintf(result, "m(%s) /= m(%s);\n", lval, rval);
+			if (!l_is_float && !r_is_float)
+				sprintf(result, "%s = ((float)(%s) != 0.0) ? (int)(float(%s) / (float)(%s)) : 0);\n", lval, rval, lval, rval);
+			else if (l_is_float && !r_is_float)
+				sprintf(result, "%s = (%s != 0.0) ? %s / (float)(%s)) : 0.0);\n", lval, rval, lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s = (%s != 0.0) ? (int)(float(%s) / %s) : 0);\n", lval, rval, lval, rval);
+			else
+				sprintf(result, "%s = (%s != 0.0) ? %s / %s : 0.0);\n", lval, rval, lval, rval);
 			exp->is_float = true;
 			break;
 		case NODE_MOD_ASSIGN:
-			sprintf(result, "m(%s) %%= m(%s);\n", lval, rval);
-			exp->is_float = l_float | r_float;
+			if (l_is_float && r_is_float)
+				sprintf(result, "%s = ((int)(%s) != 0) ? (float)(int(%s) %% (int)(%s)) : 0.0);\n", lval, rval, lval, rval);
+			else if (l_is_float && !r_is_float)
+				sprintf(result, "%s = (%s != 0) ? (float)((int)(%s) %% %s) : 0.0);\n", lval, rval, lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s = ((int)(%s) != 0) ? %s %% (int)(%s)) : 0);\n", lval, rval, lval, rval);
+			else
+				sprintf(result, "%s = (%s != 0) ? %s %% %s : 0.0);\n", lval, rval, lval, rval);
+			exp->is_float = false;
 			break;
 		case NODE_LSHFT_ASSIGN:
-			sprintf(result, "m(%s) <<= m(%s);\n", lval, rval);
-			exp->is_float = l_float | r_float;
+			if (l_is_float && r_is_float)
+				sprintf(result, "(int)(%s) <<= (int)(%s);\n", lval, rval);
+			else if (l_is_float && !r_is_float)
+				sprintf(result, "(int)(%s) <<= %s;\n", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s <<= (int)(%s);\n", lval, rval);
+			else
+				sprintf(result, "%s <<= %s;\n", lval, rval);
+			exp->is_float = false;
 			break;
 		case NODE_RSHFT_ASSIGN:
-			sprintf(result, "m(%s) >>= m(%s);\n", lval, rval);
-			exp->is_float = l_float | r_float;
+			if (l_is_float && r_is_float)
+				sprintf(result, "(int)(%s) >>= (int)(%s);\n", lval, rval);
+			else if (l_is_float && !r_is_float)
+				sprintf(result, "(int)(%s) >>= %s;\n", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s >>= (int)(%s);\n", lval, rval);
+			else
+				sprintf(result, "%s >>= %s;\n", lval, rval);
+			exp->is_float = false;
 			break;
 		case NODE_AND_ASSIGN:
-			sprintf(result, "m(%s) &= m(%s);\n", lval, rval);
-			exp->is_float = l_float | r_float;
+			if (l_is_float && r_is_float)
+				sprintf(result, "(int)(%s) &= (int)(%s);\n", lval, rval);
+			else if (l_is_float && !r_is_float)
+				sprintf(result, "(int)(%s) &= %s;\n", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s &= (int)(%s);\n", lval, rval);
+			else
+				sprintf(result, "%s &= %s;\n", lval, rval);
+			exp->is_float = false;
 			break;
 		case NODE_XOR_ASSIGN:
-			sprintf(result, "m(%s) ^= m(%s);\n", lval, rval);
-			exp->is_float = l_float | r_float;
+			if (l_is_float && r_is_float)
+				sprintf(result, "(int)(%s) ^= (int)(%s);\n", lval, rval);
+			else if (l_is_float && !r_is_float)
+				sprintf(result, "(int)(%s) ^= %s;\n", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s ^= (int)(%s);\n", lval, rval);
+			else
+				sprintf(result, "%s ^= %s;\n", lval, rval);
+			exp->is_float = false;
 			break;
 		case NODE_OR_ASSIGN:
-			sprintf(result, "m(%s) |= m(%s);\n", lval, rval);
-			exp->is_float = l_float | r_float;
+			if (l_is_float && r_is_float)
+				sprintf(result, "(int)(%s) |= (int)(%s);\n", lval, rval);
+			else if (l_is_float && !r_is_float)
+				sprintf(result, "(int)(%s) |= %s;\n", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s |= (int)(%s);\n", lval, rval);
+			else
+				sprintf(result, "%s |= %s;\n", lval, rval);
+			exp->is_float = false;
 			break;
 		case NODE_DECREMENT_R:
 			if (exp->end_stmnt)
-				sprintf(result, "m(--%s);\n", lval);
+				sprintf(result, "--%s;\n", lval);
 			else
-				sprintf(result, "m(--%s)", lval);
-			exp->is_float = l_float;
+				sprintf(result, "--%s", lval);
+			exp->is_float = l_is_float;
 			break;
 		case NODE_DECREMENT_L:
 			if (exp->end_stmnt)
-				sprintf(result, "m(%s--);\n", lval);
+				sprintf(result, "%s--;\n", lval);
 			else
-				sprintf(result, "m(%s--)", lval);
-			exp->is_float = l_float;
+				sprintf(result, "%s--", lval);
+			exp->is_float = l_is_float;
 			break;
 		case NODE_SUB:
-			sprintf(result, "m(%s - %s)", lval, rval);
-			exp->is_float = l_float | r_float;
+			if (l_is_float && !r_is_float)
+				sprintf(result, "%s - (float)(%s)", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "(float)(%s) - %s", lval, rval);
+			else
+				sprintf(result, "%s - %s", lval, rval);
+			exp->is_float = l_is_float;
 			break;
 		case NODE_MUL:
-			sprintf(result, "m(%s * %s)", lval, rval);
-			exp->is_float = l_float | r_float;
+			if (l_is_float && !r_is_float)
+				sprintf(result, "%s * (float)(%s)", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "(float)(%s) * %s", lval, rval);
+			else
+				sprintf(result, "%s * %s", lval, rval);
+			exp->is_float = l_is_float;
 			break;
 		case NODE_DIV:
-			sprintf(result, "((%s != 0) ? m(%s / %s) : m(0))", rval, lval, rval);
+			if (!l_is_float && !r_is_float)
+				sprintf(result, "(((float)(%s) != 0.0) ? (float)(%s) / (float)(%s) : 0.0)", rval, lval, rval);
+			else if (l_is_float && !r_is_float)
+				sprintf(result, "((%s != 0.0) ? %s / (float)(%s) : 0.0)", rval, lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "((float)(%s) != 0.0) ? (float)%s / %s : 0.0)", rval, lval, rval);
+			else
+				sprintf(result, "((%s != 0.0) ? %s / %s : 0.0)", rval, lval, rval);
 			exp->is_float = true;
 			break;
 		case NODE_MOD:
-			sprintf(result, "((%s > 0) ? m(%s %%%% %s) : m(0))", rval, lval, rval);
-			exp->is_float = l_float | r_float;
+			if (l_is_float && r_is_float)
+				sprintf(result, "(((int)(%s) > 0) ? (int)(%s) %% (int)(%s) : 0)", rval, lval, rval);
+			else if (l_is_float && !r_is_float)
+				sprintf(result, "((%s > 0) ? (int)(%s) %% %s : 0)", rval, lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "(((int)(%s) > 0) ? %s %% (int)(%s) : 0)", rval, lval, rval);
+			else
+				sprintf(result, "((%s > 0) ? %s %% %s : 0)", rval, lval, rval);
+			exp->is_float = false;
 			break;
 		case NODE_LSHIFT:
-			sprintf(result, "m(%s << %s)", lval, rval);
+			if (l_is_float && r_is_float)
+				sprintf(result, "(int)(%s) << (int)(%s)", lval, rval);
+			else if (l_is_float && !r_is_float)
+				sprintf(result, "(int)(%s) << %s", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s << (int)(%s)", lval, rval);
+			else
+				sprintf(result, "%s << %s", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_LROT:
-			sprintf(result, "m(rotl32( %s, %s %%%% 32))", lval, rval);
+			if (l_is_float && r_is_float)
+				sprintf(result, "rotl32( (int)(%s), (int)(%s) %%%% 32)", lval, rval);
+			else if (l_is_float && !r_is_float)
+				sprintf(result, "rotl32( (int)(%s), %s %%%% 32)", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "rotl32( %s, (int)(%s) %%%% 32)", lval, rval);
+			else
+				sprintf(result, "rotl32( %s, %s %%%% 32)", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_RSHIFT:
-			sprintf(result, "m(%s >> %s)", lval, rval);
+			if (l_is_float && r_is_float)
+				sprintf(result, "(int)(%s) >> (int)(%s)", lval, rval);
+			else if (l_is_float && !r_is_float)
+				sprintf(result, "(int)(%s) >> %s", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s >> (int)(%s)", lval, rval);
+			else
+				sprintf(result, "%s >> %s", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_RROT:
-			sprintf(result, "m(rotr32( %s, %s %%%% 32))", lval, rval);
+			if (l_is_float && r_is_float)
+				sprintf(result, "rotr32( (int)(%s), (int)(%s) %%%% 32)", lval, rval);
+			else if (l_is_float && !r_is_float)
+				sprintf(result, "rotr32( (int)(%s), %s %%%% 32)", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "rotr32( %s, (int)(%s) %%%% 32)", lval, rval);
+			else
+				sprintf(result, "rotr32( %s, %s %%%% 32)", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_NOT:
-			sprintf(result, "m(!%s)", lval);
-			exp->is_float = l_float | r_float;
+			sprintf(result, "!%s", lval);
+			exp->is_float = l_is_float;
 			break;
 		case NODE_COMPL:
-			sprintf(result, "m(~%s)", lval);
-			exp->is_float = l_float | r_float;
+			sprintf(result, "~%s", lval);
+			exp->is_float = l_is_float;
 			break;
 		case NODE_AND:
-			sprintf(result, "m(%s >! %s)", lval, rval);		// Required To Match Java Results
-//			sprintf(result, "m(%s && %s)", lval, rval);
-			exp->is_float = l_float | r_float;
+			if (l_is_float && !r_is_float)
+				sprintf(result, "%s >! (float)(%s)", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s >! (int)(%s)", lval, rval);
+			else
+				sprintf(result, "%s >! %s", lval, rval);
+			exp->is_float = false;
+//			sprintf(result, "%s >! %s", lval, rval);		// Required To Match Java Results
+//			sprintf(result, "%s && %s", lval, rval);
 			break;
 		case NODE_OR:
-			sprintf(result, "m(%s || %s)", lval, rval);
-			exp->is_float = l_float | r_float;
+			if (l_is_float && !r_is_float)
+				sprintf(result, "%s || (float)(%s)", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s || (int)(%s)", lval, rval);
+			else
+				sprintf(result, "%s || %s", lval, rval);
+			exp->is_float = false;
 			break;
 		case NODE_BITWISE_AND:
-			sprintf(result, "m(%s & %s)", lval, rval);
-			exp->is_float = l_float | r_float;
+			if (l_is_float && r_is_float)
+				sprintf(result, "(int)(%s) & (int)(%s)", lval, rval);
+			else if (l_is_float && !r_is_float)
+				sprintf(result, "(int)(%s) & %s", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s & (int)(%s)", lval, rval);
+			else
+				sprintf(result, "%s & %s", lval, rval);
+			exp->is_float = false;
 			break;
 		case NODE_BITWISE_XOR:
-			sprintf(result, "m(%s ^ %s)", lval, rval);
-			exp->is_float = l_float | r_float;
+			if (l_is_float && r_is_float)
+				sprintf(result, "(int)(%s) ^ (int)(%s)", lval, rval);
+			else if (l_is_float && !r_is_float)
+				sprintf(result, "(int)(%s) ^ %s", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s ^ (int)(%s)", lval, rval);
+			else
+				sprintf(result, "%s ^ %s", lval, rval);
+			exp->is_float = false;
 			break;
 		case NODE_BITWISE_OR:
-			sprintf(result, "m(%s | %s)", lval, rval);
-			exp->is_float = l_float | r_float;
+			if (l_is_float && r_is_float)
+				sprintf(result, "(int)(%s) | (int)(%s)", lval, rval);
+			else if (l_is_float && !r_is_float)
+				sprintf(result, "(int)(%s) | %s", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s | (int)(%s)", lval, rval);
+			else
+				sprintf(result, "%s | %s", lval, rval);
+			exp->is_float = false;
 			break;
 		case NODE_EQ:
-			sprintf(result, "m(%s == %s)", lval, rval);
+			if (l_is_float && !r_is_float)
+				sprintf(result, "%s == (float)(%s)", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s == (int)(%s)", lval, rval);
+			else
+				sprintf(result, "%s == %s", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_NE:
-			sprintf(result, "m(%s != %s)", lval, rval);
+			if (l_is_float && !r_is_float)
+				sprintf(result, "%s != (float)(%s)", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s != (int)(%s)", lval, rval);
+			else
+				sprintf(result, "%s != %s", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_GT:
-			sprintf(result, "m(%s > %s)", lval, rval);
+			if (l_is_float && !r_is_float)
+				sprintf(result, "%s > (float)(%s)", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s > (int)(%s)", lval, rval);
+			else
+				sprintf(result, "%s > %s", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_LT:
-			sprintf(result, "m(%s < %s)", lval, rval);
+			if (l_is_float && !r_is_float)
+				sprintf(result, "%s < (float)(%s)", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s < (int)(%s)", lval, rval);
+			else
+				sprintf(result, "%s < %s", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_GE:
-			sprintf(result, "m(%s >= %s)", lval, rval);
+			if (l_is_float && !r_is_float)
+				sprintf(result, "%s >= (float)(%s)", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s >= (int)(%s)", lval, rval);
+			else
+				sprintf(result, "%s >= %s", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_LE:
-			sprintf(result, "m(%s <= %s)", lval, rval);
+			if (l_is_float && !r_is_float)
+				sprintf(result, "%s <= (float)(%s)", lval, rval);
+			else if (!l_is_float && r_is_float)
+				sprintf(result, "%s <= (int)(%s)", lval, rval);
+			else
+				sprintf(result, "%s <= %s", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_NEG:
-			sprintf(result, "m(-%s)", lval);
-			exp->is_float = l_float;
+			sprintf(result, "-%s", lval);
+			exp->is_float = l_is_float;
 			break;
 		case NODE_VERIFY:
 			if (opt_opencl)
@@ -336,83 +516,219 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_SIN:
 			sprintf(result, "sin( %s )", lval);
+			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_COS:
 			sprintf(result, "cos( %s )", lval);
+			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_TAN:
 			sprintf(result, "tan( %s )", lval);
+			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_SINH:
 			sprintf(result, "sinh( %s )", lval);
+			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_COSH:
 			sprintf(result, "cos( %s )", lval);
+			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_TANH:
 			sprintf(result, "tanh( %s )", lval);
+			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_ASIN:
 			sprintf(result, "asin( %s )", lval);
+			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_ACOS:
 			sprintf(result, "acos( %s )", lval);
+			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_ATAN:
 			sprintf(result, "atan( %s )", lval);
+			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_ATAN2:
 			sprintf(result, "atan2( %s )", lval);
+			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_EXPNT:
 			sprintf(result, "exp( %s )", lval);
+			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_LOG:
 			sprintf(result, "log( %s )", lval);
+			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_LOG10:
 			sprintf(result, "log10( %s )", lval);
+			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_POW:
 			sprintf(result, "pow( %s )", lval);
+			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_SQRT:
 			sprintf(result, "sqrt( %s )", lval);
+			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_CEIL:
 			sprintf(result, "ceil( %s )", lval);
+			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_FLOOR:
 			sprintf(result, "floor( %s )", lval);
+			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_ABS:
 			sprintf(result, "abs( %s )", lval);
+			exp->is_float = false;
 			use_elasticpl_math = true;
 			break;
 		case NODE_FABS:
 			sprintf(result, "fabs( %s )", lval);
+			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_FMOD:
 			sprintf(result, "fmod( %s )", lval);
+			exp->is_float = true;
 			use_elasticpl_math = true;
+			break;
+		case NODE_BI_ADD:
+			sprintf(result, "big_add( &%s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_SUB:
+			sprintf(result, "big_sub( &%s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_MUL:
+			sprintf(result, "big_mul( &%s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_DIV:
+			sprintf(result, "big_div( &%s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_CEIL_DIV:
+			sprintf(result, "big_ceil_div( &%s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_FLOOR_DIV:
+			sprintf(result, "big_floor_div( &%s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_TRUNC_DIV:
+			sprintf(result, "big_truncate_div( &%s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_DIV_EXACT:
+			sprintf(result, "big_div_exact( &%s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_MOD:
+			sprintf(result, "big_mod( &%s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_NEG:
+			sprintf(result, "big_neg( &%s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_LSHIFT:
+			sprintf(result, "big_lshift( &%s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_RSHIFT:
+			sprintf(result, "big_rshift( &%s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_GCD:
+			sprintf(result, "big_gcd( &%s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+			//case NODE_BI_DIVISIBLE:
+			//	sprintf(result, "big_divisible( %s );\n", rval);
+			//	use_elasticpl_bigint = true;
+			//	break;
+			//case NODE_BI_CNGR_MOD_P:
+			//	sprintf(result, "big_congruent_mod_p( %s );\n", rval);
+			//	use_elasticpl_bigint = true;
+			//	break;
+			//case NODE_BI_POW:
+			//	sprintf(result, "big_pow( %s );\n", rval);
+			//	use_elasticpl_bigint = true;
+			//	break;
+			//case NODE_BI_POW2:
+			//	sprintf(result, "big_pow2( %s );\n", rval);
+			//	use_elasticpl_bigint = true;
+			//	break;
+		case NODE_BI_POW_MOD_P:
+			sprintf(result, "big_pow_mod_p( &%s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_POW2_MOD_P:
+			sprintf(result, "big_pow2_mod_p( &%s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+			//case NODE_BI_COMP:
+			//	sprintf(result, "big_compare( %s );\n", rval);
+			//	use_elasticpl_bigint = true;
+			//	break;
+			//case NODE_BI_COMP_ABS:
+			//	sprintf(result, "big_compare_abs( %s );\n", rval);
+			//	use_elasticpl_bigint = true;
+			//	break;
+			//case NODE_BI_SIGN:
+			//	sprintf(result, "big_sign( %s );\n", rval);
+			//	use_elasticpl_bigint = true;
+			//	break;
+			case NODE_BI_OR:
+				sprintf(result, "big_or( &%s );\n", rval);
+				use_elasticpl_bigint = true;
+				break;
+			case NODE_BI_AND:
+				sprintf(result, "big_and( &%s );\n", rval);
+				use_elasticpl_bigint = true;
+				break;
+			case NODE_BI_XOR:
+				sprintf(result, "big_xor( &%s );\n", rval);
+				use_elasticpl_bigint = true;
+				break;
+			case NODE_BI_OR_INT:
+				sprintf(result, "big_or_integer( &%s );\n", rval);
+				use_elasticpl_bigint = true;
+				break;
+			case NODE_BI_AND_INT:
+				sprintf(result, "big_and_integer( &%s );\n", rval);
+				use_elasticpl_bigint = true;
+				break;
+			case NODE_BI_XOR_INT:
+				sprintf(result, "big_xor_integer( &%s );\n", rval);
+				use_elasticpl_bigint = true;
+				break;
+		case NODE_BI_LEAST_32:
+			sprintf(result, "big_least_32bit( &%s );\n", rval);
+			use_elasticpl_bigint = true;
 			break;
 		case NODE_SHA256:
 			sprintf(result, "\tm(epl_sha256( %s, mem ));\n", rval);

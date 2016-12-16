@@ -97,6 +97,37 @@ typedef enum {
 	NODE_ABS,
 	NODE_FABS,
 	NODE_FMOD,
+	NODE_BI_CONST,
+	NODE_BI_EXPR,
+	NODE_BI_ADD,
+	NODE_BI_SUB,
+	NODE_BI_MUL,
+	NODE_BI_DIV,
+	NODE_BI_CEIL_DIV,
+	NODE_BI_FLOOR_DIV,
+	NODE_BI_TRUNC_DIV,
+	NODE_BI_DIV_EXACT,
+	NODE_BI_MOD,
+	NODE_BI_NEG,
+	NODE_BI_LSHIFT,
+	NODE_BI_RSHIFT,
+	NODE_BI_GCD,
+	NODE_BI_DIVISIBLE,
+	NODE_BI_CNGR_MOD_P,
+	NODE_BI_POW,
+	NODE_BI_POW2,
+	NODE_BI_POW_MOD_P,
+	NODE_BI_POW2_MOD_P,
+	NODE_BI_COMP,
+	NODE_BI_COMP_ABS,
+	NODE_BI_SIGN,
+	NODE_BI_OR,
+	NODE_BI_AND,
+	NODE_BI_XOR,
+	NODE_BI_OR_INT,
+	NODE_BI_AND_INT,
+	NODE_BI_XOR_INT,
+	NODE_BI_LEAST_32,
 	NODE_SHA256,
 	NODE_SHA512,
 	NODE_WHIRLPOOL,
@@ -239,6 +270,37 @@ typedef enum {
 	TOKEN_ABS,
 	TOKEN_FABS,
 	TOKEN_FMOD,
+	TOKEN_BI_CONST,
+	TOKEN_BI_EXPR,
+	TOKEN_BI_ADD,
+	TOKEN_BI_SUB,
+	TOKEN_BI_MUL,
+	TOKEN_BI_DIV,
+	TOKEN_BI_CEIL_DIV,
+	TOKEN_BI_FLOOR_DIV,
+	TOKEN_BI_TRUNC_DIV,
+	TOKEN_BI_DIV_EXACT,
+	TOKEN_BI_MOD,
+	TOKEN_BI_NEG,
+	TOKEN_BI_LSHIFT,
+	TOKEN_BI_RSHIFT,
+	TOKEN_BI_GCD,
+	TOKEN_BI_DIVISIBLE,
+	TOKEN_BI_CNGR_MOD_P,
+	TOKEN_BI_POW,
+	TOKEN_BI_POW2,
+	TOKEN_BI_POW_MOD_P,
+	TOKEN_BI_POW2_MOD_P,
+	TOKEN_BI_COMP,
+	TOKEN_BI_COMP_ABS,
+	TOKEN_BI_SIGN,
+	TOKEN_BI_OR,
+	TOKEN_BI_AND,
+	TOKEN_BI_XOR,
+	TOKEN_BI_OR_INT,
+	TOKEN_BI_AND_INT,
+	TOKEN_BI_XOR_INT,
+	TOKEN_BI_LEAST_32,
 	TOKEN_SHA256,
 	TOKEN_SHA512,
 	TOKEN_WHIRLPOOL,
@@ -311,6 +373,13 @@ typedef enum {
 	EXP_FUNCTION
 } TOKEN_EXP;
 
+typedef enum {
+	DT_INT,
+	DT_FLOAT,
+	DT_BIGINT,
+	DT_NA
+} DATA_TYPE;
+
 
 // Token Type / Literal Value From ElasticPL Source Code
 typedef struct {
@@ -321,6 +390,7 @@ typedef struct {
 	int inputs;
 	int prec;
 	int line_num;
+	DATA_TYPE data_type;
 	bool is_float;
 } SOURCE_TOKEN;
 
@@ -340,7 +410,7 @@ struct EPL_TOKEN_LIST {
 	TOKEN_EXP exp;
 	int inputs;
 	int prec;
-	bool is_float;
+	DATA_TYPE data_type;
 };
 
 typedef struct AST {
@@ -351,6 +421,7 @@ typedef struct AST {
 	int token_num;
 	int line_num;
 	bool end_stmnt;
+	DATA_TYPE data_type;
 	bool is_float;
 	struct AST*	left;
 	struct AST*	right;
