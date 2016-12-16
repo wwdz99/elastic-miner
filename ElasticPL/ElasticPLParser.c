@@ -13,23 +13,14 @@
 #include "ElasticPL.h"
 #include "../miner.h"
 
-
-ast* d_stack_exp[10];
-int d_stack_op[10];
-
-
-static ast* add_exp(NODE_TYPE node_type, TOKEN_EXP exp_type, long value, float fvalue, int token_num, int line_num, DATA_TYPE data_type, ast* left, ast* right) {
+static ast* add_exp(NODE_TYPE node_type, TOKEN_EXP exp_type, long value, int token_num, int line_num, ast* left, ast* right) {
 	ast* e = calloc(1, sizeof(ast));
 	if (e) {
 		e->type = node_type;
 		e->exp = exp_type;
 		e->value = value;
-		e->fvalue = fvalue;
 		e->token_num = token_num;
 		e->line_num = line_num;
-		e->end_stmnt = false;
-		e->data_type = data_type;
-		e->is_float = (data_type == DT_FLOAT);
 		e->left = left;
 		e->right = right;
 	}
@@ -39,9 +30,6 @@ static ast* add_exp(NODE_TYPE node_type, TOKEN_EXP exp_type, long value, float f
 static void push_op(int token_id) {
 	stack_op[++stack_op_idx] = token_id;
 	top_op = token_id;
-
-	memcpy(d_stack_op, stack_op, 10 * sizeof(int));
-
 }
 
 static int pop_op() {
@@ -56,17 +44,11 @@ static int pop_op() {
 	else
 		top_op = -1;
 
-
-	memcpy(d_stack_op, stack_op, 10 * sizeof(int));
-
 	return op;
 }
 
 static void push_exp(ast* exp) {
 	stack_exp[++stack_exp_idx] = exp;
-
-	memcpy(d_stack_exp, stack_exp, 10 * sizeof(ast));
-
 }
 
 static ast* pop_exp() {
@@ -76,9 +58,6 @@ static ast* pop_exp() {
 		exp = stack_exp[stack_exp_idx];
 		stack_exp[stack_exp_idx--] = NULL;
 	}
-
-	memcpy(d_stack_exp, stack_exp, 10 * sizeof(ast));
-
 	return exp;
 }
 
@@ -96,9 +75,6 @@ static bool validate_input_num(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 
 static bool validate_unary_stmnt(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 	TOKEN_EXP l_exp;
-
-	if (node_type == NODE_BREAK)
-		return true;
 
 	l_exp = stack_exp[stack_exp_idx]->exp;
 
@@ -121,21 +97,12 @@ static bool validate_unary_exp(SOURCE_TOKEN *token, int token_num, NODE_TYPE nod
 	if (node_type == NODE_CONSTANT)
 		return true;
 
-	// Validate Increment / Decrement Have Variable For Operand
-	if (token->type == TOKEN_INCREMENT || token->type == TOKEN_DECREMENT) {
-		if (stack_exp[stack_exp_idx]->type != NODE_VAR_CONST && stack_exp[stack_exp_idx]->type != NODE_VAR_EXP) {
-			printf("Syntax Error - Line: %d  Invalid Operand For: \"%s\"\n", token->line_num, get_node_str(node_type));
-			return false;
-		}
-		return true;
-	}
-
 	// Validate Expression Is Not A Statement (Left For Variables, Right For Other Unary Expressions)
 	if (stack_exp[stack_exp_idx]->exp != EXP_STATEMENT && stack_exp[stack_exp_idx]->exp != EXP_FUNCTION) {
 
-		// Check Left Expression For Variables & Increment / Decrement
+		// Check Left Expression For Variables
 		if ((node_type == NODE_VAR_CONST) || (node_type == NODE_VAR_EXP)) {
-				if (stack_exp[stack_exp_idx]->token_num >= token_num) {
+			if (stack_exp[stack_exp_idx]->token_num >= token_num) {
 				printf("Syntax Error - Line: %d  Invalid Operand For: \"%s\"\n", token->line_num, get_node_str(node_type));
 				return false;
 			}
@@ -154,30 +121,26 @@ static bool validate_unary_exp(SOURCE_TOKEN *token, int token_num, NODE_TYPE nod
 
 static bool validate_binary_exp(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 	TOKEN_EXP l_exp, r_exp;
-	NODE_TYPE l_type, r_type;
 
 	l_exp = stack_exp[stack_exp_idx - 1]->exp;
-	l_type = stack_exp[stack_exp_idx - 1]->type;
-
 	r_exp = stack_exp[stack_exp_idx]->exp;
-	r_type = stack_exp[stack_exp_idx]->type;
 
-	// Validate Left Item Is Not A Statement (Does Not Include Increment / Decrement)
-	if ((l_exp == EXP_FUNCTION) || ((l_exp == EXP_STATEMENT) && (l_type != NODE_INCREMENT_L) && (l_type != NODE_DECREMENT_L))) {
-			printf("Syntax Error - Line: %d  Invalid Left Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
+	// Validate Left Item Is Not A Statement
+	if ((l_exp == EXP_STATEMENT) || (l_exp == EXP_FUNCTION)) {
+		printf("Syntax Error - Line: %d  Invalid Left Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
 		return false;
 	}
 
-	// Validate Right Item Is Not A Statement (Does Not Include Increment / Decrement)
-	if ((r_exp == EXP_FUNCTION) || ((r_exp == EXP_STATEMENT) && (r_type != NODE_INCREMENT_R) && (r_type != NODE_DECREMENT_R))) {
-			printf("Syntax Error - Line: %d  Invalid Right Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
+	// Validate Right Item Is Not A Statement
+	if ((r_exp == EXP_STATEMENT) || (r_exp == EXP_FUNCTION)) {
+		printf("Syntax Error - Line: %d  Invalid Right Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
 		return false;
 	}
 
 	return true;
 }
 
-static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
+static NODE_TYPE get_node_type(SOURCE_TOKEN *token) {
 	NODE_TYPE node_type;
 
 	switch (token->type) {
@@ -186,18 +149,6 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
 			node_type = NODE_VAR_CONST;
 		else
 			node_type = NODE_VAR_EXP;
-		break;
-	case TOKEN_INCREMENT:
-		if (stack_exp_idx >= 0 && (stack_exp[stack_exp_idx]->token_num > token_num))
-			node_type = NODE_INCREMENT_R;
-		else
-			node_type = NODE_INCREMENT_L;
-		break;
-	case TOKEN_DECREMENT:
-		if (stack_exp_idx >= 0 && (stack_exp[stack_exp_idx]->token_num > token_num))
-			node_type = NODE_DECREMENT_R;
-		else
-			node_type = NODE_DECREMENT_L;
 		break;
 	case TOKEN_COMPL:			node_type = NODE_COMPL;			break;
 	case TOKEN_NOT:				node_type = NODE_NOT;			break;
@@ -208,16 +159,6 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
 	case TOKEN_MUL:				node_type = NODE_MUL;			break;
 	case TOKEN_DIV:				node_type = NODE_DIV;			break;
 	case TOKEN_MOD:				node_type = NODE_MOD;			break;
-	case TOKEN_ADD_ASSIGN:		node_type = NODE_ADD_ASSIGN;	break;
-	case TOKEN_SUB_ASSIGN:		node_type = NODE_SUB_ASSIGN;	break;
-	case TOKEN_MUL_ASSIGN:		node_type = NODE_MUL_ASSIGN;	break;
-	case TOKEN_DIV_ASSIGN:		node_type = NODE_DIV_ASSIGN;	break;
-	case TOKEN_MOD_ASSIGN:		node_type = NODE_MOD_ASSIGN;	break;
-	case TOKEN_LSHFT_ASSIGN:	node_type = NODE_LSHFT_ASSIGN;	break;
-	case TOKEN_RSHFT_ASSIGN:	node_type = NODE_RSHFT_ASSIGN;	break;
-	case TOKEN_AND_ASSIGN:		node_type = NODE_AND_ASSIGN;	break;
-	case TOKEN_XOR_ASSIGN:		node_type = NODE_XOR_ASSIGN;	break;
-	case TOKEN_OR_ASSIGN:		node_type = NODE_OR_ASSIGN;		break;
 	case TOKEN_ADD:				node_type = NODE_ADD;			break;
 	case TOKEN_SUB:				node_type = NODE_SUB;			break;
 	case TOKEN_LROT:			node_type = NODE_LROT;			break;
@@ -239,61 +180,8 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
 	case TOKEN_IF:				node_type = NODE_IF;			break;
 	case TOKEN_ELSE:			node_type = NODE_ELSE;			break;
 	case TOKEN_REPEAT:			node_type = NODE_REPEAT;		break;
-	case TOKEN_BREAK:			node_type = NODE_BREAK;			break;
-	case TOKEN_CONTINUE:		node_type = NODE_CONTINUE;		break;
 	case TOKEN_ASSIGN:			node_type = NODE_ASSIGN;		break;
 	case TOKEN_VERIFY:			node_type = NODE_VERIFY;		break;
-	case TOKEN_SIN:				node_type = NODE_SIN;			break;
-	case TOKEN_COS:				node_type = NODE_COS; 			break;
-	case TOKEN_TAN:				node_type = NODE_TAN; 			break;
-	case TOKEN_SINH:			node_type = NODE_SINH;			break;
-	case TOKEN_COSH:			node_type = NODE_COSH;			break;
-	case TOKEN_TANH:			node_type = NODE_TANH;			break;
-	case TOKEN_ASIN:			node_type = NODE_ASIN;			break;
-	case TOKEN_ACOS:			node_type = NODE_ACOS;			break;
-	case TOKEN_ATAN:			node_type = NODE_ATAN;			break;
-	case TOKEN_ATAN2:			node_type = NODE_ATAN2;			break;
-	case TOKEN_EXPNT:			node_type = NODE_EXPNT;			break;
-	case TOKEN_LOG:				node_type = NODE_LOG;			break;
-	case TOKEN_LOG10:			node_type = NODE_LOG10;			break;
-	case TOKEN_POW:				node_type = NODE_POW;			break;
-	case TOKEN_SQRT:			node_type = NODE_SQRT;			break;
-	case TOKEN_CEIL:			node_type = NODE_CEIL;			break;
-	case TOKEN_FLOOR:			node_type = NODE_FLOOR;			break;
-	case TOKEN_ABS:				node_type = NODE_ABS;			break;
-	case TOKEN_FABS:			node_type = NODE_FABS;			break;
-	case TOKEN_FMOD:			node_type = NODE_FMOD; 			break;
-	case TOKEN_BI_CONST:		node_type = NODE_BI_CONST;		break;
-	case TOKEN_BI_EXPR:			node_type = NODE_BI_EXPR;		break;
-	case TOKEN_BI_ADD:			node_type = NODE_BI_ADD;		break;
-	case TOKEN_BI_SUB:			node_type = NODE_BI_SUB;		break;
-	case TOKEN_BI_MUL:			node_type = NODE_BI_MUL;		break;
-	case TOKEN_BI_DIV:			node_type = NODE_BI_DIV;		break;
-	case TOKEN_BI_CEIL_DIV:		node_type = NODE_BI_CEIL_DIV;	break;
-	case TOKEN_BI_FLOOR_DIV:	node_type = NODE_BI_FLOOR_DIV;	break;
-	case TOKEN_BI_TRUNC_DIV:	node_type = NODE_BI_TRUNC_DIV;	break;
-	case TOKEN_BI_DIV_EXACT:	node_type = NODE_BI_DIV_EXACT;	break;
-	case TOKEN_BI_MOD:			node_type = NODE_BI_MOD;		break;
-	case TOKEN_BI_NEG:			node_type = NODE_BI_NEG;		break;
-	case TOKEN_BI_LSHIFT:		node_type = NODE_BI_LSHIFT;		break;
-	case TOKEN_BI_RSHIFT:		node_type = NODE_BI_RSHIFT;		break;
-	case TOKEN_BI_GCD:			node_type = NODE_BI_GCD;		break;
-	case TOKEN_BI_DIVISIBLE:	node_type = NODE_BI_DIVISIBLE;	break;
-	case TOKEN_BI_CNGR_MOD_P:	node_type = NODE_BI_CNGR_MOD_P;	break;
-	case TOKEN_BI_POW:			node_type = NODE_BI_POW;		break;
-	case TOKEN_BI_POW2:			node_type = NODE_BI_POW2;		break;
-	case TOKEN_BI_POW_MOD_P:	node_type = NODE_BI_POW_MOD_P;	break;
-	case TOKEN_BI_POW2_MOD_P:	node_type = NODE_BI_POW2_MOD_P;	break;
-	case TOKEN_BI_COMP:			node_type = NODE_BI_COMP;		break;
-	case TOKEN_BI_COMP_ABS:		node_type = NODE_BI_COMP_ABS;	break;
-	case TOKEN_BI_SIGN:			node_type = NODE_BI_SIGN;		break;
-	case TOKEN_BI_OR:			node_type = NODE_BI_OR;			break;
-	case TOKEN_BI_AND:			node_type = NODE_BI_AND;		break;
-	case TOKEN_BI_XOR:			node_type = NODE_BI_XOR;		break;
-	case TOKEN_BI_OR_INT:		node_type = NODE_BI_OR_INT;		break;
-	case TOKEN_BI_AND_INT:		node_type = NODE_BI_AND_INT;	break;
-	case TOKEN_BI_XOR_INT:		node_type = NODE_BI_XOR_INT;	break;
-	case TOKEN_BI_LEAST_32:		node_type = NODE_BI_LEAST_32;	break;
 	case TOKEN_SHA256:			node_type = NODE_SHA256;		break;
 	case TOKEN_SHA512:			node_type = NODE_SHA512;		break;
 	case TOKEN_WHIRLPOOL:	   	node_type = NODE_WHIRLPOOL;		break;
@@ -365,17 +253,14 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
 static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 	int i;
 	long long value = 0;
-	double fvalue = 0.0;
 	NODE_TYPE node_type = NODE_ERROR;
 	ast *exp, *left = NULL, *right = NULL;
 
-	node_type = get_node_type(token, token_num);
+	node_type = get_node_type(token);
 	
 	// Map Token To Node Type
-	if (node_type == NODE_ERROR) {
-		applog(LOG_ERR, "Unknown Token in ElasticPL Source.  Line: %d, Token Type: %d", token->line_num, token->type);
+	if (node_type == NODE_ERROR)
 		return false;
-	}
 
 	// Confirm Required Number Of Expressions Are On Stack
 	if (!validate_input_num(token, node_type))
@@ -385,35 +270,28 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 
 	case EXP_EXPRESSION:
 
-		// Constant Expressions
-		if (token->inputs == 0) {
+		// Unary Expressions
+		if (token->inputs <= 1) {
+
+			if (!validate_unary_exp(token, token_num, node_type))
+				return false;
 
 			if (token->type == TOKEN_TRUE)
 				value = 1;
 			else if (token->type == TOKEN_FALSE)
 				value = 0;
-			else if (node_type == NODE_CONSTANT) {
+			else if (node_type == NODE_CONSTANT)	// Constants Have Values Not Leafs
 				value = (long long)strtod(token->literal, NULL);
-				fvalue = (double)strtof(token->literal, NULL);
-			}
-		}
-		// Unary Expressions
-		else if (token->inputs == 1) {
-
-			if (!validate_unary_exp(token, token_num, node_type))
-				return false;
-
-			left = pop_exp();
-
-			// Remove Expression For Variables w/ Constant ID
-			if (node_type == NODE_VAR_CONST) {
-				value = left->value;
-				fvalue = left->fvalue;
-				left = NULL;
+			else {
+				left = pop_exp();
+				if (node_type == NODE_VAR_CONST) {	// Remove Expression For Variables w/ Constant ID
+					value = left->value;
+					left = NULL;
+				}
 			}
 		}
 		// Binary Expressions
-		else if (token->inputs == 2) {
+		else {
 
 			if (!validate_binary_exp(token, node_type))
 				return false;
@@ -421,13 +299,12 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 			right = pop_exp();
 			left = pop_exp();
 		}
-		
 		break;
 
 	case EXP_STATEMENT:
 
 		// Unary Statements
-		if (token->inputs == 1) {
+		if (token->inputs <= 1) {
 
 			if (!validate_unary_stmnt(token, node_type))
 				return false;
@@ -435,7 +312,7 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 			left = pop_exp();
 		}
 		// Binary Statements
-		else if (token->inputs == 2) {
+		else {
 
 			if (!validate_binary_stmnt(token, node_type))
 				return false;
@@ -454,14 +331,14 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 		if (token->inputs > 0) {
 			// First Paramater
 			left = pop_exp();
-			exp = add_exp(NODE_PARAM, EXP_EXPRESSION, 0, 0.0, 0, 0, DT_NA, left, NULL);
+			exp = add_exp(NODE_PARAM, EXP_EXPRESSION, 0, 0, 0, left, NULL);
 			push_exp(exp);
 
 			// Remaining Paramaters
 			for (i = 1; i < token->inputs; i++) {
 				right = pop_exp();
 				left = pop_exp();
-				exp = add_exp(NODE_PARAM, EXP_EXPRESSION, 0, 0.0, 0, 0, DT_NA, left, right);
+				exp = add_exp(NODE_PARAM, EXP_EXPRESSION, 0, 0, 0, left, right);
 				push_exp(exp);
 			}
 			left = NULL;
@@ -473,7 +350,7 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 		}
 	}
 
-	exp = add_exp(node_type, token->exp, (long)value, (float) fvalue, token_num, token->line_num, token->data_type, left, right);
+	exp = add_exp(node_type, token->exp, (long)value, token_num, token->line_num, left, right);
 
 	if (exp)
 		push_exp(exp);
@@ -504,7 +381,7 @@ static bool validate_exp_list() {
 	}
 
 	for (i = 0; i < stack_exp_idx; i++) {
-		if (stack_exp[i]->exp != EXP_STATEMENT && stack_exp[i]->exp != EXP_FUNCTION && stack_exp[i]->end_stmnt == false) {
+		if (stack_exp[i]->exp != EXP_STATEMENT && stack_exp[i]->exp != EXP_FUNCTION) {
 			applog(LOG_ERR, "Syntax Error - Line: %d  Invalid Statement", stack_exp[i]->line_num);
 			return false;
 		}
@@ -531,7 +408,6 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 		case TOKEN_TRUE:
 		case TOKEN_FALSE:
 			if (!create_exp(&token_list->token[i], i)) return false;
-			stack_exp[stack_exp_idx]->data_type = token_list->token[i].data_type;
 			break;
 
 		case TOKEN_VAR_BEGIN:
@@ -540,28 +416,12 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 			push_op(i);
 			break;
 
-		case TOKEN_END_STATEMENT:
-			if (stack_op_idx < 0)
-				break;
-
-			while ((top_op >= 0) && (token_list->token[top_op].type != TOKEN_BLOCK_BEGIN) && (token_list->token[top_op].type != TOKEN_IF) && (token_list->token[top_op].type != TOKEN_ELSE) && (token_list->token[top_op].type != TOKEN_REPEAT)) {
-				token_id = pop_op();
-				if (!create_exp(&token_list->token[token_id], token_id))
-					return false;
-			}
-			stack_exp[stack_exp_idx]->end_stmnt = true;
-			break;
-
 		case TOKEN_VAR_END:
 			// Process Expressions Within The Variable Brackets
 			while ((top_op >= 0) && (token_list->token[top_op].type != TOKEN_VAR_BEGIN)) {
 				token_id = pop_op();
 				if (!create_exp(&token_list->token[token_id], token_id)) return false;
 			}
-
-			// Set TOKEN_VAR_END To Match Data Type 
-			token_list->token[i].data_type = token_list->token[stack_op[stack_op_idx]].data_type;
-
 			pop_op();
 			if (!create_exp(&token_list->token[i], i)) return false;
 
@@ -628,9 +488,9 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 					return false;
 			}
 
-			// Don't Push <EOF> Onto Stack
-			if (token_list->token[i].type != TOKEN_EOF)
-					push_op(i);
+			// Don't Push ; Or <EOF> Onto Stack
+			if (token_list->token[i].type != TOKEN_END_STATEMENT && token_list->token[i].type != TOKEN_EOF)
+				push_op(i);
 
 			break;
 		}
