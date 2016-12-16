@@ -32,8 +32,12 @@ extern char* convert_ast_to_c() {
 	use_elasticpl_crypto = false;
 	use_elasticpl_math = false;
 
-	for (i = 0; i < vm_ast_cnt; i++)
-		ret = append_strings(ret, convert(vm_ast[i]));
+	for (i = 0; i < vm_ast_cnt; i++) {
+		if (vm_ast[i]->type != NODE_TRACE)
+			ret = append_strings(ret, convert(vm_ast[i]));
+		else
+			ret = append_strings(ret, create_trace(vm_ast[i]));
+	}
 
 	// The Current OpenCL Code Can't Run The Crypto Functions
 	if (opt_opencl && use_elasticpl_crypto)
@@ -49,17 +53,13 @@ static char* convert(ast* exp) {
 	char* tmp = 0;
 	char *result = malloc(sizeof(char) * 256);
 	result[0] = 0;
+	blk_new[0] = 0;
+	blk_old[0] = 0;
 
 	bool l_is_float = false;
 	bool r_is_float = false;
 
 	if (exp != NULL) {
-
-		// Reset Temp Block Strings
-		if (exp->type != NODE_BLOCK) {
-			blk_new[0] = 0;
-			blk_old[0] = 0;
-		}
 
 		if (exp->left != NULL) {
 			lval = convert(exp->left);
@@ -83,6 +83,8 @@ static char* convert(ast* exp) {
 				sprintf(result, "%f", exp->fvalue);
 //			else if (exp->data_type == DT_BIGINT)
 //				sprintf(result, "%s", exp->value);
+			else if (exp->data_type == DT_STRING)
+				sprintf(result, "%s", exp->svalue);
 			break;
 		case NODE_VAR_CONST:
 			if (exp->value < 0 || exp->value > VM_MEMORY_SIZE) {
@@ -131,14 +133,12 @@ static char* convert(ast* exp) {
 				result = realloc(result, strlen(lval) + strlen(rval) + 256);
 				sprintf(result, "if( %s ) {\n\t%s}\nelse {\n\t%s}\n", tmp, lval, rval);
 			}
-			blk_old[0] = 0; // Reset Block Storage
 			break;
 		case NODE_ELSE:
 			break;
 		case NODE_REPEAT:
 			result = realloc(result, (2 * strlen(lval)) + strlen(rval) + 256);
 			sprintf(result, "if ( %s > 0 ) {\n\tint loop%d;\n\tfor (loop%d = 0; loop%d < ( %s ); loop%d++) {\n\t%s\t}\n}\n", lval, exp->token_num, exp->token_num, exp->token_num, lval, exp->token_num, rval);
-			blk_old[0] = 0; // Reset Block Storage
 			break;
 		case NODE_BREAK:
 			sprintf(result, "break;\n");
@@ -515,105 +515,108 @@ static char* convert(ast* exp) {
 			strcpy(blk_old, blk_new);
 			break;
 		case NODE_SIN:
-			sprintf(result, "sin( %s )", lval);
+			sprintf(result, "sin( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_COS:
-			sprintf(result, "cos( %s )", lval);
+			sprintf(result, "cos( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_TAN:
-			sprintf(result, "tan( %s )", lval);
+			sprintf(result, "tan( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_SINH:
-			sprintf(result, "sinh( %s )", lval);
+			sprintf(result, "sinh( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_COSH:
-			sprintf(result, "cos( %s )", lval);
+			sprintf(result, "cos( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_TANH:
-			sprintf(result, "tanh( %s )", lval);
+			sprintf(result, "tanh( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_ASIN:
-			sprintf(result, "asin( %s )", lval);
+			sprintf(result, "asin( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_ACOS:
-			sprintf(result, "acos( %s )", lval);
+			sprintf(result, "acos( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_ATAN:
-			sprintf(result, "atan( %s )", lval);
+			sprintf(result, "atan( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_ATAN2:
-			sprintf(result, "atan2( %s )", lval);
+			sprintf(result, "atan2( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_EXPNT:
-			sprintf(result, "exp( %s )", lval);
+			sprintf(result, "exp( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_LOG:
-			sprintf(result, "log( %s )", lval);
+			sprintf(result, "log( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_LOG10:
-			sprintf(result, "log10( %s )", lval);
+			sprintf(result, "log10( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_POW:
-			sprintf(result, "pow( %s )", lval);
+			sprintf(result, "pow( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_SQRT:
-			sprintf(result, "sqrt( %s )", lval);
+			sprintf(result, "sqrt( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_CEIL:
-			sprintf(result, "ceil( %s )", lval);
+			sprintf(result, "ceil( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_FLOOR:
-			sprintf(result, "floor( %s )", lval);
+			sprintf(result, "floor( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_ABS:
-			sprintf(result, "abs( %s )", lval);
+			sprintf(result, "abs( %s )", rval);
 			exp->is_float = false;
 			use_elasticpl_math = true;
 			break;
 		case NODE_FABS:
-			sprintf(result, "fabs( %s )", lval);
+			sprintf(result, "fabs( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_FMOD:
-			sprintf(result, "fmod( %s )", lval);
+			sprintf(result, "fmod( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
+			//case NODE_TRACE:
+			//	sprintf(result, "printf(\"%s\");\n", rval);
+			//	break;
 		case NODE_BI_ADD:
 			sprintf(result, "big_add( &%s );\n", rval);
 			use_elasticpl_bigint = true;
@@ -666,22 +669,22 @@ static char* convert(ast* exp) {
 			sprintf(result, "big_gcd( &%s );\n", rval);
 			use_elasticpl_bigint = true;
 			break;
-			//case NODE_BI_DIVISIBLE:
-			//	sprintf(result, "big_divisible( %s );\n", rval);
-			//	use_elasticpl_bigint = true;
-			//	break;
-			//case NODE_BI_CNGR_MOD_P:
-			//	sprintf(result, "big_congruent_mod_p( %s );\n", rval);
-			//	use_elasticpl_bigint = true;
-			//	break;
-			//case NODE_BI_POW:
-			//	sprintf(result, "big_pow( %s );\n", rval);
-			//	use_elasticpl_bigint = true;
-			//	break;
-			//case NODE_BI_POW2:
-			//	sprintf(result, "big_pow2( %s );\n", rval);
-			//	use_elasticpl_bigint = true;
-			//	break;
+		case NODE_BI_DIVISIBLE:
+			sprintf(result, "big_divisible( %s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_CNGR_MOD_P:
+			sprintf(result, "big_congruent_mod_p( %s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_POW:
+			sprintf(result, "big_pow( %s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_POW2:
+			sprintf(result, "big_pow2( %s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
 		case NODE_BI_POW_MOD_P:
 			sprintf(result, "big_pow_mod_p( &%s );\n", rval);
 			use_elasticpl_bigint = true;
@@ -690,42 +693,42 @@ static char* convert(ast* exp) {
 			sprintf(result, "big_pow2_mod_p( &%s );\n", rval);
 			use_elasticpl_bigint = true;
 			break;
-			//case NODE_BI_COMP:
-			//	sprintf(result, "big_compare( %s );\n", rval);
-			//	use_elasticpl_bigint = true;
-			//	break;
-			//case NODE_BI_COMP_ABS:
-			//	sprintf(result, "big_compare_abs( %s );\n", rval);
-			//	use_elasticpl_bigint = true;
-			//	break;
-			//case NODE_BI_SIGN:
-			//	sprintf(result, "big_sign( %s );\n", rval);
-			//	use_elasticpl_bigint = true;
-			//	break;
-			case NODE_BI_OR:
-				sprintf(result, "big_or( &%s );\n", rval);
-				use_elasticpl_bigint = true;
-				break;
-			case NODE_BI_AND:
-				sprintf(result, "big_and( &%s );\n", rval);
-				use_elasticpl_bigint = true;
-				break;
-			case NODE_BI_XOR:
-				sprintf(result, "big_xor( &%s );\n", rval);
-				use_elasticpl_bigint = true;
-				break;
-			case NODE_BI_OR_INT:
-				sprintf(result, "big_or_integer( &%s );\n", rval);
-				use_elasticpl_bigint = true;
-				break;
-			case NODE_BI_AND_INT:
-				sprintf(result, "big_and_integer( &%s );\n", rval);
-				use_elasticpl_bigint = true;
-				break;
-			case NODE_BI_XOR_INT:
-				sprintf(result, "big_xor_integer( &%s );\n", rval);
-				use_elasticpl_bigint = true;
-				break;
+		case NODE_BI_COMP:
+			sprintf(result, "big_compare( %s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_COMP_ABS:
+			sprintf(result, "big_compare_abs( %s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_SIGN:
+			sprintf(result, "big_sign( %s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_OR:
+			sprintf(result, "big_or( &%s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_AND:
+			sprintf(result, "big_and( &%s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_XOR:
+			sprintf(result, "big_xor( &%s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_OR_INT:
+			sprintf(result, "big_or_integer( &%s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_AND_INT:
+			sprintf(result, "big_and_integer( &%s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_XOR_INT:
+			sprintf(result, "big_xor_integer( &%s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
 		case NODE_BI_LEAST_32:
 			sprintf(result, "big_least_32bit( &%s );\n", rval);
 			use_elasticpl_bigint = true;
@@ -853,19 +856,27 @@ static char* convert(ast* exp) {
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256R_PA:
+//Missing
 			sprintf(result, "SECP256R1PointAdd( %s );\n", rval);
+//Missing
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256R_PS:
+//Missing
 			sprintf(result, "SECP256R1PointSub( %s );\n", rval);
+//Missing
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256R_PSM:
+//Missing
 			sprintf(result, "SECP256R1PointScalarMult( %s );\n", rval);
+//Missing
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256R_PN:
+//Missing
 			sprintf(result, "SECP256R1PointNegate( %s );\n", rval);
+//Missing
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP384R_PTP:
@@ -969,7 +980,9 @@ static char* convert(ast* exp) {
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_TIGER:
+//Missing
 			sprintf(result, "Tiger( %s );\n", rval);
+//Missing
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_RIPEMD160:
@@ -977,7 +990,9 @@ static char* convert(ast* exp) {
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_RIPEMD128:
+//Missing
 			sprintf(result, "RIPEMD128( %s );\n", rval);
+//Missing
 			use_elasticpl_crypto = true;
 			break;
 		default:
@@ -1931,4 +1946,45 @@ static int32_t interpret(ast* exp, bool mangle) {
 	}
 
 	return 1;
+}
+
+static char* create_trace(ast* exp) {
+	char format[256];
+	char data[256];
+	char *ret, *result;
+	ast *e;
+
+	result = malloc(sizeof(char) * 512);
+	if (!result)
+		return NULL;
+
+	if (exp->right)
+		e = exp->right;
+	else
+		return NULL;
+
+	format[0] = 0;
+	data[0] = 0;
+
+	while (e->type == NODE_PARAM) {
+		ret = convert(e->left);
+		strcat(data, ",");
+		strcat(data, ret);
+
+		// Determine Format For Data Value
+		if (e->left->data_type == DT_STRING)
+			strcat(format, "%s");
+		else if (e->left->is_float)
+			strcat(format, "%f");
+		else
+			strcat(format, "%d");
+
+		// Check If There Are More Parameters
+		if (e->right)
+			e = e->right;
+		else
+			break;
+	}
+	sprintf_s(result, 512, "printf(\"%s\"%s);\n", format, data);
+	return result;
 }

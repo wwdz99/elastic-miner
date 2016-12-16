@@ -77,6 +77,7 @@ typedef enum {
 	NODE_BREAK,
 	NODE_CONTINUE,
 	NODE_PARAM,
+	NODE_TRACE,
 	NODE_SIN,
 	NODE_COS,
 	NODE_TAN,
@@ -97,6 +98,7 @@ typedef enum {
 	NODE_ABS,
 	NODE_FABS,
 	NODE_FMOD,
+	NODE_GCD,
 	NODE_BI_CONST,
 	NODE_BI_EXPR,
 	NODE_BI_ADD,
@@ -249,6 +251,7 @@ typedef enum {
 	TOKEN_VERIFY,
 	TOKEN_COMMENT,
 	TOKEN_BLOCK_COMMENT,
+	TOKEN_TRACE,
 	TOKEN_EOF,
 	TOKEN_SIN,
 	TOKEN_COS,
@@ -270,6 +273,7 @@ typedef enum {
 	TOKEN_ABS,
 	TOKEN_FABS,
 	TOKEN_FMOD,
+	TOKEN_GCD,
 	TOKEN_BI_CONST,
 	TOKEN_BI_EXPR,
 	TOKEN_BI_ADD,
@@ -377,7 +381,8 @@ typedef enum {
 	DT_INT,
 	DT_FLOAT,
 	DT_BIGINT,
-	DT_NA
+	DT_STRING,
+	DT_NONE
 } DATA_TYPE;
 
 
@@ -416,8 +421,9 @@ struct EPL_TOKEN_LIST {
 typedef struct AST {
 	NODE_TYPE type;
 	TOKEN_EXP exp;
-	long value;
+	int32_t value;
 	float fvalue;
+	char *svalue;
 	int token_num;
 	int line_num;
 	bool end_stmnt;
@@ -464,14 +470,13 @@ static ast* pop_exp();
 static void push_exp(ast* exp);
 static int pop_op();
 static void push_op(int token_id);
-static ast* add_exp(NODE_TYPE node_type, TOKEN_EXP exp_type, long value, float fvalue, int token_num, int line_num, bool is_float, ast* left, ast* right);
+static ast* add_exp(NODE_TYPE node_type, TOKEN_EXP exp_type, int32_t value, float fvalue, char *svalue, int token_num, int line_num, DATA_TYPE data_type, ast* left, ast* right);
 extern char* get_node_str(NODE_TYPE node_type);
 extern void dump_vm_ast(ast* root);
 
 extern char* convert_ast_to_c();
 static char* convert(ast* exp);
-extern char* convert_ast_to_opencl();
-static char* convert_opencl(ast* exp);
+static char* create_trace(ast* exp);
 static char* append_strings(char * old, char * new);
 static char *replace(char* old, char* a, char* b);
 extern uint32_t calc_wcet();

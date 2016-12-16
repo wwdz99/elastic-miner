@@ -18,13 +18,14 @@ ast* d_stack_exp[10];
 int d_stack_op[10];
 
 
-static ast* add_exp(NODE_TYPE node_type, TOKEN_EXP exp_type, long value, float fvalue, int token_num, int line_num, DATA_TYPE data_type, ast* left, ast* right) {
+static ast* add_exp(NODE_TYPE node_type, TOKEN_EXP exp_type, int32_t value, float fvalue, char *svalue, int token_num, int line_num, DATA_TYPE data_type, ast* left, ast* right) {
 	ast* e = calloc(1, sizeof(ast));
 	if (e) {
 		e->type = node_type;
 		e->exp = exp_type;
 		e->value = value;
 		e->fvalue = fvalue;
+		e->svalue = svalue;
 		e->token_num = token_num;
 		e->line_num = line_num;
 		e->end_stmnt = false;
@@ -83,6 +84,10 @@ static ast* pop_exp() {
 }
 
 static bool validate_input_num(SOURCE_TOKEN *token, NODE_TYPE node_type) {
+
+	// Skip Check For Trace Statement
+	if (node_type == NODE_TRACE)
+		return true;
 
 	// Validate That There Are Enough Expressions On The Stack
 	if (stack_exp_idx < (token->inputs - 1)) {
@@ -263,6 +268,7 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
 	case TOKEN_ABS:				node_type = NODE_ABS;			break;
 	case TOKEN_FABS:			node_type = NODE_FABS;			break;
 	case TOKEN_FMOD:			node_type = NODE_FMOD; 			break;
+	case TOKEN_TRACE:			node_type = NODE_TRACE;			break;
 	case TOKEN_BI_CONST:		node_type = NODE_BI_CONST;		break;
 	case TOKEN_BI_EXPR:			node_type = NODE_BI_EXPR;		break;
 	case TOKEN_BI_ADD:			node_type = NODE_BI_ADD;		break;
@@ -366,6 +372,7 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 	int i;
 	long long value = 0;
 	double fvalue = 0.0;
+	char *svalue = NULL;
 	NODE_TYPE node_type = NODE_ERROR;
 	ast *exp, *left = NULL, *right = NULL;
 
@@ -393,8 +400,16 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 			else if (token->type == TOKEN_FALSE)
 				value = 0;
 			else if (node_type == NODE_CONSTANT) {
-				value = (long long)strtod(token->literal, NULL);
-				fvalue = (double)strtof(token->literal, NULL);
+				if (token->data_type != DT_STRING) {
+					value = (long long)strtod(token->literal, NULL);
+					fvalue = (double)strtof(token->literal, NULL);
+				}
+				else {
+					svalue = calloc(1, strlen(token->literal) + 1);
+					if (!svalue)
+						return false;
+					strcpy(svalue, token->literal);
+				}
 			}
 		}
 		// Unary Expressions
@@ -454,14 +469,18 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 		if (token->inputs > 0) {
 			// First Paramater
 			left = pop_exp();
-			exp = add_exp(NODE_PARAM, EXP_EXPRESSION, 0, 0.0, 0, 0, DT_NA, left, NULL);
+			exp = add_exp(NODE_PARAM, EXP_EXPRESSION, 0, 0.0, NULL, 0, 0, DT_NONE, left, NULL);
 			push_exp(exp);
 
 			// Remaining Paramaters
 			for (i = 1; i < token->inputs; i++) {
+
+				if ((stack_exp_idx <= 0) || (stack_exp[stack_exp_idx - 1]->end_stmnt == true))
+					break;
+
 				right = pop_exp();
 				left = pop_exp();
-				exp = add_exp(NODE_PARAM, EXP_EXPRESSION, 0, 0.0, 0, 0, DT_NA, left, right);
+				exp = add_exp(NODE_PARAM, EXP_EXPRESSION, 0, 0.0, NULL, 0, 0, DT_NONE, left, right);
 				push_exp(exp);
 			}
 			left = NULL;
@@ -473,7 +492,7 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 		}
 	}
 
-	exp = add_exp(node_type, token->exp, (long)value, (float) fvalue, token_num, token->line_num, token->data_type, left, right);
+	exp = add_exp(node_type, token->exp, (int32_t)value, (float)fvalue, svalue, token_num, token->line_num, token->data_type, left, right);
 
 	if (exp)
 		push_exp(exp);
@@ -580,6 +599,14 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 				if (!create_exp(&token_list->token[token_id], token_id)) return false;
 			}
 			pop_op();
+
+			// Check If We Need To Link What's In Parentheses To A Function
+			if ((top_op >= 0) && (token_list->token[top_op].exp == EXP_FUNCTION)) {
+				token_id = pop_op();
+				if (!create_exp(&token_list->token[token_id], token_id))
+					return false;
+			}
+
 			break;
 
 		case TOKEN_BLOCK_END:
