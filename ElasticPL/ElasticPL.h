@@ -23,8 +23,8 @@
 #define VM_STACK_SIZE 1024
 
 typedef enum {
-	NODE_INPUT,
 	NODE_ERROR,
+	NODE_END_STATEMENT,
 	NODE_CONSTANT,
 	NODE_VAR_CONST,
 	NODE_VAR_EXP,
@@ -42,7 +42,21 @@ typedef enum {
 	NODE_GT,
 	NODE_LE,
 	NODE_GE,
+	NODE_INCREMENT_R,
+	NODE_INCREMENT_L,
+	NODE_ADD_ASSIGN,
+	NODE_SUB_ASSIGN,
+	NODE_MUL_ASSIGN,
+	NODE_DIV_ASSIGN,
+	NODE_MOD_ASSIGN,
+	NODE_LSHFT_ASSIGN,
+	NODE_RSHFT_ASSIGN,
+	NODE_AND_ASSIGN,
+	NODE_XOR_ASSIGN,
+	NODE_OR_ASSIGN,
 	NODE_ADD,
+	NODE_DECREMENT_R,
+	NODE_DECREMENT_L,
 	NODE_SUB,
 	NODE_NEG,
 	NODE_MUL,
@@ -60,7 +74,60 @@ typedef enum {
 	NODE_IF,
 	NODE_ELSE,
 	NODE_REPEAT,
+	NODE_BREAK,
+	NODE_CONTINUE,
 	NODE_PARAM,
+	NODE_SIN,
+	NODE_COS,
+	NODE_TAN,
+	NODE_SINH,
+	NODE_COSH,
+	NODE_TANH,
+	NODE_ASIN,
+	NODE_ACOS,
+	NODE_ATAN,
+	NODE_ATAN2,
+	NODE_EXPNT,
+	NODE_LOG,
+	NODE_LOG10,
+	NODE_POW,
+	NODE_SQRT,
+	NODE_CEIL,
+	NODE_FLOOR,
+	NODE_ABS,
+	NODE_FABS,
+	NODE_FMOD,
+	NODE_BI_CONST,
+	NODE_BI_EXPR,
+	NODE_BI_ADD,
+	NODE_BI_SUB,
+	NODE_BI_MUL,
+	NODE_BI_DIV,
+	NODE_BI_CEIL_DIV,
+	NODE_BI_FLOOR_DIV,
+	NODE_BI_TRUNC_DIV,
+	NODE_BI_DIV_EXACT,
+	NODE_BI_MOD,
+	NODE_BI_NEG,
+	NODE_BI_LSHIFT,
+	NODE_BI_RSHIFT,
+	NODE_BI_GCD,
+	NODE_BI_DIVISIBLE,
+	NODE_BI_CNGR_MOD_P,
+	NODE_BI_POW,
+	NODE_BI_POW2,
+	NODE_BI_POW_MOD_P,
+	NODE_BI_POW2_MOD_P,
+	NODE_BI_COMP,
+	NODE_BI_COMP_ABS,
+	NODE_BI_SIGN,
+	NODE_BI_OR,
+	NODE_BI_AND,
+	NODE_BI_XOR,
+	NODE_BI_OR_INT,
+	NODE_BI_AND_INT,
+	NODE_BI_XOR_INT,
+	NODE_BI_LEAST_32,
 	NODE_SHA256,
 	NODE_SHA512,
 	NODE_WHIRLPOOL,
@@ -139,7 +206,19 @@ typedef enum {
 	TOKEN_GT,
 	TOKEN_LE,
 	TOKEN_GE,
+	TOKEN_INCREMENT,
+	TOKEN_ADD_ASSIGN,
+	TOKEN_SUB_ASSIGN,
+	TOKEN_MUL_ASSIGN,
+	TOKEN_DIV_ASSIGN,
+	TOKEN_MOD_ASSIGN,
+	TOKEN_LSHFT_ASSIGN,
+	TOKEN_RSHFT_ASSIGN,
+	TOKEN_AND_ASSIGN,
+	TOKEN_XOR_ASSIGN,
+	TOKEN_OR_ASSIGN,
 	TOKEN_ADD,
+	TOKEN_DECREMENT,
 	TOKEN_SUB,
 	TOKEN_NEG,
 	TOKEN_MUL,
@@ -165,8 +244,63 @@ typedef enum {
 	TOKEN_CLOSE_PAREN,
 	TOKEN_LITERAL,
 	TOKEN_END_STATEMENT,
+	TOKEN_BREAK,
+	TOKEN_CONTINUE,
 	TOKEN_VERIFY,
+	TOKEN_COMMENT,
+	TOKEN_BLOCK_COMMENT,
 	TOKEN_EOF,
+	TOKEN_SIN,
+	TOKEN_COS,
+	TOKEN_TAN,
+	TOKEN_SINH,
+	TOKEN_COSH,
+	TOKEN_TANH,
+	TOKEN_ASIN,
+	TOKEN_ACOS,
+	TOKEN_ATAN,
+	TOKEN_ATAN2,
+	TOKEN_EXPNT,
+	TOKEN_LOG,
+	TOKEN_LOG10,
+	TOKEN_POW,
+	TOKEN_SQRT,
+	TOKEN_CEIL,
+	TOKEN_FLOOR,
+	TOKEN_ABS,
+	TOKEN_FABS,
+	TOKEN_FMOD,
+	TOKEN_BI_CONST,
+	TOKEN_BI_EXPR,
+	TOKEN_BI_ADD,
+	TOKEN_BI_SUB,
+	TOKEN_BI_MUL,
+	TOKEN_BI_DIV,
+	TOKEN_BI_CEIL_DIV,
+	TOKEN_BI_FLOOR_DIV,
+	TOKEN_BI_TRUNC_DIV,
+	TOKEN_BI_DIV_EXACT,
+	TOKEN_BI_MOD,
+	TOKEN_BI_NEG,
+	TOKEN_BI_LSHIFT,
+	TOKEN_BI_RSHIFT,
+	TOKEN_BI_GCD,
+	TOKEN_BI_DIVISIBLE,
+	TOKEN_BI_CNGR_MOD_P,
+	TOKEN_BI_POW,
+	TOKEN_BI_POW2,
+	TOKEN_BI_POW_MOD_P,
+	TOKEN_BI_POW2_MOD_P,
+	TOKEN_BI_COMP,
+	TOKEN_BI_COMP_ABS,
+	TOKEN_BI_SIGN,
+	TOKEN_BI_OR,
+	TOKEN_BI_AND,
+	TOKEN_BI_XOR,
+	TOKEN_BI_OR_INT,
+	TOKEN_BI_AND_INT,
+	TOKEN_BI_XOR_INT,
+	TOKEN_BI_LEAST_32,
 	TOKEN_SHA256,
 	TOKEN_SHA512,
 	TOKEN_WHIRLPOOL,
@@ -239,6 +373,13 @@ typedef enum {
 	EXP_FUNCTION
 } TOKEN_EXP;
 
+typedef enum {
+	DT_INT,
+	DT_FLOAT,
+	DT_BIGINT,
+	DT_NA
+} DATA_TYPE;
+
 
 // Token Type / Literal Value From ElasticPL Source Code
 typedef struct {
@@ -249,6 +390,8 @@ typedef struct {
 	int inputs;
 	int prec;
 	int line_num;
+	DATA_TYPE data_type;
+	bool is_float;
 } SOURCE_TOKEN;
 
 
@@ -267,14 +410,19 @@ struct EPL_TOKEN_LIST {
 	TOKEN_EXP exp;
 	int inputs;
 	int prec;
+	DATA_TYPE data_type;
 };
 
 typedef struct AST {
 	NODE_TYPE type;
 	TOKEN_EXP exp;
 	long value;
+	float fvalue;
 	int token_num;
 	int line_num;
+	bool end_stmnt;
+	DATA_TYPE data_type;
+	bool is_float;
 	struct AST*	left;
 	struct AST*	right;
 
@@ -307,7 +455,7 @@ static void dump_token_list(SOURCE_TOKEN_LIST *token_list);
 
 extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list);
 static bool create_exp(SOURCE_TOKEN *token, int token_num);
-static NODE_TYPE get_node_type(SOURCE_TOKEN *token);
+static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num);
 static bool validate_binary_exp(SOURCE_TOKEN *token, NODE_TYPE node_type);
 static bool validate_unary_exp(SOURCE_TOKEN *token, int token_num, NODE_TYPE node_type);
 static bool validate_binary_stmnt(SOURCE_TOKEN *token, NODE_TYPE node_type);
@@ -316,12 +464,14 @@ static ast* pop_exp();
 static void push_exp(ast* exp);
 static int pop_op();
 static void push_op(int token_id);
-static ast* add_exp(NODE_TYPE node_type, TOKEN_EXP exp_type, long value, int token_num, int line_num, ast* left, ast* right);
+static ast* add_exp(NODE_TYPE node_type, TOKEN_EXP exp_type, long value, float fvalue, int token_num, int line_num, bool is_float, ast* left, ast* right);
 extern char* get_node_str(NODE_TYPE node_type);
 extern void dump_vm_ast(ast* root);
 
 extern char* convert_ast_to_c();
 static char* convert(ast* exp);
+extern char* convert_ast_to_opencl();
+static char* convert_opencl(ast* exp);
 static char* append_strings(char * old, char * new);
 static char *replace(char* old, char* a, char* b);
 extern uint32_t calc_wcet();
