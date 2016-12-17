@@ -180,7 +180,7 @@ ELSE (CURL_FOUND)
 ENDIF (CURL_FOUND)
 
 add_subdirectory(compat/jansson)
-add_subdirectory(crypto)
+add_subdirectory(ElasticPL)
 
 IF (OPENCL_FOUND)
 	add_definitions(-DUSE_OPENCL)
@@ -197,7 +197,9 @@ set(SRC_LIST	xel_miner.c
 				./ElasticPL/ElasticPLTokenManager.c
 				./ElasticPL/ElasticPLParser.c
 				./ElasticPL/ElasticPLInterpreter.c
-				./crypto/elasticpl_crypto.c
+				./ElasticPL/ElasticPLCrypto.c
+				./ElasticPL/ElasticPLMath.c
+				./ElasticPL/ElasticPLConvert.c
 				./crypto/curve25519-donna.c
 				./crypto/sha2.c
 				./crypto/whirlpool.c

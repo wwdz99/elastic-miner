@@ -56,6 +56,7 @@ extern __thread uint32_t *vm_state;
 extern __thread bool vm_bounty;
 
 extern bool use_elasticpl_math;
+extern bool use_elasticpl_bigint;
 extern bool use_elasticpl_crypto;
 
 extern bool opt_debug;
@@ -316,6 +317,7 @@ static bool get_opencl_base_data(struct work *work, uint32_t *vm_input);
 extern void applog(int prio, const char *fmt, ...);
 extern int timeval_subtract(struct timeval *result, struct timeval *x, struct timeval *y);
 extern bool hex2ints(uint32_t *p, int array_sz, const char *hex, int len);
+extern int32_t bin2int(unsigned char *str);
 extern bool ascii85dec(unsigned char *str, int strsz, const char *ascii85);
 static void databuf_free(struct data_buffer *db);
 static size_t all_data_cb(const void *ptr, size_t size, size_t nmemb, void *user_data);

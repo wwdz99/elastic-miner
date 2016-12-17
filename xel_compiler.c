@@ -34,15 +34,19 @@ bool create_c_source() {
 	fprintf(f, "#include <time.h>\n");
 	if (use_elasticpl_math)
 		fprintf(f, "#include <math.h>\n");
-	if (use_elasticpl_crypto)
-		fprintf(f, "#include \"elasticpl_crypto.h\"\n");
+	if (use_elasticpl_crypto || use_elasticpl_bigint)
+		fprintf(f, "#include \"../ElasticPL/ElasticPLFunctions.h\"\n");
 	fprintf(f, "\n");
 #ifdef _MSC_VER
-	fprintf(f, "__declspec(thread) int32_t* mem = NULL;\n");
-	fprintf(f, "__declspec(thread) uint32_t* vm_state = NULL;\n\n");
+	fprintf(f, "__declspec(thread) int32_t *m = NULL;\n");
+	fprintf(f, "__declspec(thread) float *f = NULL;\n");
+	fprintf(f, "__declspec(thread) unsigned char **b = NULL;\n");
+	fprintf(f, "__declspec(thread) uint32_t *state = NULL;\n\n");
 #else
-	fprintf(f, "__thread int32_t* mem = NULL;\n");
-	fprintf(f, "__thread uint32_t* vm_state = NULL;\n\n");
+	fprintf(f, "__thread int32_t *m = NULL;\n");
+	fprintf(f, "__thread float *f = NULL;\n");
+	fprintf(f, "__thread unsigned char **b = NULL;\n");
+	fprintf(f, "__thread uint32_t *state = NULL;\n\n");
 #endif
 	fprintf(f, "static const unsigned int mask32 = (CHAR_BIT*sizeof(uint32_t)-1);\n\n");
 	fprintf(f, "static uint32_t rotl32 (uint32_t x, unsigned int n) {\n");
@@ -53,34 +57,36 @@ bool create_c_source() {
 	fprintf(f, "\tn &= mask32;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers\n");
 	fprintf(f, "\treturn (x>>n) | (x<<( (-n)&mask32 ));\n");
 	fprintf(f, "}\n\n");
-	fprintf(f, "static int m(int x) {\n");
+	fprintf(f, "static int mangle(int x) {\n");
 	fprintf(f, "\tint mod = x %% 32;\n");
 	fprintf(f, "\tint leaf = mod %% 4;\n");
 	fprintf(f, "\tif (leaf == 0) {\n");
-	fprintf(f, "\t\tvm_state[0] = rotl32(vm_state[0], mod);\n");
-	fprintf(f, "\t\tvm_state[0] = vm_state[0] ^ x;\n");
+	fprintf(f, "\t\tstate[0] = rotl32(state[0], mod);\n");
+	fprintf(f, "\t\tstate[0] = state[0] ^ x;\n");
 	fprintf(f, "\t}\n");
 	fprintf(f, "\telse if (leaf == 1) {\n");
-	fprintf(f, "\t\tvm_state[1] = rotl32(vm_state[1], mod);\n");
-	fprintf(f, "\t\tvm_state[1] = vm_state[1] ^ x;\n");
+	fprintf(f, "\t\tstate[1] = rotl32(state[1], mod);\n");
+	fprintf(f, "\t\tstate[1] = state[1] ^ x;\n");
 	fprintf(f, "\t}\n");
 	fprintf(f, "\telse if (leaf == 2) {\n");
-	fprintf(f, "\t\tvm_state[2] = rotl32(vm_state[2], mod);\n");
-	fprintf(f, "\t\tvm_state[2] = vm_state[2] ^ x;\n");
+	fprintf(f, "\t\tstate[2] = rotl32(state[2], mod);\n");
+	fprintf(f, "\t\tstate[2] = state[2] ^ x;\n");
 	fprintf(f, "\t}\n");
 	fprintf(f, "\telse {\n");
-	fprintf(f, "\t\tvm_state[3] = rotl32(vm_state[3], mod);\n");
-	fprintf(f, "\t\tvm_state[3] = vm_state[3] ^ x;\n");
+	fprintf(f, "\t\tstate[3] = rotl32(state[3], mod);\n");
+	fprintf(f, "\t\tstate[3] = state[3] ^ x;\n");
 	fprintf(f, "\t}\n");
 	fprintf(f, "\treturn x;\n");
 	fprintf(f, "}\n\n");
 #ifdef WIN32
-	fprintf(f, "__declspec(dllexport) void initialize(int32_t* m, uint32_t* s) {\n");
+	fprintf(f, "__declspec(dllexport) void initialize(int32_t *vm_m, uint32_t *vm_state) {\n");
 #else
 	fprintf(f, "void initialize(int32_t* m, uint32_t* s) {\n");
 #endif
-	fprintf(f, "\tmem = &m[0];\n");
-	fprintf(f, "\tvm_state = &s[0];\n");
+	fprintf(f, "\tm = &vm_m[0];\n");
+	fprintf(f, "\tf = NULL;\n");
+	fprintf(f, "\tb = NULL;\n");
+	fprintf(f, "\tstate = &vm_state[0];\n");
 	fprintf(f, "}\n\n");
 #ifdef WIN32
 	fprintf(f, "__declspec(dllexport) int execute() {\n");
@@ -123,16 +129,16 @@ bool compile_and_link(char* lib_name) {
 #else
 #ifdef __MINGW32__
 	ret = system("gcc -I./crypto -c -march=native -Ofast -msse -msse2 -msse3 -mmmx -m3dnow -DBUILDING_EXAMPLE_DLL ./work/work_lib.c -o ./work/work_lib.o");
-	sprintf(str, "gcc -shared -o ./work/%s.dll ./work/work_lib.o -L./crypto -lelasticpl_crypto -lcrypto", lib_name);
+	sprintf(str, "gcc -shared -o ./work/%s.dll ./work/work_lib.o -L./ElasticPL -lElasticPLFunctions -lcrypto", lib_name);
 	ret = system(str);
 #else
 #ifdef __arm__
 	ret = system("gcc -I./crypto -c -std=c99 -Ofast -fPIC ./work/work_lib.c -o ./work/work_lib.o");
-	sprintf(str, "gcc -std=c99 -shared -Wl,-soname,./work/%s.so.1 -o ./work/%s.so ./work/work_lib.o -L./crypto -lelasticpl_crypto -lcrypto", lib_name, lib_name);
+	sprintf(str, "gcc -std=c99 -shared -Wl,-soname,./work/%s.so.1 -o ./work/%s.so ./work/work_lib.o -L./ElasticPL -lElasticPLFunctions -lcrypto", lib_name, lib_name);
 	ret = system(str);
 #else
 	ret = system("gcc -I./crypto -c -march=native -Ofast -fPIC ./work/work_lib.c -o ./work/work_lib.o");
-	sprintf(str, "gcc -shared -Wl,-soname,./work/%s.so.1 -o ./work/%s.so ./work/work_lib.o -L./crypto -lelasticpl_crypto -lcrypto", lib_name, lib_name);
+	sprintf(str, "gcc -shared -Wl,-soname,./work/%s.so.1 -o ./work/%s.so ./work/work_lib.o -L./ElasticPL -lElasticPLFunctions -lcrypto", lib_name, lib_name);
 	ret = system(str);
 #endif
 #endif

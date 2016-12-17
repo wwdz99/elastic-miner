@@ -25,8 +25,6 @@
 #include <openssl/rand.h>
 #include "miner.h"
 
-#include "crypto/elasticpl_crypto.h"
-
 #ifdef WIN32
 #include <malloc.h>
 #include "compat/winansi.h"
@@ -90,6 +88,7 @@ __thread int vm_stack_idx;
 __thread bool vm_bounty;
 
 bool use_elasticpl_math;
+bool use_elasticpl_bigint;
 bool use_elasticpl_crypto;
 
 pthread_mutex_t applog_lock = PTHREAD_MUTEX_INITIALIZER;

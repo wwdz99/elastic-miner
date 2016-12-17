@@ -265,7 +265,7 @@ extern bool calc_opencl_worksize(struct opencl_device *gpu) {
 				return false;
 		}
 
-		gpu->local_size[1] = (size_t)(opt_opencl_vwidth ? opt_opencl_vwidth : dim2);;
+		gpu->local_size[1] = (size_t)(opt_opencl_vwidth ? opt_opencl_vwidth : dim2);
 
 		// Calculate Local Size X Value
 		gpu->local_size[0] = max_work_size;
