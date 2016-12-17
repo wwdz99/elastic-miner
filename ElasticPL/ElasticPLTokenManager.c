@@ -25,7 +25,7 @@ Inputs:		Number Of Required Inputs To Operator / Function
 Prec:		(Precedence) Determines Parsing Order
 Data Type:  Data Type Of Value Returned By Operator / Function
 ******************************************************************************/
-struct EPL_TOKEN_LIST epl_token[] = {
+struct EXP_TOKEN_LIST epl_token[] = {
 	{ "<eof>",						5,	TOKEN_EOF,			EXP_NONE,		0,	0,	DT_INT },
 	{ "//",							2,	TOKEN_COMMENT,		EXP_NONE,		0,	0,	DT_INT },
 	{ "/*",							2,	TOKEN_BLOCK_COMMENT,EXP_NONE,		0,	0,	DT_INT },
@@ -266,7 +266,7 @@ static bool add_token(SOURCE_TOKEN_LIST *token_list, int token_id, char *literal
 
 		strcpy(str, literal);
 
-		// Determine If Literal Is A String, Float or Int
+		// Determine If Literal Is A String, Float, Int
 		if (strstr(str, "\""))
 			token_list->token[token_list->num].data_type = DT_STRING;
 		else if (strstr(str, "."))
@@ -323,7 +323,7 @@ static int validate_token_list(SOURCE_TOKEN_LIST *token_list) {
 
 			for (j = 0; j < len; j++) {
 				c = token_list->token[i].literal[j];
-				if (!(c >= '0' && c <= '9') && c != '-' && c != '.')
+				if (!(c >= '0' && c <= '9') && c != '-' && c != '.' && c != 'x' && c != 'a' && c != 'b' && c != 'c' && c != 'd' && c != 'e' && c != 'f')
 					return i;
 			}
 		}
@@ -334,7 +334,7 @@ static int validate_token_list(SOURCE_TOKEN_LIST *token_list) {
 
 extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 	char c, *cmnt, literal[MAX_LITERAL_SIZE];
-	int i, idx, len, token_id, line_num, token_list_sz, literal_idx, hex_val;
+	int i, idx, len, token_id, line_num, token_list_sz, literal_idx, val;
 	bool quote = false;
 
 	token_list_sz = sizeof(epl_token) / sizeof(epl_token[0]);
@@ -407,11 +407,17 @@ extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 
 			if (literal_idx > 0) {
 
-				// Check For Hex - If Found, Convert To Decimal String
-				if (literal[0] == '0' && literal[1] == 'x' && strlen(literal) > 2 && strlen(literal) <= 10) {
-					hex2ints(&hex_val, 1, literal + 2, strlen(literal) - 2);
-					sprintf(literal, "%d", hex_val);
-				}
+				//// Check For Hex - If Found, Convert To Decimal String
+				//if (literal[0] == '0' && literal[1] == 'x' && strlen(literal) > 2 && strlen(literal) <= 10) {
+				//	hex2ints(val, 1, literal + 2, strlen(literal) - 2);
+				//	sprintf(literal, "%d", val);
+				//}
+
+				//// Check For Bin - If Found, Convert To Decimal String
+				//if (literal[0] == '0' && literal[1] == 'b' && strlen(literal) > 2 && strlen(literal) <= 34) {
+				//	val = bin2int(literal + 2);
+				//	sprintf(literal, "%d", val);
+				//}
 
 				add_token(token_list, -1, literal, line_num);
 				literal_idx = 0;

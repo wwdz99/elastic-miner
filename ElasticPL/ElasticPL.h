@@ -375,7 +375,7 @@ typedef enum {
 	EXP_STATEMENT,
 	EXP_EXPRESSION,
 	EXP_FUNCTION
-} TOKEN_EXP;
+} EXP_TYPE;
 
 typedef enum {
 	DT_INT,
@@ -391,12 +391,12 @@ typedef struct {
 	int token_id;
 	EPL_TOKEN_TYPE type;
 	char *literal;
-	TOKEN_EXP exp;
+	EXP_TYPE exp;
 	int inputs;
 	int prec;
 	int line_num;
 	DATA_TYPE data_type;
-	bool is_float;
+//	bool is_float;
 } SOURCE_TOKEN;
 
 
@@ -408,11 +408,11 @@ typedef struct {
 } SOURCE_TOKEN_LIST;
 
 
-struct EPL_TOKEN_LIST {
+struct EXP_TOKEN_LIST {
 	char* str;
 	int len;
 	EPL_TOKEN_TYPE type;
-	TOKEN_EXP exp;
+	EXP_TYPE exp;
 	int inputs;
 	int prec;
 	DATA_TYPE data_type;
@@ -420,10 +420,11 @@ struct EPL_TOKEN_LIST {
 
 typedef struct AST {
 	NODE_TYPE type;
-	TOKEN_EXP exp;
+	EXP_TYPE exp;
 	int32_t value;
 	float fvalue;
-	char *svalue;
+	unsigned char bvalue[32];
+	unsigned char *svalue;
 	int token_num;
 	int line_num;
 	bool end_stmnt;
@@ -431,7 +432,6 @@ typedef struct AST {
 	bool is_float;
 	struct AST*	left;
 	struct AST*	right;
-
 } ast;
 
 typedef struct VM_STACK_ITEM {
@@ -470,7 +470,7 @@ static ast* pop_exp();
 static void push_exp(ast* exp);
 static int pop_op();
 static void push_op(int token_id);
-static ast* add_exp(NODE_TYPE node_type, TOKEN_EXP exp_type, int32_t value, float fvalue, char *svalue, int token_num, int line_num, DATA_TYPE data_type, ast* left, ast* right);
+static ast* add_exp(NODE_TYPE node_type, EXP_TYPE exp_type, int32_t value, float fvalue, unsigned char *bvalue, unsigned char *svalue, int token_num, int line_num, DATA_TYPE data_type, ast* left, ast* right);
 extern char* get_node_str(NODE_TYPE node_type);
 extern void dump_vm_ast(ast* root);
 
@@ -495,6 +495,5 @@ static uint32_t rotr32(uint32_t x, int n);
 static uint32_t rotl32(uint32_t x, unsigned int n);
 static uint32_t rotr32(uint32_t x, unsigned int n);
 #endif
-
 
 #endif // ELASTICPL_H_
