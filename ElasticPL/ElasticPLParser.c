@@ -504,7 +504,7 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 			// Remaining Paramaters
 			for (i = 1; i < token->inputs; i++) {
 
-				if ((stack_exp_idx <= 0) || (stack_exp[stack_exp_idx - 1]->end_stmnt == true))
+				if ((stack_exp_idx <= 0) || (stack_exp[stack_exp_idx - 1]->end_stmnt == true) || (stack_exp[stack_exp_idx - 1]->type == NODE_IF) || (stack_exp[stack_exp_idx - 1]->type == NODE_REPEAT))
 					break;
 
 				right = pop_exp();
@@ -593,9 +593,7 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 			break;
 
 		case TOKEN_END_STATEMENT:
-			//if (stack_op_idx < 0)
-			//	break;
-
+			// Process Expressions
 			while ((top_op >= 0) && (token_list->token[top_op].type != TOKEN_BLOCK_BEGIN) && (token_list->token[top_op].type != TOKEN_IF) && (token_list->token[top_op].type != TOKEN_ELSE) && (token_list->token[top_op].type != TOKEN_REPEAT)) {
 				token_id = pop_op();
 				if (!create_exp(&token_list->token[token_id], token_id))

@@ -27,8 +27,10 @@ extern char* convert_ast_to_c() {
 	for (i = 0; i < vm_ast_cnt; i++) {
 		if (vm_ast[i]->type != NODE_TRACE)
 			ret = append_strings(ret, convert(vm_ast[i]));
-		else
-			ret = append_strings(ret, create_trace(vm_ast[i]));
+		else {
+//			if (opt_test_vm)
+				ret = append_strings(ret, create_trace(vm_ast[i]));
+		}
 	}
 
 	// The Current OpenCL Code Can't Run The Crypto Functions
@@ -374,11 +376,11 @@ static char* convert(ast* exp) {
 			exp->is_float = false;
 			break;
 		case NODE_NOT:
-			sprintf(result, "!%s", lval);
+			sprintf(result, "!(%s)", lval);
 			exp->is_float = l_is_float;
 			break;
 		case NODE_COMPL:
-			sprintf(result, "~%s", lval);
+			sprintf(result, "~(%s)", lval);
 			exp->is_float = l_is_float;
 			break;
 		case NODE_AND:
@@ -489,7 +491,7 @@ static char* convert(ast* exp) {
 			exp->is_float = false;
 			break;
 		case NODE_NEG:
-			sprintf(result, "-%s", lval);
+			sprintf(result, "-(%s)", lval);
 			exp->is_float = l_is_float;
 			break;
 		case NODE_VERIFY:
@@ -1099,7 +1101,6 @@ static char* create_trace(ast* exp) {
 		else
 			break;
 	}
-//	sprintf_s(result, 512, "printf(\"%s\"%s);\n", format, data);
 	sprintf(result, "printf(\"%s\\n\"%s);\n", format, data);
 	return result;
 }
