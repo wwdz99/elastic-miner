@@ -48,8 +48,9 @@
 #define MAX_SOURCE_SIZE 1024 * 256	// 256K
 #define VM_INPUTS 12
 
-extern __thread _ALIGN(64) int32_t *vm_mem;
-extern __thread _ALIGN(64) float *vm_fmem;
+extern __thread _ALIGN(64) int32_t *vm_m;
+extern __thread _ALIGN(64) float *vm_f;
+extern __thread unsigned char **vm_b;
 extern __thread vm_stack_item *vm_stack;
 extern __thread int vm_stack_idx;
 extern __thread uint32_t *vm_state;
@@ -181,7 +182,7 @@ struct instance {
 
 #ifdef WIN32
 	HINSTANCE hndl;
-	int(__cdecl* initialize)(int32_t *, uint32_t *);
+	int(__cdecl* initialize)(int32_t *, float *, unsigned char **, uint32_t *);
 	int(__cdecl* execute)();
 #else
 	void *hndl;

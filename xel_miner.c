@@ -80,8 +80,9 @@ uint64_t g_cur_work_id;
 unsigned char g_pow_target_str[33];
 uint32_t g_pow_target[4];
 
-__thread _ALIGN(64) int32_t *vm_mem = NULL;
-__thread _ALIGN(64) float *vm_fmem = NULL;
+__thread _ALIGN(64) int32_t *vm_m = NULL;
+__thread _ALIGN(64) float *vm_f = NULL;
+__thread unsigned char **vm_b = NULL;
 __thread uint32_t *vm_state = NULL;
 __thread vm_stack_item *vm_stack = NULL;
 __thread int vm_stack_idx;
@@ -513,11 +514,13 @@ static void *test_vm_thread(void *userdata) {
 	int i, rc;
 
 	// Initialize Global Variables
-	vm_mem = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
+	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
+	vm_f = calloc(100, sizeof(float));
+	vm_b = calloc(100 * 32, sizeof(char));
 	vm_state = calloc(4, sizeof(uint32_t));
 	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
 	vm_stack_idx = -1;
-	if (!vm_mem || !vm_stack) {
+	if (!vm_m || !vm_f || !vm_b || !vm_stack) {
 		applog(LOG_ERR, "%s: Unable to allocate VM memory", mythr->name);
 		exit(EXIT_FAILURE);
 	}
@@ -553,7 +556,7 @@ static void *test_vm_thread(void *userdata) {
 			free_compiler(inst);
 		inst = calloc(1, sizeof(struct instance));
 		create_instance(inst, "test");
-		inst->initialize(vm_mem, vm_state);
+		inst->initialize(vm_m, vm_f, vm_b, vm_state);
 
 		// Execute The VM Logic
 		rc = inst->execute();
@@ -572,7 +575,9 @@ static void *test_vm_thread(void *userdata) {
 
 	applog(LOG_NOTICE, "DEBUG: Compiler Test Complete");
 
-	free(vm_mem);
+	free(vm_m);
+	free(vm_f);
+	free(vm_b);
 	free(vm_state);
 	free(vm_stack);
 
@@ -668,7 +673,7 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 		get_vm_input(work);
 
 		// Reset VM Memory / State
-		memcpy(vm_mem, work->vm_input, VM_INPUTS * sizeof(int));
+		memcpy(vm_m, work->vm_input, VM_INPUTS * sizeof(int));
 		memset(vm_state, 0, 4 * sizeof(int));
 
 		// Execute The VM Logic
@@ -1252,12 +1257,14 @@ static void *miner_thread(void *userdata) {
 		thread_low_priority();
 
 	// Initialize Global Variables
-	vm_mem = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
+	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
+	vm_f = calloc(1000, sizeof(float));
+	vm_b = calloc(100 * 32, sizeof(char));
 	vm_state = calloc(4, sizeof(uint32_t));
 	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
 	vm_stack_idx = -1;
 
-	if (!vm_mem || !vm_state || !vm_stack) {
+	if (!vm_m || !vm_f || !vm_b || !vm_state || !vm_stack) {
 		applog(LOG_ERR, "CPU%d: Unable to allocate VM memory", thr_id);
 		goto out;
 	}
@@ -1289,7 +1296,7 @@ static void *miner_thread(void *userdata) {
 					free_compiler(inst);
 				inst = calloc(1, sizeof(struct instance));
 				create_instance(inst, work.work_str);
-				inst->initialize(vm_mem, vm_state);
+				inst->initialize(vm_m, vm_f, vm_b, vm_state);
 			}
 		}
 		// Otherwise, Just Update POW Target
@@ -1374,7 +1381,9 @@ static void *miner_thread(void *userdata) {
 	}
 
 out:
-	if (vm_mem) free(vm_mem);
+	if (vm_m) free(vm_m);
+	if (vm_f) free(vm_f);
+	if (vm_b) free(vm_b);
 	if (vm_state) free(vm_state);
 	if (vm_stack) free(vm_stack);
 	tq_freeze(mythr->q);
@@ -1568,9 +1577,6 @@ static void *opencl_miner_thread(void *userdata) {
 	}
 
 out:
-//	if (vm_mem) free(vm_mem);
-//	if (vm_state) free(vm_input);
-
 	/*
 	clReleaseMemObject(base_data);
 	clReleaseMemObject(input);

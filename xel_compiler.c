@@ -79,13 +79,13 @@ bool create_c_source() {
 	fprintf(f, "\treturn x;\n");
 	fprintf(f, "}\n\n");
 #ifdef WIN32
-	fprintf(f, "__declspec(dllexport) void initialize(int32_t *vm_m, uint32_t *vm_state) {\n");
+	fprintf(f, "__declspec(dllexport) void initialize(int32_t *vm_m, float *vm_f, unsigned char **vm_b, uint32_t *vm_state) {\n");
 #else
 	fprintf(f, "void initialize(int32_t* m, uint32_t* s) {\n");
 #endif
 	fprintf(f, "\tm = &vm_m[0];\n");
-	fprintf(f, "\tf = NULL;\n");
-	fprintf(f, "\tb = NULL;\n");
+	fprintf(f, "\tf = &vm_f[0];\n");
+	fprintf(f, "\tb = &vm_b[0];\n");
 	fprintf(f, "\tstate = &vm_state[0];\n");
 	fprintf(f, "}\n\n");
 #ifdef WIN32
@@ -156,7 +156,7 @@ void create_instance(struct instance* inst, char *lib_name) {
 		fprintf(stderr, "Unable to load library: '%s' (Error - %d)", file_name, GetLastError());
 		exit(EXIT_FAILURE);
 	}
-	inst->initialize = (int(__cdecl *)(int32_t *, uint32_t *))GetProcAddress((HMODULE)inst->hndl, "initialize");
+	inst->initialize = (int(__cdecl *)(int32_t *, float *, unsigned char **, uint32_t *))GetProcAddress((HMODULE)inst->hndl, "initialize");
 	inst->execute = (int(__cdecl *)())GetProcAddress((HMODULE)inst->hndl, "execute");
 	if (!inst->initialize || !inst->execute) {
 		fprintf(stderr, "Unable to find library functions");
