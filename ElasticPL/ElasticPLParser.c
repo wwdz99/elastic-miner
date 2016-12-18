@@ -18,17 +18,13 @@ ast* d_stack_exp[10];
 int d_stack_op[10];
 
 
-static ast* add_exp(NODE_TYPE node_type, EXP_TYPE exp_type, int32_t value, float fvalue, unsigned char *bvalue, unsigned char *svalue, int token_num, int line_num, DATA_TYPE data_type, ast* left, ast* right) {
+static ast* add_exp(NODE_TYPE node_type, EXP_TYPE exp_type, int32_t value, float fvalue, unsigned char *svalue, int token_num, int line_num, DATA_TYPE data_type, ast* left, ast* right) {
 	ast* e = calloc(1, sizeof(ast));
 	if (e) {
 		e->type = node_type;
 		e->exp = exp_type;
 		e->value = value;
 		e->fvalue = fvalue;
-
-		//if (bvalue)
-		//	memcpy(e->bvalue, &bvalue[0], 32);
-
 		e->svalue = svalue;
 		e->token_num = token_num;
 		e->line_num = line_num;
@@ -172,16 +168,16 @@ static bool validate_binary_exp(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 	r_type = stack_exp[stack_exp_idx]->type;
 
 	// Validate Left Item Is Not A Statement (Does Not Include Increment / Decrement)
-	if ((l_exp == EXP_FUNCTION) || ((l_exp == EXP_STATEMENT) && (l_type != NODE_INCREMENT_L) && (l_type != NODE_DECREMENT_L))) {
-			printf("Syntax Error - Line: %d  Invalid Left Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
-		return false;
-	}
+	//if ((l_exp == EXP_FUNCTION) || ((l_exp == EXP_STATEMENT) && (l_type != NODE_INCREMENT_L) && (l_type != NODE_DECREMENT_L))) {
+	//		printf("Syntax Error - Line: %d  Invalid Left Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
+	//	return false;
+	//}
 
 	// Validate Right Item Is Not A Statement (Does Not Include Increment / Decrement)
-	if ((r_exp == EXP_FUNCTION) || ((r_exp == EXP_STATEMENT) && (r_type != NODE_INCREMENT_R) && (r_type != NODE_DECREMENT_R))) {
-			printf("Syntax Error - Line: %d  Invalid Right Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
-		return false;
-	}
+	//if ((r_exp == EXP_FUNCTION) || ((r_exp == EXP_STATEMENT) && (r_type != NODE_INCREMENT_R) && (r_type != NODE_DECREMENT_R))) {
+	//		printf("Syntax Error - Line: %d  Invalid Right Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
+	//	return false;
+	//}
 
 	return true;
 }
@@ -245,6 +241,8 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
 	case TOKEN_AND:				node_type = NODE_AND;			break;
 	case TOKEN_OR:				node_type = NODE_OR;			break;
 	case TOKEN_BLOCK_END:		node_type = NODE_BLOCK;			break;
+	case TOKEN_CONDITIONAL:		node_type = NODE_CONDITIONAL;	break;
+	case TOKEN_COND_ELSE:		node_type = NODE_COND_ELSE;		break;
 	case TOKEN_IF:				node_type = NODE_IF;			break;
 	case TOKEN_ELSE:			node_type = NODE_ELSE;			break;
 	case TOKEN_REPEAT:			node_type = NODE_REPEAT;		break;
@@ -272,6 +270,7 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
 	case TOKEN_ABS:				node_type = NODE_ABS;			break;
 	case TOKEN_FABS:			node_type = NODE_FABS;			break;
 	case TOKEN_FMOD:			node_type = NODE_FMOD; 			break;
+	case TOKEN_GCD:				node_type = NODE_GCD; 			break;
 	case TOKEN_TRACE:			node_type = NODE_TRACE;			break;
 	case TOKEN_BI_CONST:		node_type = NODE_BI_CONST;		break;
 	case TOKEN_BI_EXPR:			node_type = NODE_BI_EXPR;		break;
@@ -499,7 +498,7 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 		if (token->inputs > 0) {
 			// First Paramater
 			left = pop_exp();
-			exp = add_exp(NODE_PARAM, EXP_EXPRESSION, 0, 0.0, NULL, NULL, 0, 0, DT_NONE, left, NULL);
+			exp = add_exp(NODE_PARAM, EXP_EXPRESSION, 0, 0.0, NULL, 0, 0, DT_NONE, left, NULL);
 			push_exp(exp);
 
 			// Remaining Paramaters
@@ -510,7 +509,7 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 
 				right = pop_exp();
 				left = pop_exp();
-				exp = add_exp(NODE_PARAM, EXP_EXPRESSION, 0, 0.0, NULL, NULL, 0, 0, DT_NONE, left, right);
+				exp = add_exp(NODE_PARAM, EXP_EXPRESSION, 0, 0.0, NULL, 0, 0, DT_NONE, left, right);
 				push_exp(exp);
 			}
 			left = NULL;
@@ -522,7 +521,7 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 		}
 	}
 
-	exp = add_exp(node_type, token->exp, (int32_t)value, (float)fvalue, (unsigned char*)bvalue, svalue, token_num, token->line_num, token->data_type, left, right);
+	exp = add_exp(node_type, token->exp, (int32_t)value, (float)fvalue, svalue, token_num, token->line_num, token->data_type, left, right);
 
 	if (exp)
 		push_exp(exp);
@@ -576,6 +575,10 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 
 		switch (token_list->token[i].type) {
 
+		case TOKEN_COMMA:
+			continue;
+			break;
+	
 		case TOKEN_LITERAL:
 		case TOKEN_TRUE:
 		case TOKEN_FALSE:
@@ -590,8 +593,8 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 			break;
 
 		case TOKEN_END_STATEMENT:
-			if (stack_op_idx < 0)
-				break;
+			//if (stack_op_idx < 0)
+			//	break;
 
 			while ((top_op >= 0) && (token_list->token[top_op].type != TOKEN_BLOCK_BEGIN) && (token_list->token[top_op].type != TOKEN_IF) && (token_list->token[top_op].type != TOKEN_ELSE) && (token_list->token[top_op].type != TOKEN_REPEAT)) {
 				token_id = pop_op();
@@ -672,6 +675,21 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 			}
 			else if (stack_op_idx < 0 || token_list->token[stack_op[stack_op_idx]].type != TOKEN_IF) {
 				printf("Syntax Error - Line: %d  Invalid 'Else' Statement\n", token_list->token[token_id].line_num);
+				return false;
+			}
+			push_op(i);
+			break;
+
+		case TOKEN_COND_ELSE:
+
+			// Process Expressions Within The Conditional Statement
+			while ((top_op >= 0) && (token_list->token[top_op].type != TOKEN_CONDITIONAL)) {
+				token_id = pop_op();
+				if (!create_exp(&token_list->token[token_id], token_id)) return false;
+			}
+
+			if (stack_op_idx < 0 || token_list->token[stack_op[stack_op_idx]].type != TOKEN_CONDITIONAL) {
+				applog(LOG_ERR, "Syntax Error - Line: %d  Invalid 'Conditional' Statement\n", token_list->token[token_id].line_num);
 				return false;
 			}
 			push_op(i);

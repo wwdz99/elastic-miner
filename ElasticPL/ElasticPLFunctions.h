@@ -32,8 +32,10 @@ extern uint32_t epl_ec_sub(size_t idx1, bool comp1, size_t idx2, bool comp2, boo
 extern uint32_t epl_ec_neg(size_t idx1, bool comp1, bool comp, int32_t *mem, int nid, size_t comp_sz, size_t uncomp_sz);
 extern uint32_t epl_ec_mult(size_t idx1, bool comp1, size_t idx2, size_t n2, bool comp, int32_t *mem, int nid, size_t comp_sz, size_t uncomp_sz);
 
-extern void big_init_const(unsigned char *str);
-extern void big_init_expr(unsigned char *str);
+extern int32_t gcd(int32_t	a, int32_t b);
+
+extern void big_init_const(unsigned char *out, unsigned char *str);
+extern void big_init_expr(unsigned char *out, int32_t	a);
 extern void big_add(unsigned char *out, unsigned char *a, unsigned char *b);
 extern void big_sub(unsigned char *out, unsigned char *a, unsigned char *b);
 extern void big_mul(unsigned char *out, unsigned char *a, unsigned char *b);

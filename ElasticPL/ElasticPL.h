@@ -54,6 +54,8 @@ typedef enum {
 	NODE_AND_ASSIGN,
 	NODE_XOR_ASSIGN,
 	NODE_OR_ASSIGN,
+	NODE_CONDITIONAL,
+	NODE_COND_ELSE,
 	NODE_ADD,
 	NODE_DECREMENT_R,
 	NODE_DECREMENT_L,
@@ -196,6 +198,7 @@ typedef enum {
 
 
 typedef enum {
+	TOKEN_COMMA,
 	TOKEN_ASSIGN,
 	TOKEN_OR,
 	TOKEN_AND,
@@ -219,6 +222,8 @@ typedef enum {
 	TOKEN_AND_ASSIGN,
 	TOKEN_XOR_ASSIGN,
 	TOKEN_OR_ASSIGN,
+	TOKEN_CONDITIONAL,
+	TOKEN_COND_ELSE,
 	TOKEN_ADD,
 	TOKEN_DECREMENT,
 	TOKEN_SUB,
@@ -396,7 +401,6 @@ typedef struct {
 	int prec;
 	int line_num;
 	DATA_TYPE data_type;
-//	bool is_float;
 } SOURCE_TOKEN;
 
 
@@ -423,7 +427,6 @@ typedef struct AST {
 	EXP_TYPE exp;
 	int32_t value;
 	float fvalue;
-	unsigned char bvalue[32];
 	unsigned char *svalue;
 	int token_num;
 	int line_num;
@@ -470,7 +473,7 @@ static ast* pop_exp();
 static void push_exp(ast* exp);
 static int pop_op();
 static void push_op(int token_id);
-static ast* add_exp(NODE_TYPE node_type, EXP_TYPE exp_type, int32_t value, float fvalue, unsigned char *bvalue, unsigned char *svalue, int token_num, int line_num, DATA_TYPE data_type, ast* left, ast* right);
+static ast* add_exp(NODE_TYPE node_type, EXP_TYPE exp_type, int32_t value, float fvalue, unsigned char *svalue, int token_num, int line_num, DATA_TYPE data_type, ast* left, ast* right);
 extern char* get_node_str(NODE_TYPE node_type);
 extern void dump_vm_ast(ast* root);
 

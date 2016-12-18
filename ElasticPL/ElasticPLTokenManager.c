@@ -15,7 +15,7 @@
 /*****************************************************************************
 ElasticPL Token List
 
-Format:  Str, Len, Type, Exp, Prec
+Format:  Str, Len, Type, Exp, Inputs, Prec, Data Type
 
 Str:		Token String
 Len:		String Length Used For "memcmp"
@@ -26,10 +26,11 @@ Prec:		(Precedence) Determines Parsing Order
 Data Type:  Data Type Of Value Returned By Operator / Function
 ******************************************************************************/
 struct EXP_TOKEN_LIST epl_token[] = {
-	{ "<eof>",						5,	TOKEN_EOF,			EXP_NONE,		0,	0,	DT_INT },
-	{ "//",							2,	TOKEN_COMMENT,		EXP_NONE,		0,	0,	DT_INT },
-	{ "/*",							2,	TOKEN_BLOCK_COMMENT,EXP_NONE,		0,	0,	DT_INT },
-	{ ";",							1,	TOKEN_END_STATEMENT,EXP_NONE,		0,	0,	DT_INT },
+	{ "<eof>",						5,	TOKEN_EOF,			EXP_NONE,		0,	0,	DT_NONE },
+	{ "//",							2,	TOKEN_COMMENT,		EXP_NONE,		0,	0,	DT_NONE },
+	{ "/*",							2,	TOKEN_BLOCK_COMMENT,EXP_NONE,		0,	0,	DT_NONE },
+	{ ";",							1,	TOKEN_END_STATEMENT,EXP_NONE,		0,	0,	DT_NONE },
+	{ ",",							1,	TOKEN_COMMA,		EXP_NONE,		0,	0,	DT_NONE },
 	{ "{",							1,	TOKEN_BLOCK_BEGIN,	EXP_STATEMENT,	2,	1,	DT_INT },
 	{ "}",							1,	TOKEN_BLOCK_END,	EXP_STATEMENT,	2,	1,	DT_INT },
 	{ "(",							1,	TOKEN_OPEN_PAREN,	EXP_NONE,		0,	1,	DT_INT },
@@ -93,6 +94,9 @@ struct EXP_TOKEN_LIST epl_token[] = {
 
 	{ "=",							1,	TOKEN_ASSIGN,		EXP_STATEMENT,	2,	3,	DT_INT },	// Assignment
 
+	{ "?",							1,	TOKEN_CONDITIONAL,	EXP_STATEMENT,	2,	4,	DT_INT },	// Conditional
+	{ ":",							1,	TOKEN_COND_ELSE,	EXP_STATEMENT,	2,	5,	DT_INT },	// Conditional
+
 	{ "~",							1,	TOKEN_COMPL,		EXP_EXPRESSION,	1,	15,	DT_INT },	// Unary Operator
 	{ "!",							1,	TOKEN_NOT,			EXP_EXPRESSION,	1,	15,	DT_INT },	// Unary Operator
 	{ "true",						4,	TOKEN_TRUE,			EXP_EXPRESSION,	0,	15,	DT_INT },	// Unary Operator
@@ -106,17 +110,17 @@ struct EXP_TOKEN_LIST epl_token[] = {
 	{ "tanh",						4,	TOKEN_TANH,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "asin",						4,	TOKEN_ASIN,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "acos",						4,	TOKEN_ACOS,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
-	{ "atan",						4,	TOKEN_ATAN,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "atan2",						5,	TOKEN_ATAN2,		EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
+	{ "atan",						4,	TOKEN_ATAN,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "exp",						3,	TOKEN_EXPNT,		EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
-	{ "log",						3,	TOKEN_LOG,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "log10",						5,	TOKEN_LOG10,		EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
-	{ "pow",						3,	TOKEN_POW,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
+	{ "log",						3,	TOKEN_LOG,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
+	{ "pow",						3,	TOKEN_POW,			EXP_FUNCTION,	2,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "sqrt",						4,	TOKEN_SQRT,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "ceil",						4,	TOKEN_CEIL,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "floor",						5,	TOKEN_FLOOR,		EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
-	{ "abs",						3,	TOKEN_ABS,			EXP_FUNCTION,	1,	50,	DT_INT },	// Built In Math Functions
 	{ "fabs",						4,	TOKEN_FABS,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
+	{ "abs",						3,	TOKEN_ABS,			EXP_FUNCTION,	1,	50,	DT_INT },	// Built In Math Functions
 	{ "fmod",						4,	TOKEN_FMOD,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "gcd",						3,	TOKEN_GCD,			EXP_FUNCTION,	2,	50,	DT_FLOAT },	// Built In Math Functions
 
@@ -139,19 +143,19 @@ struct EXP_TOKEN_LIST epl_token[] = {
 	{ "big_gcd",					7,	TOKEN_BI_GCD,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_divisible",				13,	TOKEN_BI_DIVISIBLE,	EXP_FUNCTION,	2,	55,	DT_INT },	// Built In Big Int Functions
 	{ "big_congruent_mod_p",		19,	TOKEN_BI_CNGR_MOD_P,EXP_FUNCTION,	3,	55,	DT_INT },	// Built In Big Int Functions
-	{ "big_pow",					7,	TOKEN_BI_POW,		EXP_FUNCTION,	3,	55,	DT_INT },	// Built In Big Int Functions
-	{ "big_pow2",					8,	TOKEN_BI_POW2,		EXP_FUNCTION,	2,	55,	DT_INT },	// Built In Big Int Functions
-	{ "big_pow_mod_p",				13,	TOKEN_BI_POW_MOD_P,	EXP_FUNCTION,	4,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_pow2_mod_p",				14,	TOKEN_BI_POW2_MOD_P,EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_compare",				11,	TOKEN_BI_COMP,		EXP_FUNCTION,	2,	55,	DT_INT },	// Built In Big Int Functions
+	{ "big_pow_mod_p",				13,	TOKEN_BI_POW_MOD_P,	EXP_FUNCTION,	4,	55,	DT_NONE },	// Built In Big Int Functions
+	{ "big_pow2",					8,	TOKEN_BI_POW2,		EXP_FUNCTION,	2,	55,	DT_INT },	// Built In Big Int Functions
+	{ "big_pow",					7,	TOKEN_BI_POW,		EXP_FUNCTION,	3,	55,	DT_INT },	// Built In Big Int Functions
 	{ "big_compare_abs",			15,	TOKEN_BI_COMP_ABS,	EXP_FUNCTION,	2,	55,	DT_INT },	// Built In Big Int Functions
+	{ "big_compare",				11,	TOKEN_BI_COMP,		EXP_FUNCTION,	2,	55,	DT_INT },	// Built In Big Int Functions
 	{ "big_sign",					8,	TOKEN_BI_SIGN,		EXP_FUNCTION,	1,	55,	DT_INT },	// Built In Big Int Functions
-	{ "big_or",						6,	TOKEN_BI_OR,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_and",					7,	TOKEN_BI_AND,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_xor",					7,	TOKEN_BI_XOR,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_or_integer",				14,	TOKEN_BI_OR_INT,	EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
+	{ "big_or",						6,	TOKEN_BI_OR,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_and_integer",			15,	TOKEN_BI_AND_INT,	EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
+	{ "big_and",					7,	TOKEN_BI_AND,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_xor_integer",			15,	TOKEN_BI_XOR_INT,	EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
+	{ "big_xor",					7,	TOKEN_BI_XOR,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_least_32bit",			15,	TOKEN_BI_LEAST_32,	EXP_FUNCTION,	1,	55,	DT_NONE },	// Built In Big Int Functions
 
 	{ "sha256",						6,	TOKEN_SHA256,		EXP_FUNCTION,	2,	60,	DT_NONE },	// Built In Functions
@@ -334,7 +338,7 @@ static int validate_token_list(SOURCE_TOKEN_LIST *token_list) {
 
 extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 	char c, *cmnt, literal[MAX_LITERAL_SIZE];
-	int i, idx, len, token_id, line_num, token_list_sz, literal_idx, val;
+	int i, idx, len, token_id, line_num, token_list_sz, literal_idx;
 	bool quote = false;
 
 	token_list_sz = sizeof(epl_token) / sizeof(epl_token[0]);
@@ -357,7 +361,8 @@ extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 		if (!quote) {
 
 			// Remove Whitespace
-			if (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == ',') {
+//			if (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == ',') {
+				if (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f') {
 
 				if (literal_idx > 0) {
 					add_token(token_list, -1, literal, line_num);
@@ -405,20 +410,8 @@ extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 				continue;
 			}
 
+			// Add Literals To Token List
 			if (literal_idx > 0) {
-
-				//// Check For Hex - If Found, Convert To Decimal String
-				//if (literal[0] == '0' && literal[1] == 'x' && strlen(literal) > 2 && strlen(literal) <= 10) {
-				//	hex2ints(val, 1, literal + 2, strlen(literal) - 2);
-				//	sprintf(literal, "%d", val);
-				//}
-
-				//// Check For Bin - If Found, Convert To Decimal String
-				//if (literal[0] == '0' && literal[1] == 'b' && strlen(literal) > 2 && strlen(literal) <= 34) {
-				//	val = bin2int(literal + 2);
-				//	sprintf(literal, "%d", val);
-				//}
-
 				add_token(token_list, -1, literal, line_num);
 				literal_idx = 0;
 				memset(literal, 0, 100);

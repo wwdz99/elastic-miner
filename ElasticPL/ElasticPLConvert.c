@@ -17,15 +17,9 @@
 #include "ElasticPLFunctions.h"
 #include "../miner.h"
 
-char blk_new[4096];
-char blk_old[4096];
-
 extern char* convert_ast_to_c() {
 	char* ret = NULL;
 	int i;
-
-	blk_new[0] = 0;
-	blk_old[0] = 0;
 
 	use_elasticpl_crypto = false;
 	use_elasticpl_math = false;
@@ -51,8 +45,6 @@ static char* convert(ast* exp) {
 	char* tmp = 0;
 	char *result = malloc(sizeof(char) * 256);
 	result[0] = 0;
-	blk_new[0] = 0;
-	blk_old[0] = 0;
 
 	bool l_is_float = false;
 	bool r_is_float = false;
@@ -72,10 +64,6 @@ static char* convert(ast* exp) {
 			l_is_float = (exp->left->is_float);
 		if (exp->right != NULL)
 			r_is_float = (exp->right->is_float);
-		//if (exp->left != NULL)
-		//	l_is_float = (exp->left->data_type == DT_FLOAT);
-		//if (exp->right != NULL)
-		//	r_is_float = (exp->right->data_type == DT_FLOAT);
 
 		switch (exp->type) {
 		case NODE_CONSTANT:
@@ -83,8 +71,6 @@ static char* convert(ast* exp) {
 				sprintf(result, "%d", exp->value);
 			else if (exp->data_type == DT_FLOAT)
 				sprintf(result, "%f", exp->fvalue);
-			//			else if (exp->data_type == DT_BIGINT)
-			//				sprintf(result, "%s", exp->value);
 			else if (exp->data_type == DT_STRING)
 				sprintf(result, "%s", exp->svalue);
 			break;
@@ -136,6 +122,14 @@ static char* convert(ast* exp) {
 				sprintf(result, "if( %s ) {\n\t%s}\nelse {\n\t%s}\n", tmp, lval, rval);
 			}
 			break;
+		case NODE_CONDITIONAL:
+			tmp = lval;
+			lval = convert(exp->right->left);		// If Body
+			rval = convert(exp->right->right);		// Else Body
+			result = realloc(result, strlen(lval) + strlen(rval) + 256);
+			sprintf(result, "(( %s ) ? %s : %s)", tmp, lval, rval);
+			break;
+		case NODE_COND_ELSE:
 		case NODE_ELSE:
 			break;
 		case NODE_REPEAT:
@@ -149,13 +143,10 @@ static char* convert(ast* exp) {
 			sprintf(result, "continue;\n");
 			break;
 		case NODE_BLOCK:
-			if (!blk_old[0])
-				sprintf(blk_new, "%s", lval);
+			if (rval[0] == 0)
+				sprintf(result, "%s", lval);
 			else
-				sprintf(blk_new, "%s\t%s", lval, blk_old);
-			result = realloc(result, strlen(blk_new) + 1);
-			sprintf(result, "%s", blk_new);
-			strcpy(blk_old, blk_new);
+				sprintf(result, "%s\t%s", lval, rval);
 			break;
 		case NODE_INCREMENT_R:
 			if (exp->end_stmnt)
@@ -509,13 +500,10 @@ static char* convert(ast* exp) {
 				sprintf(result, "\n\trc = (%s != 0 ? 1 : 0);\n\n", lval);
 			break;
 		case NODE_PARAM:
-			if (!blk_old[0])
-				sprintf(blk_new, "%s", lval);
+			if (rval[0] == 0)
+				sprintf(result, "%s", lval);
 			else
-				sprintf(blk_new, "%s, %s", lval, blk_old);
-			result = realloc(result, strlen(blk_new) + 1);
-			sprintf(result, "%s", blk_new);
-			strcpy(blk_old, blk_new);
+				sprintf(result, "%s, %s", lval, rval);
 			break;
 		case NODE_SIN:
 			sprintf(result, "sin( %s )", rval);
@@ -616,6 +604,19 @@ static char* convert(ast* exp) {
 			sprintf(result, "fmod( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
+			break;
+		case NODE_GCD:
+			sprintf(result, "gcd( %s )", rval);
+			exp->is_float = true;
+			use_elasticpl_math = true;
+			break;
+		case NODE_BI_CONST:
+			sprintf(result, "big_init_const( %s );\n", rval);
+			use_elasticpl_bigint = true;
+			break;
+		case NODE_BI_EXPR:
+			sprintf(result, "big_init_expr( %s );\n", rval);
+			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_ADD:
 			sprintf(result, "big_add( %s );\n", rval);
