@@ -1099,6 +1099,6 @@ static char* create_trace(ast* exp) {
 			break;
 	}
 //	sprintf_s(result, 512, "printf(\"%s\"%s);\n", format, data);
-	sprintf(result, "printf(\"%s\"%s);\n", format, data);
+	sprintf(result, "printf(\"%s\\n\"%s);\n", format, data);
 	return result;
 }

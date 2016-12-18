@@ -410,11 +410,23 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 			else if (node_type == NODE_CONSTANT) {
 
 				if (token->data_type == DT_INT) {
-	applog(LOG_DEBUG, "3");
 
-					value = (long long)strtod(token->literal, NULL);
-					fvalue = (double)strtof(token->literal, NULL);
-	applog(LOG_DEBUG, "4");
+					//// Check For Hex - If Found, Convert To Int
+					//if (token->literal[0] == '0' && token->literal[1] == 'x' && strlen(token->literal) > 2 && strlen(token->literal) <= 34) {
+					//	hex2ints(bvalue, 4, token->literal + 2, strlen(token->literal) - 2);
+					//	sprintf(token->literal, "%d", bvalue[3]);
+					//}
+
+					//// Check For Binary - If Found, Convert To Decimal String
+					//if (token->literal[0] == '0' && token->literal[1] == 'b' && strlen(token->literal) > 2 && strlen(token->literal) <= 34) {
+					//	bvalue[0] = bin2int(token->literal + 2);
+					//	sprintf(token->literal, "%d", bvalue[0]);
+					//}
+
+					//if (strlen(token->literal) <= 10) {
+						value = (long long)strtod(token->literal, NULL);
+						fvalue = (double)strtof(token->literal, NULL);
+//					}
 				}
 				else if (token->data_type == DT_FLOAT) {
 //					if (strlen(token->literal) <= 10) {
@@ -559,8 +571,6 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 
 	int i, token_id;
 	ast *left, *right;
-	
-	applog(LOG_DEBUG, "1");
 
 	for (i = 0; i < token_list->num; i++) {
 
@@ -681,9 +691,6 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 
 			break;
 		}
-		
-		applog(LOG_DEBUG, "2 - %d", i);
-
 	}
 
 	if (stack_exp_idx < 0 || !validate_exp_list())

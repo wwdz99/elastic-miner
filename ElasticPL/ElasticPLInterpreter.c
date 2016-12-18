@@ -1276,7 +1276,7 @@ static vm_stack_item pop_item() {
 
 static long pop() {
 	if (vm_stack[vm_stack_idx].memory)
-		return vm_mem[vm_stack[vm_stack_idx--].value];
+		return vm_m[vm_stack[vm_stack_idx--].value];
 	else
 		return vm_stack[vm_stack_idx--].value;
 }
@@ -1393,14 +1393,14 @@ static int32_t interpret(ast* exp, bool mangle) {
 				val = exp->value;
 			if (mangle)					// This Allows Us To Mangle All Memory Locations On Left Side Of Assign Operator
 				mangle_state(val);
-			return vm_mem[val];
+			return vm_m[val];
 		case NODE_VAR_EXP:
 			lval = interpret(exp->left, mangle);
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
 			if (mangle)					// This Allows Us To Mangle All Memory Locations On Left Side Of Assign Operator
 				mangle_state(lval);
-			return vm_mem[lval];
+			return vm_m[lval];
 		case NODE_ASSIGN:
 			rval = interpret(exp->right, false);
 			mangle_state(rval);
@@ -1412,7 +1412,7 @@ static int32_t interpret(ast* exp, bool mangle) {
 				lval = interpret(exp->left, true);
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
-			vm_mem[lval] = rval;
+			vm_m[lval] = rval;
 //			mangle_state(lval);
 			return 1;
 		case NODE_IF:
@@ -1598,343 +1598,343 @@ static int32_t interpret(ast* exp, bool mangle) {
 			if (!get_param(exp, param, 2))
 				val = 0;
 			else
-				val = epl_sha256(param[0], param[1], vm_mem);
+				val = epl_sha256(param[0], param[1], vm_m);
 			mangle_state(val);
 			return 1;
 		case NODE_SHA512:
 			if (!get_param(exp, param, 2))
 				val = 0;
 			else
-				val = epl_sha512(param[0], param[1], vm_mem);
+				val = epl_sha512(param[0], param[1], vm_m);
 			mangle_state(val);
 			return 1;
 		case NODE_WHIRLPOOL:
 			if (!get_param(exp, param, 2))
 				val = 0;
 			else
-				val = epl_whirlpool(param[0], param[1], vm_mem);
+				val = epl_whirlpool(param[0], param[1], vm_m);
 			mangle_state(val);
 			return 1;
 		case NODE_MD5:
 			if (!get_param(exp, param, 2))
 				val = 0;
 			else
-				val = epl_md5(param[0], param[1], vm_mem);
+				val = epl_md5(param[0], param[1], vm_m);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP192K_PTP:
 			if (!get_param(exp, param, 2))
 				val = 0;
 			else
-				val = epl_ec_priv_to_pub(param[0], param[1], vm_mem, NID_secp192k1, 24);
+				val = epl_ec_priv_to_pub(param[0], param[1], vm_m, NID_secp192k1, 24);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP192K_PA:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp192k1, 25, 49);
+				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_m, NID_secp192k1, 25, 49);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP192K_PS:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp192k1, 25, 49);
+				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_m, NID_secp192k1, 25, 49);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP192K_PSM:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp192k1, 25, 49);
+				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_m, NID_secp192k1, 25, 49);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP192K_PN:
 			if (!get_param(exp, param, 3))
 				val = 0;
 			else
-				val = epl_ec_neg(param[0], param[1], param[2], vm_mem, NID_secp192k1, 25, 49);
+				val = epl_ec_neg(param[0], param[1], param[2], vm_m, NID_secp192k1, 25, 49);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP224K_PTP:
 			if (!get_param(exp, param, 2))
 				val = 0;
 			else
-				val = epl_ec_priv_to_pub(param[0], param[1], vm_mem, NID_secp224k1, 28);
+				val = epl_ec_priv_to_pub(param[0], param[1], vm_m, NID_secp224k1, 28);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP224K_PA:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp224k1, 29, 57);
+				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_m, NID_secp224k1, 29, 57);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP224K_PS:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp224k1, 29, 57);
+				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_m, NID_secp224k1, 29, 57);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP224K_PSM:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp224k1, 29, 57);
+				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_m, NID_secp224k1, 29, 57);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP224K_PN:
 			if (!get_param(exp, param, 3))
 				val = 0;
 			else
-				val = epl_ec_neg(param[0], param[1], param[2], vm_mem, NID_secp224k1, 29, 57);
+				val = epl_ec_neg(param[0], param[1], param[2], vm_m, NID_secp224k1, 29, 57);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP224R_PTP:
 			if (!get_param(exp, param, 2))
 				val = 0;
 			else
-				val = epl_ec_priv_to_pub(param[0], param[1], vm_mem, NID_secp224r1, 28);
+				val = epl_ec_priv_to_pub(param[0], param[1], vm_m, NID_secp224r1, 28);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP224R_PA:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp224r1, 29, 57);
+				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_m, NID_secp224r1, 29, 57);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP224R_PS:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp224r1, 29, 57);
+				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_m, NID_secp224r1, 29, 57);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP224R_PSM:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp224r1, 29, 57);
+				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_m, NID_secp224r1, 29, 57);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP224R_PN:
 			if (!get_param(exp, param, 3))
 				val = 0;
 			else
-				val = epl_ec_neg(param[0], param[1], param[2], vm_mem, NID_secp224r1, 29, 57);
+				val = epl_ec_neg(param[0], param[1], param[2], vm_m, NID_secp224r1, 29, 57);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP256K_PTP:
 			if (!get_param(exp, param, 2))
 				val = 0;
 			else
-				val = epl_ec_priv_to_pub(param[0], param[1], vm_mem, NID_secp256k1, 32);
+				val = epl_ec_priv_to_pub(param[0], param[1], vm_m, NID_secp256k1, 32);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP256K_PA:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp256k1, 33, 65);
+				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_m, NID_secp256k1, 33, 65);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP256K_PS:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp256k1, 33, 65);
+				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_m, NID_secp256k1, 33, 65);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP256K_PSM:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp256k1, 33, 65);
+				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_m, NID_secp256k1, 33, 65);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP256K_PN:
 			if (!get_param(exp, param, 3))
 				val = 0;
 			else
-				val = epl_ec_neg(param[0], param[1], param[2], vm_mem, NID_secp256k1, 33, 65);
+				val = epl_ec_neg(param[0], param[1], param[2], vm_m, NID_secp256k1, 33, 65);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP384R_PTP:
 			if (!get_param(exp, param, 2))
 				val = 0;
 			else
-				val = epl_ec_priv_to_pub(param[0], param[1], vm_mem, NID_secp384r1, 48);
+				val = epl_ec_priv_to_pub(param[0], param[1], vm_m, NID_secp384r1, 48);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP384R_PA:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp384r1, 48, 97);
+				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_m, NID_secp384r1, 48, 97);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP384R_PS:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp384r1, 48, 97);
+				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_m, NID_secp384r1, 48, 97);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP384R_PSM:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp384r1, 48, 97);
+				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_m, NID_secp384r1, 48, 97);
 			mangle_state(val);
 			return 1;
 		case NODE_SECP384R_PN:
 			if (!get_param(exp, param, 3))
 				val = 0;
 			else
-				val = epl_ec_neg(param[0], param[1], param[2], vm_mem, NID_secp384r1, 48, 97);
+				val = epl_ec_neg(param[0], param[1], param[2], vm_m, NID_secp384r1, 48, 97);
 			mangle_state(val);
 			return 1;
 		case NODE_PRM192V1_PTP:
 			if (!get_param(exp, param, 2))
 				val = 0;
 			else
-				val = epl_ec_priv_to_pub(param[0], param[1], vm_mem, NID_X9_62_prime192v1, 24);
+				val = epl_ec_priv_to_pub(param[0], param[1], vm_m, NID_X9_62_prime192v1, 24);
 			mangle_state(val);
 			return 1;
 		case NODE_PRM192V1_PA:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime192v1, 25, 49);
+				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_m, NID_X9_62_prime192v1, 25, 49);
 			mangle_state(val);
 			return 1;
 		case NODE_PRM192V1_PS:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime192v1, 25, 49);
+				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_m, NID_X9_62_prime192v1, 25, 49);
 			mangle_state(val);
 			return 1;
 		case NODE_PRM192V1_PSM:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime192v1, 25, 49);
+				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_m, NID_X9_62_prime192v1, 25, 49);
 			mangle_state(val);
 			return 1;
 		case NODE_PRM192V1_PN:
 			if (!get_param(exp, param, 3))
 				val = 0;
 			else
-				val = epl_ec_neg(param[0], param[1], param[2], vm_mem, NID_X9_62_prime192v1, 25, 49);
+				val = epl_ec_neg(param[0], param[1], param[2], vm_m, NID_X9_62_prime192v1, 25, 49);
 			mangle_state(val);
 			return 1;
 		case NODE_PRM192V2_PTP:
 			if (!get_param(exp, param, 2))
 				val = 0;
 			else
-				val = epl_ec_priv_to_pub(param[0], param[1], vm_mem, NID_X9_62_prime192v2, 24);
+				val = epl_ec_priv_to_pub(param[0], param[1], vm_m, NID_X9_62_prime192v2, 24);
 			mangle_state(val);
 			return 1;
 		case NODE_PRM192V2_PA:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime192v2, 25, 49);
+				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_m, NID_X9_62_prime192v2, 25, 49);
 			mangle_state(val);
 			return 1;
 		case NODE_PRM192V2_PS:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime192v2, 25, 49);
+				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_m, NID_X9_62_prime192v2, 25, 49);
 			mangle_state(val);
 			return 1;
 		case NODE_PRM192V2_PSM:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime192v2, 25, 49);
+				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_m, NID_X9_62_prime192v2, 25, 49);
 			mangle_state(val);
 			return 1;
 		case NODE_PRM192V2_PN:
 			if (!get_param(exp, param, 3))
 				val = 0;
 			else
-				val = epl_ec_neg(param[0], param[1], param[2], vm_mem, NID_X9_62_prime192v2, 25, 49);
+				val = epl_ec_neg(param[0], param[1], param[2], vm_m, NID_X9_62_prime192v2, 25, 49);
 			mangle_state(val);
 			return 1;
 		case NODE_PRM192V3_PTP:
 			if (!get_param(exp, param, 2))
 				val = 0;
 			else
-				val = epl_ec_priv_to_pub(param[0], param[1], vm_mem, NID_X9_62_prime192v3, 24);
+				val = epl_ec_priv_to_pub(param[0], param[1], vm_m, NID_X9_62_prime192v3, 24);
 			mangle_state(val);
 			return 1;
 		case NODE_PRM192V3_PA:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime192v3, 25, 49);
+				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_m, NID_X9_62_prime192v3, 25, 49);
 			mangle_state(val);
 			return 1;
 		case NODE_PRM192V3_PS:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime192v3, 25, 49);
+				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_m, NID_X9_62_prime192v3, 25, 49);
 			mangle_state(val);
 			return 1;
 		case NODE_PRM192V3_PSM:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime192v3, 25, 49);
+				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_m, NID_X9_62_prime192v3, 25, 49);
 			mangle_state(val);
 			return 1;
 		case NODE_PRM192V3_PN:
 			if (!get_param(exp, param, 3))
 				val = 0;
 			else
-				val = epl_ec_neg(param[0], param[1], param[2], vm_mem, NID_X9_62_prime192v3, 25, 49);
+				val = epl_ec_neg(param[0], param[1], param[2], vm_m, NID_X9_62_prime192v3, 25, 49);
 			mangle_state(val);
 			return 1;
 		case NODE_PRM256V1_PTP:
 			if (!get_param(exp, param, 2))
 				val = 0;
 			else
-				val = epl_ec_priv_to_pub(param[0], param[1], vm_mem, NID_X9_62_prime256v1, 32);
+				val = epl_ec_priv_to_pub(param[0], param[1], vm_m, NID_X9_62_prime256v1, 32);
 			mangle_state(val);
 			return 1;
 		case NODE_PRM256V1_PA:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime256v1, 33, 65);
+				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_m, NID_X9_62_prime256v1, 33, 65);
 			mangle_state(val);
 			return 1;
 		case NODE_PRM256V1_PS:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime256v1, 33, 65);
+				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_m, NID_X9_62_prime256v1, 33, 65);
 			mangle_state(val);
 			return 1;
 		case NODE_PRM256V1_PSM:
 			if (!get_param(exp, param, 5))
 				val = 0;
 			else
-				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime256v1, 33, 65);
+				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_m, NID_X9_62_prime256v1, 33, 65);
 			mangle_state(val);
 			return 1;
 		case NODE_PRM256V1_PN:
 			if (!get_param(exp, param, 3))
 				val = 0;
 			else
-				val = epl_ec_neg(param[0], param[1], param[2], vm_mem, NID_X9_62_prime256v1, 33, 65);
+				val = epl_ec_neg(param[0], param[1], param[2], vm_m, NID_X9_62_prime256v1, 33, 65);
 			mangle_state(val);
 			return 1;
 
