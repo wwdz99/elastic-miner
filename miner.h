@@ -25,6 +25,7 @@
 
 #include "elist.h"
 #include "ElasticPL/ElasticPL.h"
+#include "ElasticPL/ElasticPLFunctions.h"
 #include "crypto/sha2.h"
 
 #ifdef _MSC_VER
@@ -48,11 +49,17 @@
 #define MAX_SOURCE_SIZE 1024 * 256	// 256K
 #define VM_INPUTS 12
 
-extern __thread _ALIGN(64) *vm_mem;
+extern __thread _ALIGN(64) int32_t *vm_m;
+extern __thread _ALIGN(64) float *vm_f;
+extern __thread unsigned char **vm_b;
 extern __thread vm_stack_item *vm_stack;
 extern __thread int vm_stack_idx;
 extern __thread uint32_t *vm_state;
 extern __thread bool vm_bounty;
+
+extern bool use_elasticpl_math;
+extern bool use_elasticpl_bigint;
+extern bool use_elasticpl_crypto;
 
 extern bool opt_debug;
 extern bool opt_debug_epl;
@@ -62,6 +69,9 @@ extern bool opt_quiet;
 extern int opt_timeout;
 extern int opt_n_threads;
 extern bool opt_test_vm;
+extern bool opt_opencl;
+extern int opt_opencl_gthreads;
+extern int opt_opencl_vwidth;
 
 extern struct work_restart *work_restart;
 
@@ -106,21 +116,12 @@ struct work {
 	unsigned char announcement_hash[32];
 };
 
-struct cpu_info {
-	int thr_id;
-	int accepted;
-	int rejected;
-	double khashes;
-};
-
 struct thr_info {
 	int id;
+	char name[6];
 	pthread_t pth;
 	pthread_attr_t attr;
 	struct thread_q	*q;
-	struct cpu_info cpu;
-	struct work work;
-	char* c_code;
 };
 
 struct work_restart {
@@ -182,11 +183,11 @@ struct instance {
 
 #ifdef WIN32
 	HINSTANCE hndl;
-	int(__cdecl* initialize)(int32_t *, uint32_t *);
+	int(__cdecl* initialize)(int32_t *, float *, unsigned char **, uint32_t *);
 	int(__cdecl* execute)();
 #else
 	void *hndl;
-	int(*initialize)(int32_t *, uint32_t *);
+	int(*initialize)(int32_t *, float *, unsigned char **, uint32_t *);
 	int(*execute)();
 #endif
 
@@ -239,6 +240,43 @@ enum {
 #define CL_LCY  "\x1B[01;36m" /* light cyan */
 #define CL_WHT  "\x1B[01;37m" /* white */
 
+
+#ifdef USE_OPENCL
+
+#ifdef __APPLE__
+#include <OpenCL/cl.h>
+#else
+#include <CL/cl.h>
+#endif
+
+struct opencl_device {
+	unsigned char name[100];
+	cl_platform_id platform_id;
+	cl_device_id device_id;
+	cl_context context;
+	cl_command_queue queue;
+	cl_kernel kernel_execute;
+	cl_uint work_dim;
+	int threads;
+	size_t global_size[2];
+	size_t local_size[2];
+	cl_mem vm_input;
+	cl_mem vm_mem;
+	cl_mem vm_out;
+};
+
+extern struct opencl_device *gpu;
+
+extern int init_opencl_devices();
+extern unsigned char* load_opencl_source(char *work_str);
+extern bool init_opencl_kernel(struct opencl_device *gpu, char *ocl_source);
+extern bool create_opencl_buffers(struct opencl_device *gpu);
+extern bool calc_opencl_worksize(struct opencl_device *gpu);
+extern bool execute_kernel(struct opencl_device *gpu, const uint32_t *vm_input, uint32_t *vm_out);
+extern bool dump_opencl_kernel_data(struct opencl_device *gpu, int32_t *data, int idx, int offset, int len);
+static void *opencl_miner_thread(void *userdata);
+#endif
+
 struct thread_q;
 
 struct thread_q *tq_new(void);
@@ -255,7 +293,7 @@ static void *test_vm_thread(void *userdata);
 static void *workio_thread(void *userdata);
 static void restart_threads(void);
 
-extern uint32_t swap32(int a);
+extern uint32_t swap32(uint32_t a);
 static void parse_cmdline(int argc, char *argv[]);
 static void strhide(char *s);
 static void parse_arg(int key, char *arg);
@@ -275,21 +313,27 @@ static bool submit_work(CURL *curl, struct submit_req *req);
 static bool delete_submit_req(int idx);
 static bool add_submit_req(struct work *work, enum submit_commands req_type);
 
+static bool get_opencl_base_data(struct work *work, uint32_t *vm_input);
+
 // Function Prototypes - util.c
 extern void applog(int prio, const char *fmt, ...);
 extern int timeval_subtract(struct timeval *result, struct timeval *x, struct timeval *y);
 extern bool hex2ints(uint32_t *p, int array_sz, const char *hex, int len);
+extern int32_t bin2int(unsigned char *str);
 extern bool ascii85dec(unsigned char *str, int strsz, const char *ascii85);
 static void databuf_free(struct data_buffer *db);
 static size_t all_data_cb(const void *ptr, size_t size, size_t nmemb, void *user_data);
-extern json_t* json_rpc_call(CURL *curl, const char *url, const char *userpass, char *req, int *curl_err);
+extern json_t* json_rpc_call(CURL *curl, const char *url, const char *userpass, const char *req, int *curl_err);
 
 extern unsigned long genrand_int32(void);
 extern void init_genrand(unsigned long s);
 
-bool compile_and_link(char* file_name);
-void create_instance(struct instance* inst, char *file_name);
-void free_compiler(struct instance* inst);
+static bool create_c_source(void);
+extern bool compile_and_link(char* file_name);
+extern void create_instance(struct instance* inst, char *file_name);
+extern void free_compiler(struct instance* inst);
+extern bool create_opencl_source(char *work_str);
+static char* convert_opencl(ast* exp);
 
 int curve25519_donna(uint8_t *mypublic, const uint8_t *secret, const uint8_t *basepoint);
 
