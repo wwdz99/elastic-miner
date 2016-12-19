@@ -1986,20 +1986,6 @@ int main(int argc, char **argv) {
 	struct thr_info *thr;
 	int i, err, thr_idx, num_gpus = 0;
 
-////	unsigned char b[100][32];
-//	unsigned char **b;
-//	unsigned char **bb;
-//
-////	b = (unsigned char *)malloc(100 * sizeof(unsigned char *));
-////	unsigned char *b = (unsigned char *)malloc(32 * 100 * sizeof(unsigned char));
-//	b = (unsigned char **)malloc(100 * sizeof(unsigned char *));
-//	for (i = 0; i < 100; i++)
-//		b[i] = (unsigned char *)malloc(32 * sizeof(unsigned char));
-//
-//	bb = b;
-//
-//	big_init_const(bb[1], "0x0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF");
-
 	fprintf(stdout, "** " PACKAGE_NAME " " PACKAGE_VERSION " **\n");
 
 	pthread_mutex_init(&applog_lock, NULL);
