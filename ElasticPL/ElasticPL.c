@@ -48,14 +48,23 @@ extern bool create_epl_vm(char *source) {
 		return false;
 	}
 
+	// Free VM Memory
+	if (vm_ast)
+		delete_epl_vm();
+
 	// Copy Parsed Statements Into VM Array
 	vm_ast_cnt = stack_exp_idx + 1;
 
 	vm_ast = calloc(vm_ast_cnt, sizeof(ast*));
 	memcpy(vm_ast, stack_exp, vm_ast_cnt * sizeof(ast*));
 
-	free(stack_op);
+	// Cleanup Stack Memory
+	for (i = 0; i < vm_ast_cnt; i++) {
+		if (stack_exp[i]->svalue)
+			free(stack_exp[i]->svalue);
+	}
 	free(stack_exp);
+	free(stack_op);
 
 	if (!vm_ast) {
 		applog(LOG_ERR, "ERROR: ElasticPL Parser Failed!");
@@ -69,6 +78,21 @@ extern bool create_epl_vm(char *source) {
 			fprintf(stdout, "--------------------------------\n");
 		}
 	}
+
+	return true;
+}
+
+static bool delete_epl_vm() {
+	int i;
+
+	if (!vm_ast)
+		return true;
+
+	for (i = 0; i < vm_ast_cnt; i++) {
+		if (vm_ast[i]->svalue)
+			free(vm_ast[i]->svalue);
+	}
+	free(vm_ast);
 
 	return true;
 }

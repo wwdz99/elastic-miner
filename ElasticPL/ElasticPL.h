@@ -79,7 +79,6 @@ typedef enum {
 	NODE_BREAK,
 	NODE_CONTINUE,
 	NODE_PARAM,
-	NODE_TRACE,
 	NODE_SIN,
 	NODE_COS,
 	NODE_TAN,
@@ -454,6 +453,7 @@ ast **vm_ast;		// Final AST List For VM
 
 					// Function Declarations
 extern bool create_epl_vm(char *source);
+static bool delete_epl_vm();
 
 extern bool init_token_list(SOURCE_TOKEN_LIST *token_list, size_t size);
 static bool add_token(SOURCE_TOKEN_LIST *token_list, int token_id, char *literal, int line_num);
@@ -479,7 +479,6 @@ extern void dump_vm_ast(ast* root);
 
 extern char* convert_ast_to_c();
 static char* convert(ast* exp);
-static char* create_trace(ast* exp);
 static char* append_strings(char * old, char * new);
 static char *replace(char* old, char* a, char* b);
 extern uint32_t calc_wcet();

@@ -29,6 +29,7 @@ struct EXP_TOKEN_LIST epl_token[] = {
 	{ "<eof>",						5,	TOKEN_EOF,			EXP_NONE,		0,	0,	DT_NONE },
 	{ "//",							2,	TOKEN_COMMENT,		EXP_NONE,		0,	0,	DT_NONE },
 	{ "/*",							2,	TOKEN_BLOCK_COMMENT,EXP_NONE,		0,	0,	DT_NONE },
+	{ "trace",						5,	TOKEN_TRACE,		EXP_FUNCTION,	0,	0,	DT_NONE },
 	{ ";",							1,	TOKEN_END_STATEMENT,EXP_NONE,		0,	0,	DT_NONE },
 	{ ",",							1,	TOKEN_COMMA,		EXP_NONE,		0,	0,	DT_NONE },
 	{ "{",							1,	TOKEN_BLOCK_BEGIN,	EXP_STATEMENT,	2,	1,	DT_NONE },
@@ -123,8 +124,6 @@ struct EXP_TOKEN_LIST epl_token[] = {
 	{ "abs",						3,	TOKEN_ABS,			EXP_FUNCTION,	1,	50,	DT_INT },	// Built In Math Functions
 	{ "fmod",						4,	TOKEN_FMOD,			EXP_FUNCTION,	2,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "gcd",						3,	TOKEN_GCD,			EXP_FUNCTION,	2,	50,	DT_FLOAT },	// Built In Math Functions
-
-	{ "trace",						5,	TOKEN_TRACE,		EXP_FUNCTION,	99,	50,	DT_NONE },	// Debug Statement
 
 	{ "big_init_const",				14,	TOKEN_BI_CONST,		EXP_FUNCTION,	2,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_init_expr",				13,	TOKEN_BI_EXPR,		EXP_FUNCTION,	2,	55,	DT_NONE },	// Built In Big Int Functions
@@ -361,8 +360,7 @@ extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 		if (!quote) {
 
 			// Remove Whitespace
-//			if (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f' || c == ',') {
-				if (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f') {
+			if (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f') {
 
 				if (literal_idx > 0) {
 					add_token(token_list, -1, literal, line_num);
@@ -406,6 +404,15 @@ extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 				cmnt = strstr(&str[idx], "*/");
 				if (cmnt)
 					idx += &cmnt[0] - &str[idx] + 2;
+				line_num++;
+				continue;
+			}
+
+			// Remove Trace Statements
+			if (epl_token[token_id].type == TOKEN_TRACE) {
+				cmnt = strstr(&str[idx], "\n");
+				if (cmnt)
+					idx += &cmnt[0] - &str[idx];
 				line_num++;
 				continue;
 			}

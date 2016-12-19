@@ -69,10 +69,6 @@ static ast* pop_exp() {
 
 static bool validate_input_num(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 
-	// Skip Check For Trace Statement
-	if (node_type == NODE_TRACE)
-		return true;
-
 	// Validate That There Are Enough Expressions On The Stack
 	if (stack_exp_idx < (token->inputs - 1)) {
 		applog(LOG_ERR, "Syntax Error - Line: %d  Invalid parameters for '%s'", token->line_num, get_node_str(node_type));
@@ -251,7 +247,6 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
 	case TOKEN_FABS:			node_type = NODE_FABS;			break;
 	case TOKEN_FMOD:			node_type = NODE_FMOD; 			break;
 	case TOKEN_GCD:				node_type = NODE_GCD; 			break;
-	case TOKEN_TRACE:			node_type = NODE_TRACE;			break;
 	case TOKEN_BI_CONST:		node_type = NODE_BI_CONST;		break;
 	case TOKEN_BI_EXPR:			node_type = NODE_BI_EXPR;		break;
 	case TOKEN_BI_ADD:			node_type = NODE_BI_ADD;		break;

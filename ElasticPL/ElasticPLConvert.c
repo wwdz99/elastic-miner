@@ -25,12 +25,7 @@ extern char* convert_ast_to_c() {
 	use_elasticpl_math = false;
 
 	for (i = 0; i < vm_ast_cnt; i++) {
-		if (vm_ast[i]->type != NODE_TRACE)
-			ret = append_strings(ret, convert(vm_ast[i]));
-		else {
-//			if (opt_test_vm)
-				ret = append_strings(ret, create_trace(vm_ast[i]));
-		}
+		ret = append_strings(ret, convert(vm_ast[i]));
 	}
 
 	// The Current OpenCL Code Can't Run The Crypto Functions
@@ -114,14 +109,14 @@ static char* convert(ast* exp) {
 			if (exp->right->type != NODE_ELSE) {
 				rval = convert(exp->right);				// If Body (No Else Condition)
 				result = realloc(result, strlen(lval) + strlen(rval) + 256);
-				sprintf(result, "if( %s ) {\n\t%s}\n", lval, rval);
+				sprintf(result, "\tif( %s ) {\n\t%s\t}\n", lval, rval);
 			}
 			else {
 				tmp = lval;
 				lval = convert(exp->right->left);		// If Body
 				rval = convert(exp->right->right);		// Else Body
 				result = realloc(result, strlen(lval) + strlen(rval) + 256);
-				sprintf(result, "if( %s ) {\n\t%s}\nelse {\n\t%s}\n", tmp, lval, rval);
+				sprintf(result, "\tif( %s ) {\n\t%s\t}\n\telse {\n\t%s\t}\n", tmp, lval, rval);
 			}
 			break;
 		case NODE_CONDITIONAL:
@@ -136,7 +131,7 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_REPEAT:
 			result = realloc(result, (2 * strlen(lval)) + strlen(rval) + 256);
-			sprintf(result, "if ( %s > 0 ) {\n\tint loop%d;\n\tfor (loop%d = 0; loop%d < ( %s ); loop%d++) {\n\t%s\t}\n}\n", lval, exp->token_num, exp->token_num, exp->token_num, lval, exp->token_num, rval);
+			sprintf(result, "\tif ( %s > 0 ) {\n\t\tint loop%d;\n\t\tfor (loop%d = 0; loop%d < ( %s ); loop%d++) {\n\t\t%s\t\t}\n\t}\n", lval, exp->token_num, exp->token_num, exp->token_num, lval, exp->token_num, rval);
 			break;
 		case NODE_BREAK:
 			sprintf(result, "break");
@@ -160,11 +155,11 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_ADD:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s + (float)(%s)", lval, rval);
+				sprintf(result, "(%s + (float)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "(float)(%s) + %s", lval, rval);
+				sprintf(result, "((float)(%s) + %s)", lval, rval);
 			else
-				sprintf(result, "%s + %s", lval, rval);
+				sprintf(result, "(%s + %s)", lval, rval);
 			exp->is_float = l_is_float | r_is_float;
 			break;
 		case NODE_ADD_ASSIGN:
@@ -281,20 +276,20 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_SUB:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s - (float)(%s)", lval, rval);
+				sprintf(result, "(%s - (float)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "(float)(%s) - %s", lval, rval);
+				sprintf(result, "((float)(%s) - %s)", lval, rval);
 			else
-				sprintf(result, "%s - %s", lval, rval);
+				sprintf(result, "(%s - %s)", lval, rval);
 			exp->is_float = l_is_float | r_is_float;
 			break;
 		case NODE_MUL:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s * (float)(%s)", lval, rval);
+				sprintf(result, "(%s * (float)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "(float)(%s) * %s", lval, rval);
+				sprintf(result, "((float)(%s) * %s)", lval, rval);
 			else
-				sprintf(result, "%s * %s", lval, rval);
+				sprintf(result, "(%s * %s)", lval, rval);
 			exp->is_float = l_is_float | r_is_float;
 			break;
 		case NODE_DIV:
@@ -321,13 +316,13 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_LSHIFT:
 			if (l_is_float && r_is_float)
-				sprintf(result, "(int)(%s) << (int)(%s)", lval, rval);
+				sprintf(result, "((int)(%s) << (int)(%s))", lval, rval);
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "(int)(%s) << %s", lval, rval);
+				sprintf(result, "((int)(%s) << %s)", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s << (int)(%s)", lval, rval);
+				sprintf(result, "(%s << (int)(%s))", lval, rval);
 			else
-				sprintf(result, "%s << %s", lval, rval);
+				sprintf(result, "(%s << %s)", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_LROT:
@@ -343,13 +338,13 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_RSHIFT:
 			if (l_is_float && r_is_float)
-				sprintf(result, "(int)(%s) >> (int)(%s)", lval, rval);
+				sprintf(result, "((int)(%s) >> (int)(%s))", lval, rval);
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "(int)(%s) >> %s", lval, rval);
+				sprintf(result, "((int)(%s) >> %s)", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s >> (int)(%s)", lval, rval);
+				sprintf(result, "(%s >> (int)(%s))", lval, rval);
 			else
-				sprintf(result, "%s >> %s", lval, rval);
+				sprintf(result, "(%s >> %s)", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_RROT:
@@ -373,109 +368,109 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_AND:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s >! (float)(%s)", lval, rval);
+				sprintf(result, "(%s >! (float)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s >! (int)(%s)", lval, rval);
+				sprintf(result, "(%s >! (int)(%s))", lval, rval);
 			else
-				sprintf(result, "%s >! %s", lval, rval);
+				sprintf(result, "(%s >! %s)", lval, rval);
 			exp->is_float = false;
 			//			sprintf(result, "%s >! %s", lval, rval);		// Required To Match Java Results
 			//			sprintf(result, "%s && %s", lval, rval);
 			break;
 		case NODE_OR:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s || (float)(%s)", lval, rval);
+				sprintf(result, "(%s || (float)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s || (int)(%s)", lval, rval);
+				sprintf(result, "(%s || (int)(%s))", lval, rval);
 			else
-				sprintf(result, "%s || %s", lval, rval);
+				sprintf(result, "(%s || %s)", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_BITWISE_AND:
 			if (l_is_float && r_is_float)
-				sprintf(result, "(int)(%s) & (int)(%s)", lval, rval);
+				sprintf(result, "((int)(%s) & (int)(%s))", lval, rval);
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "(int)(%s) & %s", lval, rval);
+				sprintf(result, "((int)(%s) & %s)", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s & (int)(%s)", lval, rval);
+				sprintf(result, "(%s & (int)(%s))", lval, rval);
 			else
-				sprintf(result, "%s & %s", lval, rval);
+				sprintf(result, "(%s & %s)", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_BITWISE_XOR:
 			if (l_is_float && r_is_float)
-				sprintf(result, "(int)(%s) ^ (int)(%s)", lval, rval);
+				sprintf(result, "((int)(%s) ^ (int)(%s))", lval, rval);
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "(int)(%s) ^ %s", lval, rval);
+				sprintf(result, "((int)(%s) ^ %s)", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s ^ (int)(%s)", lval, rval);
+				sprintf(result, "(%s ^ (int)(%s))", lval, rval);
 			else
-				sprintf(result, "%s ^ %s", lval, rval);
+				sprintf(result, "(%s ^ %s)", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_BITWISE_OR:
 			if (l_is_float && r_is_float)
-				sprintf(result, "(int)(%s) | (int)(%s)", lval, rval);
+				sprintf(result, "((int)(%s) | (int)(%s))", lval, rval);
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "(int)(%s) | %s", lval, rval);
+				sprintf(result, "((int)(%s) | %s)", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s | (int)(%s)", lval, rval);
+				sprintf(result, "(%s | (int)(%s))", lval, rval);
 			else
-				sprintf(result, "%s | %s", lval, rval);
+				sprintf(result, "(%s | %s)", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_EQ:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s == (float)(%s)", lval, rval);
+				sprintf(result, "(%s == (float)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s == (int)(%s)", lval, rval);
+				sprintf(result, "(%s == (int)(%s))", lval, rval);
 			else
-				sprintf(result, "%s == %s", lval, rval);
+				sprintf(result, "(%s == %s)", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_NE:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s != (float)(%s)", lval, rval);
+				sprintf(result, "(%s != (float)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s != (int)(%s)", lval, rval);
+				sprintf(result, "(%s != (int)(%s))", lval, rval);
 			else
-				sprintf(result, "%s != %s", lval, rval);
+				sprintf(result, "(%s != %s)", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_GT:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s > (float)(%s)", lval, rval);
+				sprintf(result, "(%s > (float)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s > (int)(%s)", lval, rval);
+				sprintf(result, "(%s > (int)(%s))", lval, rval);
 			else
-				sprintf(result, "%s > %s", lval, rval);
+				sprintf(result, "(%s > %s)", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_LT:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s < (float)(%s)", lval, rval);
+				sprintf(result, "(%s < (float)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s < (int)(%s)", lval, rval);
+				sprintf(result, "(%s < (int)(%s))", lval, rval);
 			else
-				sprintf(result, "%s < %s", lval, rval);
+				sprintf(result, "(%s < %s)", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_GE:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s >= (float)(%s)", lval, rval);
+				sprintf(result, "(%s >= (float)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s >= (int)(%s)", lval, rval);
+				sprintf(result, "(%s >= (int)(%s))", lval, rval);
 			else
-				sprintf(result, "%s >= %s", lval, rval);
+				sprintf(result, "(%s >= %s)", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_LE:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s <= (float)(%s)", lval, rval);
+				sprintf(result, "(%s <= (float)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s <= (int)(%s)", lval, rval);
+				sprintf(result, "(%s <= (int)(%s))", lval, rval);
 			else
-				sprintf(result, "%s <= %s", lval, rval);
+				sprintf(result, "(%s <= %s)", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_NEG:
@@ -483,11 +478,7 @@ static char* convert(ast* exp) {
 			exp->is_float = l_is_float;
 			break;
 		case NODE_VERIFY:
-			if (opt_opencl)
-				sprintf(result, "\n\tuint bounty_found = m(%s != 0 ? 1 : 0)", lval);
-			else
-				//				sprintf(result, "\n\trc = m(%s != 0 ? 1 : 0);\n\n", lval);
-				sprintf(result, "\n\trc = (%s != 0 ? 1 : 0)", lval);
+			sprintf(result, "\n\tbounty_found = (%s != 0 ? 1 : 0)", lval);
 			break;
 		case NODE_PARAM:
 			if (rval[0] == 0)
@@ -990,9 +981,19 @@ static char* convert(ast* exp) {
 			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - Unsupported Operation (%d)\");\n", exp->type);
 		}
 
+//		int xx = strlen(result);
+
 		// Terminate Statements
-		if (exp->end_stmnt)
-			sprintf(result, "%s;\n", result);
+		if (exp->end_stmnt) {
+			tmp = malloc(strlen(result) + 4);
+			sprintf(tmp, "\t%s;\n", result);
+			free(result);
+			result = tmp;
+		}
+			
+//			sprintf(result, "\t %s; \n", result);
+
+//		xx = strlen(result);
 	}
 
 	return result;
@@ -1054,50 +1055,4 @@ static char *replace(char* old, char* a, char* b) {
 	strcat(str, ptr1);
 
 	return str;
-}
-
-static char* create_trace(ast* exp) {
-	char format[256];
-	char data[256];
-	char *ret, *result;
-	ast *e;
-
-	result = malloc(sizeof(char) * 512);
-	if (!result)
-		return NULL;
-
-	if (exp->right)
-		e = exp->right;
-	else
-		return NULL;
-
-	format[0] = 0;
-	data[0] = 0;
-
-	while (e->type == NODE_PARAM) {
-		ret = convert(e->left);
-		strcat(data, ",");
-		strcat(data, ret);
-
-		// Determine Format For Data Value
-		if (e->left->data_type == DT_STRING)
-			strcat(format, "%s ");
-		else if (e->left->is_float)
-			strcat(format, "%f ");
-		else
-			strcat(format, "%d ");
-
-		// Check If There Are More Parameters
-		if (e->right)
-			e = e->right;
-		else
-			break;
-	}
-	sprintf(result, "printf(\"%s\\n\"%s);\n", format, data);
-
-	// Strip Out b[] Traces
-	if (strstr(result, "b["))
-		result[0] = 0;
-
-	return result;
 }
