@@ -104,11 +104,11 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_ASSIGN:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s = (float)(%s);\n", lval, rval);
+				sprintf(result, "%s = (float)(%s)", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s = (int)(%s);\n", lval, rval);
+				sprintf(result, "%s = (int)(%s)", lval, rval);
 			else
-				sprintf(result, "%s = %s;\n", lval, rval);
+				sprintf(result, "%s = %s", lval, rval);
 			break;
 		case NODE_IF:
 			if (exp->right->type != NODE_ELSE) {
@@ -139,10 +139,10 @@ static char* convert(ast* exp) {
 			sprintf(result, "if ( %s > 0 ) {\n\tint loop%d;\n\tfor (loop%d = 0; loop%d < ( %s ); loop%d++) {\n\t%s\t}\n}\n", lval, exp->token_num, exp->token_num, exp->token_num, lval, exp->token_num, rval);
 			break;
 		case NODE_BREAK:
-			sprintf(result, "break;\n");
+			sprintf(result, "break");
 			break;
 		case NODE_CONTINUE:
-			sprintf(result, "continue;\n");
+			sprintf(result, "continue");
 			break;
 		case NODE_BLOCK:
 			if (rval[0] == 0)
@@ -151,17 +151,11 @@ static char* convert(ast* exp) {
 				sprintf(result, "%s\t%s", lval, rval);
 			break;
 		case NODE_INCREMENT_R:
-			if (exp->end_stmnt)
-				sprintf(result, "++%s;\n", lval);
-			else
-				sprintf(result, "++%s", lval);
+			sprintf(result, "++%s", lval);
 			exp->is_float = l_is_float;
 			break;
 		case NODE_INCREMENT_L:
-			if (exp->end_stmnt)
-				sprintf(result, "%s++;\n", lval);
-			else
-				sprintf(result, "%s++", lval);
+			sprintf(result, "%s++", lval);
 			exp->is_float = l_is_float;
 			break;
 		case NODE_ADD:
@@ -175,120 +169,114 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_ADD_ASSIGN:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s += (float)(%s);\n", lval, rval);
+				sprintf(result, "%s += (float)(%s)", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s += (int)(%s);\n", lval, rval);
+				sprintf(result, "%s += (int)(%s)", lval, rval);
 			else
-				sprintf(result, "%s += %s;\n", lval, rval);
+				sprintf(result, "%s += %s", lval, rval);
 			exp->is_float = l_is_float;
 			break;
 		case NODE_SUB_ASSIGN:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s -= (float)(%s);\n", lval, rval);
+				sprintf(result, "%s -= (float)(%s)", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s -= (int)(%s);\n", lval, rval);
+				sprintf(result, "%s -= (int)(%s)", lval, rval);
 			else
-				sprintf(result, "%s -= %s;\n", lval, rval);
+				sprintf(result, "%s -= %s", lval, rval);
 			exp->is_float = l_is_float;
 			break;
 		case NODE_MUL_ASSIGN:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s *= (float)(%s);\n", lval, rval);
+				sprintf(result, "%s *= (float)(%s)", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s *= (int)(%s);\n", lval, rval);
+				sprintf(result, "%s *= (int)(%s)", lval, rval);
 			else
-				sprintf(result, "%s *= %s;\n", lval, rval);
+				sprintf(result, "%s *= %s", lval, rval);
 			exp->is_float = l_is_float;
 			break;
 		case NODE_DIV_ASSIGN:
 			if (!l_is_float && !r_is_float)
-				sprintf(result, "%s = (((float)(%s) != 0.0) ? (int)((float)(%s) / (float)(%s)) : 0);\n", lval, rval, lval, rval);
+				sprintf(result, "%s = (((float)(%s) != 0.0) ? (int)((float)(%s) / (float)(%s)) : 0)", lval, rval, lval, rval);
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "%s = (((%s != 0.0) ? %s / (float)(%s)) : 0.0);\n", lval, rval, lval, rval);
+				sprintf(result, "%s = (((%s != 0.0) ? %s / (float)(%s)) : 0.0)", lval, rval, lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s = ((%s != 0.0) ? (int)((float)(%s) / %s) : 0);\n", lval, rval, lval, rval);
+				sprintf(result, "%s = ((%s != 0.0) ? (int)((float)(%s) / %s) : 0)", lval, rval, lval, rval);
 			else
-				sprintf(result, "%s = ((%s != 0.0) ? %s / %s : 0.0);\n", lval, rval, lval, rval);
+				sprintf(result, "%s = ((%s != 0.0) ? %s / %s : 0.0)", lval, rval, lval, rval);
 			exp->is_float = true;
 			break;
 		case NODE_MOD_ASSIGN:
 			if (l_is_float && r_is_float)
-				sprintf(result, "%s = (((int)(%s) != 0) ? (float)((int)(%s) %% (int)(%s)) : 0.0);\n", lval, rval, lval, rval);
+				sprintf(result, "%s = (((int)(%s) != 0) ? (float)((int)(%s) %% (int)(%s)) : 0.0)", lval, rval, lval, rval);
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "%s = ((%s != 0) ? (float)((int)(%s) %% %s) : 0.0);\n", lval, rval, lval, rval);
+				sprintf(result, "%s = ((%s != 0) ? (float)((int)(%s) %% %s) : 0.0)", lval, rval, lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s = (((int)(%s) != 0) ? (%s %% (int)(%s)) : 0);\n", lval, rval, lval, rval);
+				sprintf(result, "%s = (((int)(%s) != 0) ? (%s %% (int)(%s)) : 0)", lval, rval, lval, rval);
 			else
-				sprintf(result, "%s = ((%s != 0) ? %s %% %s : 0.0);\n", lval, rval, lval, rval);
+				sprintf(result, "%s = ((%s != 0) ? %s %% %s : 0.0)", lval, rval, lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_LSHFT_ASSIGN:
 			if (l_is_float && r_is_float)
-				sprintf(result, "(int)(%s) <<= (int)(%s);\n", lval, rval);
+				sprintf(result, "(int)(%s) <<= (int)(%s)", lval, rval);
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "(int)(%s) <<= %s;\n", lval, rval);
+				sprintf(result, "(int)(%s) <<= %s", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s <<= (int)(%s);\n", lval, rval);
+				sprintf(result, "%s <<= (int)(%s)", lval, rval);
 			else
-				sprintf(result, "%s <<= %s;\n", lval, rval);
+				sprintf(result, "%s <<= %s", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_RSHFT_ASSIGN:
 			if (l_is_float && r_is_float)
-				sprintf(result, "(int)(%s) >>= (int)(%s);\n", lval, rval);
+				sprintf(result, "(int)(%s) >>= (int)(%s)", lval, rval);
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "(int)(%s) >>= %s;\n", lval, rval);
+				sprintf(result, "(int)(%s) >>= %s", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s >>= (int)(%s);\n", lval, rval);
+				sprintf(result, "%s >>= (int)(%s)", lval, rval);
 			else
-				sprintf(result, "%s >>= %s;\n", lval, rval);
+				sprintf(result, "%s >>= %s", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_AND_ASSIGN:
 			if (l_is_float && r_is_float)
-				sprintf(result, "(int)(%s) &= (int)(%s);\n", lval, rval);
+				sprintf(result, "(int)(%s) &= (int)(%s)", lval, rval);
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "(int)(%s) &= %s;\n", lval, rval);
+				sprintf(result, "(int)(%s) &= %s", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s &= (int)(%s);\n", lval, rval);
+				sprintf(result, "%s &= (int)(%s)", lval, rval);
 			else
-				sprintf(result, "%s &= %s;\n", lval, rval);
+				sprintf(result, "%s &= %s", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_XOR_ASSIGN:
 			if (l_is_float && r_is_float)
-				sprintf(result, "(int)(%s) ^= (int)(%s);\n", lval, rval);
+				sprintf(result, "(int)(%s) ^= (int)(%s)", lval, rval);
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "(int)(%s) ^= %s;\n", lval, rval);
+				sprintf(result, "(int)(%s) ^= %s", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s ^= (int)(%s);\n", lval, rval);
+				sprintf(result, "%s ^= (int)(%s)", lval, rval);
 			else
-				sprintf(result, "%s ^= %s;\n", lval, rval);
+				sprintf(result, "%s ^= %s", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_OR_ASSIGN:
 			if (l_is_float && r_is_float)
-				sprintf(result, "(int)(%s) |= (int)(%s);\n", lval, rval);
+				sprintf(result, "(int)(%s) |= (int)(%s)", lval, rval);
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "(int)(%s) |= %s;\n", lval, rval);
+				sprintf(result, "(int)(%s) |= %s", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s |= (int)(%s);\n", lval, rval);
+				sprintf(result, "%s |= (int)(%s)", lval, rval);
 			else
-				sprintf(result, "%s |= %s;\n", lval, rval);
+				sprintf(result, "%s |= %s", lval, rval);
 			exp->is_float = false;
 			break;
 		case NODE_DECREMENT_R:
-			if (exp->end_stmnt)
-				sprintf(result, "--%s;\n", lval);
-			else
-				sprintf(result, "--%s", lval);
+			sprintf(result, "--%s", lval);
 			exp->is_float = l_is_float;
 			break;
 		case NODE_DECREMENT_L:
-			if (exp->end_stmnt)
-				sprintf(result, "%s--;\n", lval);
-			else
-				sprintf(result, "%s--", lval);
+			sprintf(result, "%s--", lval);
 			exp->is_float = l_is_float;
 			break;
 		case NODE_SUB:
@@ -496,10 +484,10 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_VERIFY:
 			if (opt_opencl)
-				sprintf(result, "\n\tuint bounty_found = m(%s != 0 ? 1 : 0);\n\n", lval);
+				sprintf(result, "\n\tuint bounty_found = m(%s != 0 ? 1 : 0)", lval);
 			else
 				//				sprintf(result, "\n\trc = m(%s != 0 ? 1 : 0);\n\n", lval);
-				sprintf(result, "\n\trc = (%s != 0 ? 1 : 0);\n\n", lval);
+				sprintf(result, "\n\trc = (%s != 0 ? 1 : 0)", lval);
 			break;
 		case NODE_PARAM:
 			if (rval[0] == 0)
@@ -613,394 +601,398 @@ static char* convert(ast* exp) {
 			use_elasticpl_math = true;
 			break;
 		case NODE_BI_CONST:
-			sprintf(result, "big_init_const( %s );\n", rval);
+			sprintf(result, "big_init_const( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_EXPR:
-			sprintf(result, "big_init_expr( %s );\n", rval);
+			sprintf(result, "big_init_expr( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_ADD:
-			sprintf(result, "big_add( %s );\n", rval);
+			sprintf(result, "big_add( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_SUB:
-			sprintf(result, "big_sub( %s );\n", rval);
+			sprintf(result, "big_sub( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_MUL:
-			sprintf(result, "big_mul( %s );\n", rval);
+			sprintf(result, "big_mul( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_DIV:
-			sprintf(result, "big_div( %s );\n", rval);
+			sprintf(result, "big_div( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_CEIL_DIV:
-			sprintf(result, "big_ceil_div( %s );\n", rval);
+			sprintf(result, "big_ceil_div( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_FLOOR_DIV:
-			sprintf(result, "big_floor_div( %s );\n", rval);
+			sprintf(result, "big_floor_div( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_TRUNC_DIV:
-			sprintf(result, "big_truncate_div( %s );\n", rval);
+			sprintf(result, "big_truncate_div( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_DIV_EXACT:
-			sprintf(result, "big_div_exact( %s );\n", rval);
+			sprintf(result, "big_div_exact( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_MOD:
-			sprintf(result, "big_mod( %s );\n", rval);
+			sprintf(result, "big_mod( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_NEG:
-			sprintf(result, "big_neg( %s );\n", rval);
+			sprintf(result, "big_neg( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_LSHIFT:
-			sprintf(result, "big_lshift( %s );\n", rval);
+			sprintf(result, "big_lshift( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_RSHIFT:
-			sprintf(result, "big_rshift( %s );\n", rval);
+			sprintf(result, "big_rshift( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_GCD:
-			sprintf(result, "big_gcd( %s );\n", rval);
+			sprintf(result, "big_gcd( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_DIVISIBLE:
-			sprintf(result, "big_divisible( %s );\n", rval);
+			sprintf(result, "big_divisible( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_CNGR_MOD_P:
-			sprintf(result, "big_congruent_mod_p( %s );\n", rval);
+			sprintf(result, "big_congruent_mod_p( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_POW:
-			sprintf(result, "big_pow( %s );\n", rval);
+			sprintf(result, "big_pow( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_POW2:
-			sprintf(result, "big_pow2( %s );\n", rval);
+			sprintf(result, "big_pow2( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_POW_MOD_P:
-			sprintf(result, "big_pow_mod_p( %s );\n", rval);
+			sprintf(result, "big_pow_mod_p( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_POW2_MOD_P:
-			sprintf(result, "big_pow2_mod_p( %s );\n", rval);
+			sprintf(result, "big_pow2_mod_p( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_COMP:
-			sprintf(result, "big_compare( %s );\n", rval);
+			sprintf(result, "big_compare( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_COMP_ABS:
-			sprintf(result, "big_compare_abs( %s );\n", rval);
+			sprintf(result, "big_compare_abs( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_SIGN:
-			sprintf(result, "big_sign( %s );\n", rval);
+			sprintf(result, "big_sign( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_OR:
-			sprintf(result, "big_or( %s );\n", rval);
+			sprintf(result, "big_or( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_AND:
-			sprintf(result, "big_and( %s );\n", rval);
+			sprintf(result, "big_and( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_XOR:
-			sprintf(result, "big_xor( %s );\n", rval);
+			sprintf(result, "big_xor( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_OR_INT:
-			sprintf(result, "big_or_integer( %s );\n", rval);
+			sprintf(result, "big_or_integer( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_AND_INT:
-			sprintf(result, "big_and_integer( %s );\n", rval);
+			sprintf(result, "big_and_integer( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_XOR_INT:
-			sprintf(result, "big_xor_integer( %s );\n", rval);
+			sprintf(result, "big_xor_integer( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_LEAST_32:
-			sprintf(result, "big_least_32bit( %s );\n", rval);
+			sprintf(result, "big_least_32bit( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_SHA256:
-			sprintf(result, "\tm(epl_sha256( %s, mem ));\n", rval);
+			sprintf(result, "\tm(epl_sha256( %s, mem ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SHA512:
-			sprintf(result, "\tm(epl_sha512( %s, mem ));\n", rval);
+			sprintf(result, "\tm(epl_sha512( %s, mem ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_WHIRLPOOL:
-			sprintf(result, "\tm(epl_whirlpool( %s, mem ));\n", rval);
+			sprintf(result, "\tm(epl_whirlpool( %s, mem ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_MD5:
-			sprintf(result, "\tm(epl_md5( %s, mem ));\n", rval);
+			sprintf(result, "\tm(epl_md5( %s, mem ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192K_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp192k1, 24 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp192k1, 24 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192K_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp192k1, 25, 49 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp192k1, 25, 49 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192K_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp192k1, 25, 49 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp192k1, 25, 49 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192K_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp192k1, 25, 49 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp192k1, 25, 49 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192K_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp192k1, 25, 49 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp192k1, 25, 49 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192R_PTP:
-			sprintf(result, "SECP192R1PrivToPub( %s );\n", rval);
+			sprintf(result, "SECP192R1PrivToPub( %s )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192R_PA:
-			sprintf(result, "SECP192R1PointAdd( %s );\n", rval);
+			sprintf(result, "SECP192R1PointAdd( %s )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192R_PS:
-			sprintf(result, "SECP192R1PointSub( %s );\n", rval);
+			sprintf(result, "SECP192R1PointSub( %s )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192R_PSM:
-			sprintf(result, "SECP192R1PointScalarMult( %s );\n", rval);
+			sprintf(result, "SECP192R1PointScalarMult( %s )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192R_PN:
-			sprintf(result, "SECP192R1PointNegate( %s );\n", rval);
+			sprintf(result, "SECP192R1PointNegate( %s )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224K_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp224k1, 28 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp224k1, 28 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224K_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp224k1, 29, 57 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp224k1, 29, 57 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224K_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp224k1, 29, 57 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp224k1, 29, 57 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224K_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp224k1, 29, 57 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp224k1, 29, 57 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224K_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp224k1, 29, 57 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp224k1, 29, 57 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224R_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp224r1, 28 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp224r1, 28 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224R_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp224r1, 29, 57 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp224r1, 29, 57 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224R_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp224r1, 29, 57 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp224r1, 29, 57 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224R_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp224r1, 29, 57 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp224r1, 29, 57 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224R_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp224r1, 29, 57 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp224r1, 29, 57 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256K_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp256k1, 32 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp256k1, 32 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256K_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp256k1, 33, 65 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp256k1, 33, 65 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256K_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp256k1, 33, 65 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp256k1, 33, 65 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256K_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp256k1, 33, 65 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp256k1, 33, 65 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256K_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp256k1, 33, 65 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp256k1, 33, 65 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256R_PTP:
 			//Missing
-			sprintf(result, "SECP256R1PrivToPub( %s );\n", rval);
+			sprintf(result, "SECP256R1PrivToPub( %s )", rval);
 			//Missing
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256R_PA:
 			//Missing
-			sprintf(result, "SECP256R1PointAdd( %s );\n", rval);
+			sprintf(result, "SECP256R1PointAdd( %s )", rval);
 			//Missing
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256R_PS:
 			//Missing
-			sprintf(result, "SECP256R1PointSub( %s );\n", rval);
+			sprintf(result, "SECP256R1PointSub( %s )", rval);
 			//Missing
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256R_PSM:
 			//Missing
-			sprintf(result, "SECP256R1PointScalarMult( %s );\n", rval);
+			sprintf(result, "SECP256R1PointScalarMult( %s )", rval);
 			//Missing
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256R_PN:
 			//Missing
-			sprintf(result, "SECP256R1PointNegate( %s );\n", rval);
+			sprintf(result, "SECP256R1PointNegate( %s )", rval);
 			//Missing
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP384R_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp384r1, 48 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp384r1, 48 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP384R_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp384r1, 49, 97 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp384r1, 49, 97 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP384R_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp384r1, 49, 97 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp384r1, 49, 97 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP384R_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp384r1, 49, 97 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp384r1, 49, 97 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP384R_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp384r1, 49, 97 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp384r1, 49, 97 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V1_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v1, 24 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v1, 24 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V1_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime192v1, 25, 49 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime192v1, 25, 49 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V1_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime192v1, 25, 49 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime192v1, 25, 49 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V1_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime192v1, 25, 49 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime192v1, 25, 49 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V1_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime192v1, 25, 49 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime192v1, 25, 49 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V2_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v2, 24 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v2, 24 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V2_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime192v2, 25, 49 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime192v2, 25, 49 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V2_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime192v2, 25, 49 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime192v2, 25, 49 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V2_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime192v2, 25, 49 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime192v2, 25, 49 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V2_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime192v2, 25, 49 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime192v2, 25, 49 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V3_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v3, 24 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v3, 24 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V3_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime192v3, 25, 49 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime192v3, 25, 49 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V3_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime192v3, 25, 49 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime192v3, 25, 49 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V3_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime192v3, 25, 49 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime192v3, 25, 49 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V3_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime192v3, 25, 49 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime192v3, 25, 49 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM256V1_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime256v1, 32 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime256v1, 32 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM256V1_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime256v1, 33, 65 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime256v1, 33, 65 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM256V1_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime256v1, 33, 65 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime256v1, 33, 65 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM256V1_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime256v1, 33, 65 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime256v1, 33, 65 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM256V1_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime256v1, 33, 65 ));\n", rval);
+			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime256v1, 33, 65 ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_TIGER:
 			//Missing
-			sprintf(result, "Tiger( %s );\n", rval);
+			sprintf(result, "Tiger( %s )", rval);
 			//Missing
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_RIPEMD160:
-			sprintf(result, "\tm(epl_ripemd160( %s, mem ));\n", rval);
+			sprintf(result, "\tm(epl_ripemd160( %s, mem ))", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_RIPEMD128:
 			//Missing
-			sprintf(result, "RIPEMD128( %s );\n", rval);
+			sprintf(result, "RIPEMD128( %s )", rval);
 			//Missing
 			use_elasticpl_crypto = true;
 			break;
 		default:
 			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - Unsupported Operation (%d)\");\n", exp->type);
 		}
+
+		// Terminate Statements
+		if (exp->end_stmnt)
+			sprintf(result, "%s;\n", result);
 	}
 
 	return result;

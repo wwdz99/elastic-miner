@@ -13,11 +13,6 @@
 #include "ElasticPL.h"
 #include "../miner.h"
 
-
-ast* d_stack_exp[10];
-int d_stack_op[10];
-
-
 static ast* add_exp(NODE_TYPE node_type, EXP_TYPE exp_type, int32_t value, float fvalue, unsigned char *svalue, int token_num, int line_num, DATA_TYPE data_type, ast* left, ast* right) {
 	ast* e = calloc(1, sizeof(ast));
 	if (e) {
@@ -40,9 +35,6 @@ static ast* add_exp(NODE_TYPE node_type, EXP_TYPE exp_type, int32_t value, float
 static void push_op(int token_id) {
 	stack_op[++stack_op_idx] = token_id;
 	top_op = token_id;
-
-	memcpy(d_stack_op, stack_op, 10 * sizeof(int));
-
 }
 
 static int pop_op() {
@@ -57,17 +49,11 @@ static int pop_op() {
 	else
 		top_op = -1;
 
-
-	memcpy(d_stack_op, stack_op, 10 * sizeof(int));
-
 	return op;
 }
 
 static void push_exp(ast* exp) {
 	stack_exp[++stack_exp_idx] = exp;
-
-	memcpy(d_stack_exp, stack_exp, 10 * sizeof(ast));
-
 }
 
 static ast* pop_exp() {
@@ -77,8 +63,6 @@ static ast* pop_exp() {
 		exp = stack_exp[stack_exp_idx];
 		stack_exp[stack_exp_idx--] = NULL;
 	}
-
-	memcpy(d_stack_exp, stack_exp, 10 * sizeof(ast));
 
 	return exp;
 }
@@ -158,26 +142,22 @@ static bool validate_unary_exp(SOURCE_TOKEN *token, int token_num, NODE_TYPE nod
 }
 
 static bool validate_binary_exp(SOURCE_TOKEN *token, NODE_TYPE node_type) {
-	EXP_TYPE l_exp, r_exp;
-	NODE_TYPE l_type, r_type;
+	DATA_TYPE l_data_type, r_data_type;
 
-	l_exp = stack_exp[stack_exp_idx - 1]->exp;
-	l_type = stack_exp[stack_exp_idx - 1]->type;
-
-	r_exp = stack_exp[stack_exp_idx]->exp;
-	r_type = stack_exp[stack_exp_idx]->type;
+	l_data_type = stack_exp[stack_exp_idx - 1]->data_type;
+	r_data_type = stack_exp[stack_exp_idx]->data_type;
 
 	// Validate Left Item Is Not A Statement (Does Not Include Increment / Decrement)
-	//if ((l_exp == EXP_FUNCTION) || ((l_exp == EXP_STATEMENT) && (l_type != NODE_INCREMENT_L) && (l_type != NODE_DECREMENT_L))) {
-	//		printf("Syntax Error - Line: %d  Invalid Left Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
-	//	return false;
-	//}
+	if (l_data_type == DT_NONE) {
+		printf("Syntax Error - Line: %d  Invalid Left Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
+		return false;
+	}
 
 	// Validate Right Item Is Not A Statement (Does Not Include Increment / Decrement)
-	//if ((r_exp == EXP_FUNCTION) || ((r_exp == EXP_STATEMENT) && (r_type != NODE_INCREMENT_R) && (r_type != NODE_DECREMENT_R))) {
-	//		printf("Syntax Error - Line: %d  Invalid Right Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
-	//	return false;
-	//}
+	if (r_data_type == DT_NONE) {
+		printf("Syntax Error - Line: %d  Invalid Right Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
+		return false;
+	}
 
 	return true;
 }

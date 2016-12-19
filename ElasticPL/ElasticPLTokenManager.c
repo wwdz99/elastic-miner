@@ -31,16 +31,16 @@ struct EXP_TOKEN_LIST epl_token[] = {
 	{ "/*",							2,	TOKEN_BLOCK_COMMENT,EXP_NONE,		0,	0,	DT_NONE },
 	{ ";",							1,	TOKEN_END_STATEMENT,EXP_NONE,		0,	0,	DT_NONE },
 	{ ",",							1,	TOKEN_COMMA,		EXP_NONE,		0,	0,	DT_NONE },
-	{ "{",							1,	TOKEN_BLOCK_BEGIN,	EXP_STATEMENT,	2,	1,	DT_INT },
-	{ "}",							1,	TOKEN_BLOCK_END,	EXP_STATEMENT,	2,	1,	DT_INT },
+	{ "{",							1,	TOKEN_BLOCK_BEGIN,	EXP_STATEMENT,	2,	1,	DT_NONE },
+	{ "}",							1,	TOKEN_BLOCK_END,	EXP_STATEMENT,	2,	1,	DT_NONE },
 	{ "(",							1,	TOKEN_OPEN_PAREN,	EXP_NONE,		0,	1,	DT_INT },
 	{ ")",							1,	TOKEN_CLOSE_PAREN,	EXP_NONE,		0,	1,	DT_INT },
-	{ "verify",						6,	TOKEN_VERIFY,		EXP_STATEMENT,	1,	2,	DT_INT },
-	{ "repeat",						6,	TOKEN_REPEAT,		EXP_STATEMENT,	2,	2,	DT_INT },
-	{ "if",							2,	TOKEN_IF,			EXP_STATEMENT,	2,	2,	DT_INT },
-	{ "else",						4,	TOKEN_ELSE,			EXP_STATEMENT,	2,	2,	DT_INT },
-	{ "break",						5,	TOKEN_BREAK,		EXP_STATEMENT,	0,	2,	DT_INT },
-	{ "continue",					8,	TOKEN_CONTINUE,		EXP_STATEMENT,	0,	2,	DT_INT },
+	{ "verify",						6,	TOKEN_VERIFY,		EXP_STATEMENT,	1,	2,	DT_NONE },
+	{ "repeat",						6,	TOKEN_REPEAT,		EXP_STATEMENT,	2,	2,	DT_NONE },
+	{ "if",							2,	TOKEN_IF,			EXP_STATEMENT,	2,	2,	DT_NONE },
+	{ "else",						4,	TOKEN_ELSE,			EXP_STATEMENT,	2,	2,	DT_NONE },
+	{ "break",						5,	TOKEN_BREAK,		EXP_STATEMENT,	0,	2,	DT_NONE },
+	{ "continue",					8,	TOKEN_CONTINUE,		EXP_STATEMENT,	0,	2,	DT_NONE },
 
 	{ "m[",							2,	TOKEN_VAR_BEGIN,	EXP_EXPRESSION,	1,	4,	DT_INT },
 	{ "f[",							2,	TOKEN_VAR_BEGIN,	EXP_EXPRESSION,	1,	4,	DT_FLOAT },
@@ -102,15 +102,15 @@ struct EXP_TOKEN_LIST epl_token[] = {
 	{ "true",						4,	TOKEN_TRUE,			EXP_EXPRESSION,	0,	15,	DT_INT },	// Unary Operator
 	{ "false",						5,	TOKEN_FALSE,		EXP_EXPRESSION,	0,	15,	DT_INT },	// Unary Operator
 
-	{ "sin",						3,	TOKEN_SIN,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
-	{ "cos",						3,	TOKEN_COS,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
-	{ "tan",						3,	TOKEN_TAN,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "sinh",						4,	TOKEN_SINH,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
+	{ "sin",						3,	TOKEN_SIN,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "cosh",						4,	TOKEN_COSH,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
+	{ "cos",						3,	TOKEN_COS,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "tanh",						4,	TOKEN_TANH,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
+	{ "tan",						3,	TOKEN_TAN,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "asin",						4,	TOKEN_ASIN,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "acos",						4,	TOKEN_ACOS,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
-	{ "atan2",						5,	TOKEN_ATAN2,		EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
+	{ "atan2",						5,	TOKEN_ATAN2,		EXP_FUNCTION,	2,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "atan",						4,	TOKEN_ATAN,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "exp",						3,	TOKEN_EXPNT,		EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "log10",						5,	TOKEN_LOG10,		EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
@@ -121,7 +121,7 @@ struct EXP_TOKEN_LIST epl_token[] = {
 	{ "floor",						5,	TOKEN_FLOOR,		EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "fabs",						4,	TOKEN_FABS,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "abs",						3,	TOKEN_ABS,			EXP_FUNCTION,	1,	50,	DT_INT },	// Built In Math Functions
-	{ "fmod",						4,	TOKEN_FMOD,			EXP_FUNCTION,	1,	50,	DT_FLOAT },	// Built In Math Functions
+	{ "fmod",						4,	TOKEN_FMOD,			EXP_FUNCTION,	2,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "gcd",						3,	TOKEN_GCD,			EXP_FUNCTION,	2,	50,	DT_FLOAT },	// Built In Math Functions
 
 	{ "trace",						5,	TOKEN_TRACE,		EXP_FUNCTION,	99,	50,	DT_NONE },	// Debug Statement
@@ -131,17 +131,17 @@ struct EXP_TOKEN_LIST epl_token[] = {
 	{ "big_add",					7,	TOKEN_BI_ADD,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_sub",					7,	TOKEN_BI_SUB,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_mul",					7,	TOKEN_BI_MUL,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
+	{ "big_divisible",				13,	TOKEN_BI_DIVISIBLE,	EXP_FUNCTION,	2,	55,	DT_INT },	// Built In Big Int Functions
+	{ "big_div_exact",				13,	TOKEN_BI_DIV_EXACT,	EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_div",					7,	TOKEN_BI_DIV,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_ceil_div",				12,	TOKEN_BI_CEIL_DIV,	EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_floor_div",				13,	TOKEN_BI_FLOOR_DIV,	EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_truncate_div",			16,	TOKEN_BI_TRUNC_DIV,	EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_div_exact",				13,	TOKEN_BI_DIV_EXACT,	EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_mod",					7,	TOKEN_BI_MOD,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_neg",					7,	TOKEN_BI_NEG,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_lshift",					10,	TOKEN_BI_LSHIFT,	EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_rshift",					10,	TOKEN_BI_RSHIFT,	EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_gcd",					7,	TOKEN_BI_GCD,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_divisible",				13,	TOKEN_BI_DIVISIBLE,	EXP_FUNCTION,	2,	55,	DT_INT },	// Built In Big Int Functions
 	{ "big_congruent_mod_p",		19,	TOKEN_BI_CNGR_MOD_P,EXP_FUNCTION,	3,	55,	DT_INT },	// Built In Big Int Functions
 	{ "big_pow2_mod_p",				14,	TOKEN_BI_POW2_MOD_P,EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_pow_mod_p",				13,	TOKEN_BI_POW_MOD_P,	EXP_FUNCTION,	4,	55,	DT_NONE },	// Built In Big Int Functions
