@@ -514,12 +514,15 @@ static void *test_vm_thread(void *userdata) {
 	int i, rc;
 
 	// Initialize Global Variables
-	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
-	vm_f = calloc(100, sizeof(float));
-	vm_b = calloc(100 * 32, sizeof(char));
 	vm_state = calloc(4, sizeof(uint32_t));
 	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
 	vm_stack_idx = -1;
+	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
+	vm_f = calloc(100, sizeof(float));
+	vm_b = (unsigned char **)calloc(100, sizeof(unsigned char *));
+	for (i = 0; i < 100; i++)
+		vm_b[i] = (unsigned char *)calloc(32, sizeof(unsigned char));
+
 	if (!vm_m || !vm_f || !vm_b || !vm_stack) {
 		applog(LOG_ERR, "%s: Unable to allocate VM memory", mythr->name);
 		exit(EXIT_FAILURE);
@@ -1243,7 +1246,7 @@ static void *miner_thread(void *userdata) {
 	char s[16];
 	long hashes_done;
 	struct timeval tv_start, tv_end, diff;
-	int rc = 0;
+	int i, rc = 0;
 	unsigned char msg[41];
 	uint32_t *msg32 = (uint32_t *)msg;
 	uint32_t *workid32;
@@ -1257,12 +1260,14 @@ static void *miner_thread(void *userdata) {
 		thread_low_priority();
 
 	// Initialize Global Variables
-	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
-	vm_f = calloc(1000, sizeof(float));
-	vm_b = calloc(100 * 32, sizeof(char));
 	vm_state = calloc(4, sizeof(uint32_t));
 	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
 	vm_stack_idx = -1;
+	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
+	vm_f = calloc(1000, sizeof(float));
+	vm_b = (unsigned char **)calloc(100, sizeof(unsigned char *));
+	for (i = 0; i < 100; i++)
+		vm_b[i] = (unsigned char *)calloc(32, sizeof(unsigned char));
 
 	if (!vm_m || !vm_f || !vm_b || !vm_state || !vm_stack) {
 		applog(LOG_ERR, "CPU%d: Unable to allocate VM memory", thr_id);
@@ -1980,6 +1985,20 @@ static int thread_create(struct thr_info *thr, void* func)
 int main(int argc, char **argv) {
 	struct thr_info *thr;
 	int i, err, thr_idx, num_gpus = 0;
+
+////	unsigned char b[100][32];
+//	unsigned char **b;
+//	unsigned char **bb;
+//
+////	b = (unsigned char *)malloc(100 * sizeof(unsigned char *));
+////	unsigned char *b = (unsigned char *)malloc(32 * 100 * sizeof(unsigned char));
+//	b = (unsigned char **)malloc(100 * sizeof(unsigned char *));
+//	for (i = 0; i < 100; i++)
+//		b[i] = (unsigned char *)malloc(32 * sizeof(unsigned char));
+//
+//	bb = b;
+//
+//	big_init_const(bb[1], "0x0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF0123456789ABCDEF");
 
 	fprintf(stdout, "** " PACKAGE_NAME " " PACKAGE_VERSION " **\n");
 

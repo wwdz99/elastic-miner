@@ -81,12 +81,12 @@ bool create_c_source() {
 #ifdef WIN32
 	fprintf(f, "__declspec(dllexport) void initialize(int32_t *vm_m, float *vm_f, unsigned char **vm_b, uint32_t *vm_state) {\n");
 #else
-	fprintf(f, "void initialize(int32_t* m, uint32_t* s) {\n");
+	fprintf(f, "void initialize(int32_t *vm_m, float *vm_f, unsigned char **vm_b, uint32_t *vm_state) {\n");
 #endif
-	fprintf(f, "\tm = &vm_m[0];\n");
-	fprintf(f, "\tf = &vm_f[0];\n");
-	fprintf(f, "\tb = &vm_b[0];\n");
-	fprintf(f, "\tstate = &vm_state[0];\n");
+	fprintf(f, "\tm = vm_m;\n");
+	fprintf(f, "\tf = vm_f;\n");
+	fprintf(f, "\tb = vm_b;\n");
+	fprintf(f, "\tstate = vm_state;\n");
 	fprintf(f, "}\n\n");
 #ifdef WIN32
 	fprintf(f, "__declspec(dllexport) int execute() {\n");
