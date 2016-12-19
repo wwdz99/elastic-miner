@@ -93,10 +93,10 @@ bool create_c_source() {
 #else
 	fprintf(f, "int execute() {\n");
 #endif
-	fprintf(f, "\tint rc;\n\n");
-	fprintf(f, "//The following code created by ElasticPL to C parser\n");
+	fprintf(f, "\tint bounty_found;\n\n");
+	fprintf(f, "//The following code created by ElasticPL to C converter\n\n");
 	fprintf(f, "%s", &code[0]);
-	fprintf(f, "\treturn rc;\n");
+	fprintf(f, "\n\treturn bounty_found;\n");
 	fprintf(f, "}\n");
 
 	if (opt_test_vm) {
