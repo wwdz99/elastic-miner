@@ -187,7 +187,7 @@ struct instance {
 	int(__cdecl* execute)();
 #else
 	void *hndl;
-	int(*initialize)(int32_t *, uint32_t *);
+	int(*initialize)(int32_t *, float *, unsigned char **, uint32_t *);
 	int(*execute)();
 #endif
 
