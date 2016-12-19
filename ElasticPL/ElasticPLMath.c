@@ -15,6 +15,39 @@
 
 #include "ElasticPLFunctions.h"
 
+static bool hex2bin(uint32_t *p, int array_sz, const char *hex, int len) {
+	int i, j, idx;
+	unsigned char val;
+	unsigned char *c = (unsigned char*)p;
+	char hex_char[3];
+	char *ep;
+
+	if (array_sz <= 0 || len <= 0 || len > (8 * array_sz)) {
+		return false;
+	}
+
+	hex_char[2] = '\0';
+	idx = len - 1;
+
+	for (i = array_sz - 1; i >= 0; i--) {
+		for (j = 0; j < 4; j++) {
+			val = 0;
+			if (idx == 0) {
+				hex_char[1] = hex[idx--];
+				hex_char[0] = '0';
+				val = (unsigned char)strtol(hex_char, &ep, 16);
+			}
+			else if (idx > 0) {
+				hex_char[1] = hex[idx--];
+				hex_char[0] = hex[idx--];
+				val = (unsigned char)strtol(hex_char, &ep, 16);
+			}
+			c[(i * 4) + j] = val;
+		}
+	}
+	return true;
+}
+
 extern int32_t gcd(int32_t a, int32_t b) {
 	if ( a < 0 ) a = -a;
 	if ( b < 0 ) b = -b;
@@ -40,7 +73,7 @@ extern void big_init_const(unsigned char *out, unsigned char *str) {
 
 	// Check For Hex - If Found, Convert To Decimal String
 	if (str[0] == '0' && str[1] == 'x' && strlen(str) > 2 && strlen(str) <= 66) {
-		hex2ints(val, 8, str + 2, strlen(str) - 2);
+		hex2bin(val, 8, str + 2, strlen(str) - 2);
 	}
 	else if (strlen(str) <= 10) {
 		for (i = 0; i < 7; i++)

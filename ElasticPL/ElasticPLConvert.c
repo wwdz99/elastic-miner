@@ -1089,11 +1089,11 @@ static char* create_trace(ast* exp) {
 
 		// Determine Format For Data Value
 		if (e->left->data_type == DT_STRING)
-			strcat(format, "%s");
+			strcat(format, "%s ");
 		else if (e->left->is_float)
-			strcat(format, "%f");
+			strcat(format, "%f ");
 		else
-			strcat(format, "%d");
+			strcat(format, "%d ");
 
 		// Check If There Are More Parameters
 		if (e->right)
@@ -1102,5 +1102,10 @@ static char* create_trace(ast* exp) {
 			break;
 	}
 	sprintf(result, "printf(\"%s\\n\"%s);\n", format, data);
+
+	// Strip Out b[] Traces
+	if (strstr(result, "b["))
+		result[0] = 0;
+
 	return result;
 }
