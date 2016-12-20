@@ -18,6 +18,7 @@
 #include <openssl/bn.h>
 #include <openssl/ec.h>
 #include <openssl/obj_mac.h>
+#include <gmp.h>
 
 extern void whirlpool_hash(const uint8_t *message, uint32_t len, uint8_t *hash);
 
@@ -34,36 +35,36 @@ extern uint32_t epl_ec_mult(size_t idx1, bool comp1, size_t idx2, size_t n2, boo
 
 extern int32_t gcd(int32_t	a, int32_t b);
 
-extern void big_init_const(unsigned char *out, unsigned char *str);
-extern void big_init_expr(unsigned char *out, int32_t	a);
-extern void big_add(unsigned char *out, unsigned char *a, unsigned char *b);
-extern void big_sub(unsigned char *out, unsigned char *a, unsigned char *b);
-extern void big_mul(unsigned char *out, unsigned char *a, unsigned char *b);
-extern void big_div(unsigned char *out, unsigned char *a, unsigned char *b);
-extern void big_ceil_div(unsigned char *out, unsigned char *a, unsigned char *b);
-extern void big_floor_div(unsigned char *out, unsigned char *a, unsigned char *b);
-extern void big_truncate_div(unsigned char *out, unsigned char *a, unsigned char *b);
-extern void big_div_exact(unsigned char *out, unsigned char *a, unsigned char *b);
-extern void big_mod(unsigned char *out, unsigned char *a, unsigned char *b);
-extern void big_neg(unsigned char *out, unsigned char *a, unsigned char *b);
-extern void big_lshift(unsigned char *out, unsigned char *a, unsigned char *b);
-extern void big_rshift(unsigned char *out, unsigned char *a, unsigned char *b);
-extern void big_gcd(unsigned char *out, unsigned char *a, unsigned char *b);
-extern int32_t big_divisible(unsigned char *a, unsigned char *b);
-extern void big_congruent_mod_p(unsigned char *a, unsigned char *b, unsigned char *p);
-extern void big_pow(unsigned char *out, unsigned char *a, uint32_t b);
-extern void big_pow2(unsigned char *out, uint32_t b);
-extern void big_pow_mod_p(unsigned char *out, unsigned char *a, unsigned char *b, unsigned char *c);
-extern void big_pow2_mod_p(unsigned char *out, unsigned char *a, unsigned char *b);
-extern int32_t big_compare(unsigned char *a, unsigned char *b);
-extern int32_t big_compare_abs(unsigned char *a, unsigned char *b);
-extern int32_t big_sign(unsigned char *a);
-extern void big_or(unsigned char *out, unsigned char *a, unsigned char *b);
-extern void big_and(unsigned char *out, unsigned char *a, unsigned char *b);
-extern void big_xor(unsigned char *out, unsigned char *a, unsigned char *b);
-extern void big_or_integer(unsigned char *out, unsigned char *a, unsigned char *b);
-extern void big_and_integer(unsigned char *out, unsigned char *a, unsigned char *b);
-extern void big_xor_integer(unsigned char *out, unsigned char *a, unsigned char *b);
-extern int big_least_32bit(unsigned char *a);
+extern void big_init_const(mpz_t* out, unsigned char* str);
+extern void big_init_expr(mpz_t* out, int32_t	a);
+extern void big_add(mpz_t* out, mpz_t* a, mpz_t* b);
+extern void big_sub(mpz_t* out, mpz_t* a, mpz_t* b);
+extern void big_mul(mpz_t* out, mpz_t* a, mpz_t* b);
+extern void big_div(mpz_t* out, mpz_t* a, mpz_t* b);
+extern void big_ceil_div(mpz_t* out, mpz_t* a, mpz_t* b);
+extern void big_floor_div(mpz_t* out, mpz_t* a, mpz_t* b);
+extern void big_truncate_div(mpz_t* out, mpz_t* a, mpz_t* b);
+extern void big_div_exact(mpz_t* out, mpz_t* a, mpz_t* b);
+extern void big_mod(mpz_t* out, mpz_t* a, mpz_t* b);
+extern void big_neg(mpz_t* out, mpz_t* a, mpz_t* b);
+extern void big_lshift(mpz_t* out, mpz_t* a, mpz_t* b);
+extern void big_rshift(mpz_t* out, mpz_t* a, mpz_t* b);
+extern void big_gcd(mpz_t* out, mpz_t* a, mpz_t* b);
+extern int32_t big_divisible(mpz_t* a, mpz_t* b);
+extern void big_congruent_mod_p(mpz_t* a, mpz_t* b, mpz_t* p);
+extern void big_pow(mpz_t* out, mpz_t* a, uint32_t b);
+extern void big_pow2(mpz_t* out, uint32_t b);
+extern void big_pow_mod_p(mpz_t* out, mpz_t* a, mpz_t* b, mpz_t* c);
+extern void big_pow2_mod_p(mpz_t* out, mpz_t* a, mpz_t* b);
+extern int32_t big_compare(mpz_t* a, mpz_t* b);
+extern int32_t big_compare_abs(mpz_t* a, mpz_t* b);
+extern int32_t big_sign(mpz_t* a);
+extern void big_or(mpz_t* out, mpz_t* a, mpz_t* b);
+extern void big_and(mpz_t* out, mpz_t* a, mpz_t* b);
+extern void big_xor(mpz_t* out, mpz_t* a, mpz_t* b);
+extern void big_or_integer(mpz_t* out, mpz_t* a, mpz_t* b);
+extern void big_and_integer(mpz_t* out, mpz_t* a, mpz_t* b);
+extern void big_xor_integer(mpz_t* out, mpz_t* a, mpz_t* b);
+extern int big_least_32bit(mpz_t* a);
 
 #endif // ELASTICPLFUNCTIONS_H_
