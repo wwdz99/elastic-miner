@@ -1238,7 +1238,7 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 	return true;
 }
 
-static void *miner_thread(void *userdata) {
+static void *cpu_miner_thread(void *userdata) {
 	struct thr_info *mythr = (struct thr_info *) userdata;
 	int thr_id = mythr->id;
 	struct work work;
@@ -1397,7 +1397,7 @@ out:
 }
 
 #ifdef USE_OPENCL
-static void *opencl_miner_thread(void *userdata) {
+static void *gpu_miner_thread(void *userdata) {
 	struct thr_info *mythr = (struct thr_info *) userdata;
 	int thr_id = mythr->id;
 	uint32_t *vm_out = NULL, *vm_input = NULL;
@@ -2115,12 +2115,12 @@ int main(int argc, char **argv) {
 			return 1;
 		if (opt_opencl) {
 #ifdef USE_OPENCL
-			err = thread_create(thr, opencl_miner_thread);
+			err = thread_create(thr, gpu_miner_thread);
 #endif
 			sprintf(thr->name, "GPU%d", i);
 		}
 		else {
-			err = thread_create(thr, miner_thread);
+			err = thread_create(thr, cpu_miner_thread);
 			sprintf(thr->name, "CPU%d", i);
 		}
 		if (err) {

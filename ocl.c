@@ -90,8 +90,9 @@ extern bool init_opencl_kernel(struct opencl_device *gpu, char *ocl_source) {
 
 	// Set Argurments For Kernel
 	ret  = clSetKernelArg(gpu->kernel_execute, 0, sizeof(cl_mem), (const void*)&gpu->vm_input);
-	ret |= clSetKernelArg(gpu->kernel_execute, 1, sizeof(cl_mem), (const void*)&gpu->vm_mem);
-	ret |= clSetKernelArg(gpu->kernel_execute, 2, sizeof(cl_mem), (const void*)&gpu->vm_out);
+	ret |= clSetKernelArg(gpu->kernel_execute, 1, sizeof(cl_mem), (const void*)&gpu->vm_m);
+	ret |= clSetKernelArg(gpu->kernel_execute, 2, sizeof(cl_mem), (const void*)&gpu->vm_f);
+	ret |= clSetKernelArg(gpu->kernel_execute, 3, sizeof(cl_mem), (const void*)&gpu->vm_out);
 
 	if (ret != CL_SUCCESS) {
 		applog(LOG_ERR, "Unable to set OpenCL argurments for 'execute' kernel (Error: %d)", ret);
@@ -239,8 +240,8 @@ extern bool calc_opencl_worksize(struct opencl_device *gpu) {
 	max_threads = (uint32_t)((uint32_t)((opt_opencl_gthreads ? opt_opencl_gthreads : 1024) / max_work_size) * max_work_size);
 
 	// Calculate Num Threads For This Device
-	// GLOB MEM NEEDED: 96 + (x * VM_MEMORY_SIZE * sizeof(int32_t)) + (x * sizeof(uint32_t))
-	double calc = ((double)global_mem - 96.0 - 650 * 1024 * 1024 /*Some 650 M space for who knows what*/) / ((double)VM_MEMORY_SIZE * sizeof(int32_t) + sizeof(int32_t));
+	// GLOB MEM NEEDED: 96 + (x * VM_MEMORY_SIZE * sizeof(int32_t)) + (x * VM_MEMORY_SIZE * sizeof(float)) + (x * sizeof(uint32_t))
+	double calc = ((double)global_mem - 96.0 - 650 * 1024 * 1024 /*Some 650 M space for who knows what*/) / (((double)VM_MEMORY_SIZE * sizeof(int32_t)) + (1000 * sizeof(float)) + sizeof(int32_t));
 	size_t bound = (size_t)calc;
 
 	gpu->threads = (bound < max_threads) ? (int)bound : max_threads;
@@ -293,10 +294,17 @@ extern bool create_opencl_buffers(struct opencl_device *gpu) {
 		return false;
 	}
 
-	gpu->vm_mem = clCreateBuffer(gpu->context, CL_MEM_WRITE_ONLY, gpu->threads * VM_MEMORY_SIZE * sizeof(int32_t), NULL, &ret);
+	gpu->vm_m = clCreateBuffer(gpu->context, CL_MEM_WRITE_ONLY, gpu->threads * VM_MEMORY_SIZE * sizeof(int32_t), NULL, &ret);
 
 	if (ret != CL_SUCCESS) {
-		applog(LOG_ERR, "ERROR: Unable to create OpenCL 'vm_mem' buffer (Error: %d)", ret);
+		applog(LOG_ERR, "ERROR: Unable to create OpenCL 'vm_m' buffer (Error: %d)", ret);
+		return false;
+	}
+
+	gpu->vm_f = clCreateBuffer(gpu->context, CL_MEM_WRITE_ONLY, gpu->threads * 1000 * sizeof(float), NULL, &ret);
+
+	if (ret != CL_SUCCESS) {
+		applog(LOG_ERR, "ERROR: Unable to create OpenCL 'vm_f' buffer (Error: %d)", ret);
 		return false;
 	}
 
@@ -340,7 +348,7 @@ extern bool execute_kernel(struct opencl_device *gpu, const uint32_t *vm_input, 
 extern bool dump_opencl_kernel_data(struct opencl_device *gpu, int32_t *data, int idx, int offset, int len) {
 	cl_uint ret;
 
-	ret = clEnqueueReadBuffer(gpu->queue, gpu->vm_mem, CL_TRUE, (idx * VM_MEMORY_SIZE * sizeof(int32_t)) + (offset * sizeof(int32_t)), len * sizeof(int32_t), &data[0], 0, NULL, NULL);
+	ret = clEnqueueReadBuffer(gpu->queue, gpu->vm_m, CL_TRUE, (idx * VM_MEMORY_SIZE * sizeof(int32_t)) + (offset * sizeof(int32_t)), len * sizeof(int32_t), &data[0], 0, NULL, NULL);
 	if (ret != CL_SUCCESS) {
 		applog(LOG_ERR, "ERROR: Unable to read from OpenCL 'vm_mem' Buffer (Error: %d)", ret);
 		return false;

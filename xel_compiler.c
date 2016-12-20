@@ -369,8 +369,6 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "\treturn (x>>n) | (x<<( (-n) & 0x0000001f ));\n");
 	fprintf(f, "}\n\n");
 
-	fprintf(f, "#define m(x) mangle_state(x, &vm_state[0])\n\n");
-
 	fprintf(f, "static int mangle_state(int x, uint *vm_state) {\n");
 	fprintf(f, "\tint mod = x %% 32;\n");
 	fprintf(f, "\tint leaf = mod %% 4;\n");
@@ -393,8 +391,8 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "\treturn x;\n");
 	fprintf(f, "}\n\n");
 
-	fprintf(f, "__kernel void execute (global uint* restrict base_data, global int* restrict input, global uint* restrict output) {\n");
-	fprintf(f, "\tint i;\n");
+	fprintf(f, "__kernel void execute (global uint* restrict base_data, global int* restrict input_m, global float* restrict input_f, global uint* restrict output) {\n");
+	fprintf(f, "\tint i, bounty_found;\n");
 	fprintf(f, "\tuint base_data_local[20];\n");
 	fprintf(f, "\tuint msg[16];\n");
 	fprintf(f, "\tuint hash[4];\n");
@@ -404,7 +402,8 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "\tint w = get_global_id(0); // Index in the wavefront Dim1\n");
 	fprintf(f, "\tint q = get_global_id(1); // Index in the wavefront Dim2\n");
 	fprintf(f, "\tint idx = w + (q * get_global_size(0)); // Index in the 2D wavefront\n");
-	fprintf(f, "\tglobal uint* mem = &input[idx * 64000];\n");
+	fprintf(f, "\tglobal int* m = &input_m[idx * 64000];\n");
+	fprintf(f, "\tglobal float* f = &input_f[idx * 1000];\n");
 	fprintf(f, "\tglobal uint* out = &output[idx];\n\n");
 
 	fprintf(f, "\t// 96 Bytes of base_data is made up of:\n");
@@ -438,7 +437,7 @@ extern bool create_opencl_source(char *work_str) {
 
 	fprintf(f, "\t// Copy Inputs To Global Memory;\n");
 	fprintf(f, "\tfor (i = 0; i < 12; i++)\n");
-	fprintf(f, "\t\tmem[i] = vm_input[i];\n\n");
+	fprintf(f, "\t\tm[i] = vm_input[i];\n\n");
 
 	fprintf(f, "\t// Reset VM State\n");
 	fprintf(f, "\tvm_state[0] = 0;\n");
@@ -455,7 +454,7 @@ extern bool create_opencl_source(char *work_str) {
 
 	fprintf(f, "%s", code);
 
-	fprintf(f, "\tif (bounty_found) {\n");
+	fprintf(f, "\n\tif (bounty_found) {\n");
 	fprintf(f, "\t\tout[0] = 2;\n");
 	fprintf(f, "\t}\n");
 	fprintf(f, "\telse {\n");
@@ -472,20 +471,20 @@ extern bool create_opencl_source(char *work_str) {
 
 	// Debugging
 	fprintf(f, "\t\t// Temp Dump For Debugging\n");
-	fprintf(f, "\t\tmem[12] = target[0];\n");
-	fprintf(f, "\t\tmem[13] = target[1];\n");
-	fprintf(f, "\t\tmem[14] = target[2];\n");
-	fprintf(f, "\t\tmem[15] = target[3];\n\n");
+	fprintf(f, "\t\tm[12] = target[0];\n");
+	fprintf(f, "\t\tm[13] = target[1];\n");
+	fprintf(f, "\t\tm[14] = target[2];\n");
+	fprintf(f, "\t\tm[15] = target[3];\n\n");
 
-	fprintf(f, "\t\tmem[16] = swap32(hash[0]);\n");
-	fprintf(f, "\t\tmem[17] = swap32(hash[1]);\n");
-	fprintf(f, "\t\tmem[18] = swap32(hash[2]);\n");
-	fprintf(f, "\t\tmem[19] = swap32(hash[3]);\n\n");
+	fprintf(f, "\t\tm[16] = swap32(hash[0]);\n");
+	fprintf(f, "\t\tm[17] = swap32(hash[1]);\n");
+	fprintf(f, "\t\tm[18] = swap32(hash[2]);\n");
+	fprintf(f, "\t\tm[19] = swap32(hash[3]);\n\n");
 
-	fprintf(f, "\t\tmem[20] = vm_state[0];\n");
-	fprintf(f, "\t\tmem[21] = vm_state[1];\n");
-	fprintf(f, "\t\tmem[22] = vm_state[2];\n");
-	fprintf(f, "\t\tmem[23] = vm_state[3];\n\n");
+	fprintf(f, "\t\tm[20] = vm_state[0];\n");
+	fprintf(f, "\t\tm[21] = vm_state[1];\n");
+	fprintf(f, "\t\tm[22] = vm_state[2];\n");
+	fprintf(f, "\t\tm[23] = vm_state[3];\n\n");
 	// End Debugging
 
 	fprintf(f, "\t\t// Check For POW Solutions\n");
