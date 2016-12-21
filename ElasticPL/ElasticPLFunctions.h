@@ -10,6 +10,11 @@
 #ifndef ELASTICPLFUNCTIONS_H_
 #define ELASTICPLFUNCTIONS_H_
 
+// The following is needed to override a gmp error
+#ifdef _MSC_VER
+#pragma warning(disable:4146)
+#endif
+
 #include <stdint.h>
 
 #include <openssl/md5.h>
