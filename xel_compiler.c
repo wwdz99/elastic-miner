@@ -40,12 +40,12 @@ bool create_c_source() {
 #ifdef _MSC_VER
 	fprintf(f, "__declspec(thread) int32_t *m = NULL;\n");
 	fprintf(f, "__declspec(thread) float *f = NULL;\n");
-	fprintf(f, "__declspec(thread) unsigned char **b = NULL;\n");
+	fprintf(f, "__declspec(thread) mpz_t *b = NULL;\n");
 	fprintf(f, "__declspec(thread) uint32_t *state = NULL;\n\n");
 #else
 	fprintf(f, "__thread int32_t *m = NULL;\n");
 	fprintf(f, "__thread float *f = NULL;\n");
-	fprintf(f, "__thread unsigned char **b = NULL;\n");
+	fprintf(f, "__thread mpz_t *b = NULL;\n");
 	fprintf(f, "__thread uint32_t *state = NULL;\n\n");
 #endif
 	fprintf(f, "static const unsigned int mask32 = (CHAR_BIT*sizeof(uint32_t)-1);\n\n");
@@ -79,9 +79,9 @@ bool create_c_source() {
 	fprintf(f, "\treturn x;\n");
 	fprintf(f, "}\n\n");
 #ifdef WIN32
-	fprintf(f, "__declspec(dllexport) void initialize(int32_t *vm_m, float *vm_f, unsigned char **vm_b, uint32_t *vm_state) {\n");
+	fprintf(f, "__declspec(dllexport) void initialize(int32_t *vm_m, float *vm_f, mpz_t *vm_b, uint32_t *vm_state) {\n");
 #else
-	fprintf(f, "void initialize(int32_t *vm_m, float *vm_f, unsigned char **vm_b, uint32_t *vm_state) {\n");
+	fprintf(f, "void initialize(int32_t *vm_m, float *vm_f, mpz_t *vm_b, uint32_t *vm_state) {\n");
 #endif
 	fprintf(f, "\tm = vm_m;\n");
 	fprintf(f, "\tf = vm_f;\n");
@@ -129,16 +129,16 @@ bool compile_and_link(char* lib_name) {
 #else
 #ifdef __MINGW32__
 	ret = system("gcc -I./crypto -c -march=native -Ofast -msse -msse2 -msse3 -mmmx -m3dnow -DBUILDING_EXAMPLE_DLL ./work/work_lib.c -o ./work/work_lib.o");
-	sprintf(str, "gcc -shared -o ./work/%s.dll ./work/work_lib.o -L./ElasticPL -lElasticPLFunctions -lcrypto", lib_name);
+	sprintf(str, "gcc -shared -o ./work/%s.dll ./work/work_lib.o -L./ElasticPL -lElasticPLFunctions -lcrypto -lgmp", lib_name);
 	ret = system(str);
 #else
 #ifdef __arm__
 	ret = system("gcc -I./crypto -c -std=c99 -Ofast -fPIC ./work/work_lib.c -o ./work/work_lib.o");
-	sprintf(str, "gcc -std=c99 -shared -Wl,-soname,./work/%s.so.1 -o ./work/%s.so ./work/work_lib.o -L./ElasticPL -lElasticPLFunctions -lcrypto", lib_name, lib_name);
+	sprintf(str, "gcc -std=c99 -shared -Wl,-soname,./work/%s.so.1 -o ./work/%s.so ./work/work_lib.o -L./ElasticPL -lElasticPLFunctions -lcrypto -lgmp", lib_name, lib_name);
 	ret = system(str);
 #else
 	ret = system("gcc -I./crypto -c -march=native -Ofast -fPIC ./work/work_lib.c -o ./work/work_lib.o");
-	sprintf(str, "gcc -shared -Wl,-soname,./work/%s.so.1 -o ./work/%s.so ./work/work_lib.o -L./ElasticPL -lElasticPLFunctions -lcrypto", lib_name, lib_name);
+	sprintf(str, "gcc -shared -Wl,-soname,./work/%s.so.1 -o ./work/%s.so ./work/work_lib.o -L./ElasticPL -lElasticPLFunctions -lcrypto -lgmp", lib_name, lib_name);
 	ret = system(str);
 #endif
 #endif
@@ -156,7 +156,7 @@ void create_instance(struct instance* inst, char *lib_name) {
 		fprintf(stderr, "Unable to load library: '%s' (Error - %d)", file_name, GetLastError());
 		exit(EXIT_FAILURE);
 	}
-	inst->initialize = (int(__cdecl *)(int32_t *, float *, unsigned char **, uint32_t *))GetProcAddress((HMODULE)inst->hndl, "initialize");
+	inst->initialize = (int(__cdecl *)(int32_t *, float *, mpz_t *, uint32_t *))GetProcAddress((HMODULE)inst->hndl, "initialize");
 	inst->execute = (int(__cdecl *)())GetProcAddress((HMODULE)inst->hndl, "execute");
 	if (!inst->initialize || !inst->execute) {
 		fprintf(stderr, "Unable to find library functions");
