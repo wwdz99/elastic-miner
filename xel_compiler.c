@@ -166,7 +166,7 @@ void create_instance(struct instance* inst, char *lib_name) {
 	applog(LOG_DEBUG, "DEBUG: '%s' Loaded", file_name);
 #else
 	sprintf(file_name, "./work/%s.so", lib_name);
-	inst->hndl = dlopen(file_name, RTLD_GLOBAL  |  RTLD_NOW);
+	inst->hndl = dlopen(file_name, RTLD_GLOBAL | RTLD_NOW);
 	if (!inst->hndl) {
 		fprintf(stderr, "%sn", dlerror());
 		exit(EXIT_FAILURE);
