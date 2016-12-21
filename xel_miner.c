@@ -83,7 +83,7 @@ uint32_t g_pow_target[4];
 
 __thread _ALIGN(64) int32_t *vm_m = NULL;
 __thread _ALIGN(64) float *vm_f = NULL;
-__thread unsigned char **vm_b = NULL;
+__thread mpz_t *vm_b = NULL;
 __thread uint32_t *vm_state = NULL;
 __thread vm_stack_item *vm_stack = NULL;
 __thread int vm_stack_idx;
@@ -514,15 +514,20 @@ static void *test_vm_thread(void *userdata) {
 	struct instance *inst = NULL;
 	int i, rc;
 
+	if (opt_opencl) {
+		applog(LOG_ERR, "ERROR:  --test-vm option cannot be used with OpenCL");
+		exit(EXIT_FAILURE);
+	}
+
 	// Initialize Global Variables
 	vm_state = calloc(4, sizeof(uint32_t));
 	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
 	vm_stack_idx = -1;
 	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
-	vm_f = calloc(100, sizeof(float));
-	vm_b = (unsigned char **)calloc(100, sizeof(unsigned char *));
+	vm_f = calloc(1000, sizeof(float));
+	vm_b = (mpz_t *)malloc(100 * sizeof(mpz_t));
 	for (i = 0; i < 100; i++)
-		vm_b[i] = (unsigned char *)calloc(32, sizeof(unsigned char));
+		mpz_init2(vm_b[i], 256);
 
 	if (!vm_m || !vm_f || !vm_b || !vm_stack) {
 		applog(LOG_ERR, "%s: Unable to allocate VM memory", mythr->name);
@@ -577,7 +582,26 @@ static void *test_vm_thread(void *userdata) {
 	for (i = 0; i < 4; i++)
 		applog(LOG_DEBUG, "DEBUG: vm_state[%d]: %11d, Hex: %08X", i, vm_state[i], vm_state[i]);
 
+	// Dump Non-Zero VM Values
+	printf("\n\t   VM Integers:\n");
+	for (i = 0; i < VM_MEMORY_SIZE; i++) {
+		if (vm_m[i])
+			printf("\t\t  vm_m[%d] = %d\n", i, vm_m[i]);
+	}
+	printf("\n\t   VM Floats:\n");
+	for (i = 0; i < 1000; i++) {
+		if (vm_f[i])
+			printf("\t\t  vm_f[%d] = %f\n", i, vm_f[i]);
+	}
+	printf("\n\t  VM Big Ints:\n");
+	for (i = 0; i < 100; i++) {
+		if (vm_b[i]->_mp_size)
+			gmp_printf("\t\t  vm_b[%d] = %Zd\n", i, vm_b[i]);
+	}
+	printf("\n");
+
 	applog(LOG_NOTICE, "DEBUG: Compiler Test Complete");
+	applog(LOG_WARNING, "Exiting " PACKAGE_NAME);
 
 	free(vm_m);
 	free(vm_f);
@@ -1266,9 +1290,9 @@ static void *cpu_miner_thread(void *userdata) {
 	vm_stack_idx = -1;
 	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
 	vm_f = calloc(1000, sizeof(float));
-	vm_b = (unsigned char **)calloc(100, sizeof(unsigned char *));
+	vm_b = (mpz_t *)malloc(100 * sizeof(mpz_t));
 	for (i = 0; i < 100; i++)
-		vm_b[i] = (unsigned char *)calloc(32, sizeof(unsigned char));
+		mpz_init2(vm_b[i], 256);
 
 	if (!vm_m || !vm_f || !vm_b || !vm_state || !vm_stack) {
 		applog(LOG_ERR, "CPU%d: Unable to allocate VM memory", thr_id);
