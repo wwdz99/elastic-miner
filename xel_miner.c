@@ -14,6 +14,7 @@
 #define _GNU_SOURCE
 
 #include <curl/curl.h>
+#include <ctype.h>
 #include <getopt.h>
 #include <jansson.h>
 #include <math.h>
