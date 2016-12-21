@@ -514,12 +514,17 @@ static void *test_vm_thread(void *userdata) {
 	struct instance *inst = NULL;
 	int i, rc;
 
+	if (opt_opencl) {
+		applog(LOG_ERR, "ERROR:  --test-vm option cannot be used with OpenCL");
+		exit(EXIT_FAILURE);
+	}
+
 	// Initialize Global Variables
 	vm_state = calloc(4, sizeof(uint32_t));
 	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
 	vm_stack_idx = -1;
 	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
-	vm_f = calloc(100, sizeof(float));
+	vm_f = calloc(1000, sizeof(float));
 	vm_b = (mpz_t *)malloc(100 * sizeof(mpz_t));
 	for (i = 0; i < 100; i++)
 		mpz_init2(vm_b[i], 256);
@@ -577,12 +582,26 @@ static void *test_vm_thread(void *userdata) {
 	for (i = 0; i < 4; i++)
 		applog(LOG_DEBUG, "DEBUG: vm_state[%d]: %11d, Hex: %08X", i, vm_state[i], vm_state[i]);
 
-	applog(LOG_NOTICE, "DEBUG: Compiler Test Complete");
+	// Dump Non-Zero VM Values
+	printf("\n\t   VM Integers:\n");
+	for (i = 0; i < VM_MEMORY_SIZE; i++) {
+		if (vm_m[i])
+			printf("\t\t  vm_m[%d] = %d\n", i, vm_m[i]);
+	}
+	printf("\n\t   VM Floats:\n");
+	for (i = 0; i < 1000; i++) {
+		if (vm_f[i])
+			printf("\t\t  vm_f[%d] = %f\n", i, vm_f[i]);
+	}
+	printf("\n\t  VM Big Ints:\n");
+	for (i = 0; i < 100; i++) {
+		if (vm_b[i]->_mp_size)
+			gmp_printf("\t\t  vm_b[%d] = %Zd\n", i, vm_b[i]);
+	}
+	printf("\n");
 
-	gmp_printf("vm_b[0] mpz %Zd\n", vm_b[0]);
-	gmp_printf("vm_b[1] mpz %Zd\n", vm_b[1]);
-	gmp_printf("vm_b[2] mpz %Zd\n", vm_b[2]);
-	gmp_printf("vm_b[3] mpz %Zd\n", vm_b[3]);
+	applog(LOG_NOTICE, "DEBUG: Compiler Test Complete");
+	applog(LOG_WARNING, "Exiting " PACKAGE_NAME);
 
 	free(vm_m);
 	free(vm_f);
