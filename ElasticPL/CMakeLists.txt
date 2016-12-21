@@ -2,8 +2,6 @@ cmake_minimum_required (VERSION 2.8)
 set(CMAKE_BUILD_TYPE Debug)
 project(xel_miner)
 
-message(STATUS "CMAKE - xel_miner")
-
 FIND_PACKAGE(PackageHandleStandardArgs)
 
 SET (OPENCL_VERSION_STRING "0.1.0")
@@ -103,7 +101,7 @@ ELSE (APPLE)
   		)
 
 		IF(_OPENCL_64_COMPILE_SUCCESS)
-			message(STATUS "  OpenCL 64bit lib found.")
+			message(STATUS "OpenCL 64bit lib found.")
 			SET(OPENCL_LIBRARIES ${_OPENCL_64_LIBRARIES})
   		ELSE()
 	  		TRY_COMPILE(_OPENCL_32_COMPILE_SUCCESS ${CMAKE_BINARY_DIR} "${_OPENCL_VERSION_SOURCE}"
@@ -113,10 +111,10 @@ ELSE (APPLE)
 				"-DLINK_LIBRARIES:STRING=${_OPENCL_32_LIBRARIES}"
 	  		)
 			IF(_OPENCL_32_COMPILE_SUCCESS)
-				message(STATUS "  OpenCL 32bit lib found.")
+				message(STATUS "OpenCL 32bit lib found.")
 				SET(OPENCL_LIBRARIES ${_OPENCL_32_LIBRARIES})
 			ELSE()
-				message(STATUS "  Couldn't link opencl..")
+				message(STATUS "Couldn't link opencl..")
 			ENDIF()
 		ENDIF()
 
@@ -159,10 +157,10 @@ MARK_AS_ADVANCED(
   OPENCL_INCLUDE_DIRS
 )
 
-message(STATUS "  OpenCL found: ${OPENCL_FOUND}")
-message(STATUS "  OpenCL includes: ${OPENCL_INCLUDE_DIRS}")
-message(STATUS "  OpenCL CXX includes: ${OPENCL_HAS_CPP_BINDINGS}")
-message(STATUS "  OpenCL libraries: ${OPENCL_LIBRARIES}")
+message(STATUS "OpenCL found: ${OPENCL_FOUND}")
+message(STATUS "OpenCL includes: ${OPENCL_INCLUDE_DIRS}")
+message(STATUS "OpenCL CXX includes: ${OPENCL_HAS_CPP_BINDINGS}")
+message(STATUS "OpenCL libraries: ${OPENCL_LIBRARIES}")
 
 # Confirm CURL Has Been Installed
 find_path( CURL_INCLUDE_DIR curl/curl.h  PATHS ${PC_CURL_INCLUDEDIR} ${PC_CURL_INCLUDE_DIRS} PATH_SUFFIXES include )
@@ -176,28 +174,10 @@ ELSE (CURL_INCLUDE_DIR AND CURL_LIBRARIES)
 ENDIF (CURL_INCLUDE_DIR AND CURL_LIBRARIES)
 
 IF (CURL_FOUND)
-	message(STATUS "  CURL:   Found")
+	message(STATUS "CURL: Found")
 ELSE (CURL_FOUND)
-	message(STATUS "  CURL:   Not Found!")
+	message(STATUS "CURL: Not Found!")
 ENDIF (CURL_FOUND)
-
-# Confirm CRYPTO Has Been Installed
-find_library(CRYPTO_LIB libcrypto.a REQUIRED)
-
-IF (CRYPTO_LIB)
-	message(STATUS "  Crypto: Found")
-ELSE (CRYPTO_LIB)
-	message(STATUS "  Crypto: Not Found!")
-ENDIF (CRYPTO_LIB)
-
-# Confirm SSL Has Been Installed
-find_library(SSL_LIBRARY libssl.a REQUIRED)
-
-IF (SSL_LIBRARY)
-	message(STATUS "  SSL:    Found")
-ELSE (SSL_LIBRARY)
-	message(STATUS "  SSL:    Not Found!")
-ENDIF (SSL_LIBRARY)
 
 # Confirm GMP Has Been Installed
 find_path( GMP_INCLUDE_DIR gmp.h  PATHS ENV PATH_SUFFIXES include )
@@ -210,9 +190,9 @@ ELSE (GMP_INCLUDE_DIR AND GMP_LIBRARIES)
 ENDIF (GMP_INCLUDE_DIR AND GMP_LIBRARIES)
 
 IF (GMP_FOUND)
-	message(STATUS "  GMP:    Found")
+	message(STATUS "GMP: Found")
 ELSE (GMP_FOUND)
-	message(STATUS "  GMP:    Not Found")
+	message(STATUS "GMP: Not Found!")
 ENDIF (GMP_FOUND)
 
 add_subdirectory(compat/jansson)

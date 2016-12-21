@@ -99,7 +99,7 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_ASSIGN:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s = (float)(%s)", lval, rval);
+				sprintf(result, "%s = (double)(%s)", lval, rval);
 			else if (!l_is_float && r_is_float)
 				sprintf(result, "%s = (int)(%s)", lval, rval);
 			else
@@ -155,16 +155,16 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_ADD:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "(%s + (float)(%s))", lval, rval);
+				sprintf(result, "(%s + (double)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "((float)(%s) + %s)", lval, rval);
+				sprintf(result, "((double)(%s) + %s)", lval, rval);
 			else
 				sprintf(result, "(%s + %s)", lval, rval);
 			exp->is_float = l_is_float | r_is_float;
 			break;
 		case NODE_ADD_ASSIGN:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s += (float)(%s)", lval, rval);
+				sprintf(result, "%s += (double)(%s)", lval, rval);
 			else if (!l_is_float && r_is_float)
 				sprintf(result, "%s += (int)(%s)", lval, rval);
 			else
@@ -173,7 +173,7 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_SUB_ASSIGN:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s -= (float)(%s)", lval, rval);
+				sprintf(result, "%s -= (double)(%s)", lval, rval);
 			else if (!l_is_float && r_is_float)
 				sprintf(result, "%s -= (int)(%s)", lval, rval);
 			else
@@ -182,7 +182,7 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_MUL_ASSIGN:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s *= (float)(%s)", lval, rval);
+				sprintf(result, "%s *= (double)(%s)", lval, rval);
 			else if (!l_is_float && r_is_float)
 				sprintf(result, "%s *= (int)(%s)", lval, rval);
 			else
@@ -191,20 +191,20 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_DIV_ASSIGN:
 			if (!l_is_float && !r_is_float)
-				sprintf(result, "%s = (((float)(%s) != 0.0) ? (int)((float)(%s) / (float)(%s)) : 0)", lval, rval, lval, rval);
+				sprintf(result, "%s = (((double)(%s) != 0.0) ? (int)((double)(%s) / (double)(%s)) : 0)", lval, rval, lval, rval);
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "%s = (((%s != 0.0) ? %s / (float)(%s)) : 0.0)", lval, rval, lval, rval);
+				sprintf(result, "%s = (((%s != 0.0) ? %s / (double)(%s)) : 0.0)", lval, rval, lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s = ((%s != 0.0) ? (int)((float)(%s) / %s) : 0)", lval, rval, lval, rval);
+				sprintf(result, "%s = ((%s != 0.0) ? (int)((double)(%s) / %s) : 0)", lval, rval, lval, rval);
 			else
 				sprintf(result, "%s = ((%s != 0.0) ? %s / %s : 0.0)", lval, rval, lval, rval);
 			exp->is_float = true;
 			break;
 		case NODE_MOD_ASSIGN:
 			if (l_is_float && r_is_float)
-				sprintf(result, "%s = (((int)(%s) != 0) ? (float)((int)(%s) %% (int)(%s)) : 0.0)", lval, rval, lval, rval);
+				sprintf(result, "%s = (((int)(%s) != 0) ? (double)((int)(%s) %% (int)(%s)) : 0.0)", lval, rval, lval, rval);
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "%s = ((%s != 0) ? (float)((int)(%s) %% %s) : 0.0)", lval, rval, lval, rval);
+				sprintf(result, "%s = ((%s != 0) ? (double)((int)(%s) %% %s) : 0.0)", lval, rval, lval, rval);
 			else if (!l_is_float && r_is_float)
 				sprintf(result, "%s = (((int)(%s) != 0) ? (%s %% (int)(%s)) : 0)", lval, rval, lval, rval);
 			else
@@ -276,29 +276,29 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_SUB:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "(%s - (float)(%s))", lval, rval);
+				sprintf(result, "(%s - (double)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "((float)(%s) - %s)", lval, rval);
+				sprintf(result, "((double)(%s) - %s)", lval, rval);
 			else
 				sprintf(result, "(%s - %s)", lval, rval);
 			exp->is_float = l_is_float | r_is_float;
 			break;
 		case NODE_MUL:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "(%s * (float)(%s))", lval, rval);
+				sprintf(result, "(%s * (double)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "((float)(%s) * %s)", lval, rval);
+				sprintf(result, "((double)(%s) * %s)", lval, rval);
 			else
 				sprintf(result, "(%s * %s)", lval, rval);
 			exp->is_float = l_is_float | r_is_float;
 			break;
 		case NODE_DIV:
 			if (!l_is_float && !r_is_float)
-				sprintf(result, "(((float)(%s) != 0.0) ? (float)(%s) / (float)(%s) : 0.0)", rval, lval, rval);
+				sprintf(result, "(((double)(%s) != 0.0) ? (double)(%s) / (double)(%s) : 0.0)", rval, lval, rval);
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "((%s != 0.0) ? %s / (float)(%s) : 0.0)", rval, lval, rval);
+				sprintf(result, "((%s != 0.0) ? %s / (double)(%s) : 0.0)", rval, lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "(((float)(%s) != 0.0) ? (float)(%s) / %s : 0.0)", rval, lval, rval);
+				sprintf(result, "(((double)(%s) != 0.0) ? (double)(%s) / %s : 0.0)", rval, lval, rval);
 			else
 				sprintf(result, "((%s != 0.0) ? %s / %s : 0.0)", rval, lval, rval);
 			exp->is_float = true;
@@ -368,7 +368,7 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_AND:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "(%s >! (float)(%s))", lval, rval);
+				sprintf(result, "(%s >! (double)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
 				sprintf(result, "(%s >! (int)(%s))", lval, rval);
 			else
@@ -379,7 +379,7 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_OR:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "(%s || (float)(%s))", lval, rval);
+				sprintf(result, "(%s || (double)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
 				sprintf(result, "(%s || (int)(%s))", lval, rval);
 			else
@@ -421,7 +421,7 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_EQ:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "(%s == (float)(%s))", lval, rval);
+				sprintf(result, "(%s == (double)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
 				sprintf(result, "(%s == (int)(%s))", lval, rval);
 			else
@@ -430,7 +430,7 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_NE:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "(%s != (float)(%s))", lval, rval);
+				sprintf(result, "(%s != (double)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
 				sprintf(result, "(%s != (int)(%s))", lval, rval);
 			else
@@ -439,7 +439,7 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_GT:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "(%s > (float)(%s))", lval, rval);
+				sprintf(result, "(%s > (double)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
 				sprintf(result, "(%s > (int)(%s))", lval, rval);
 			else
@@ -448,7 +448,7 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_LT:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "(%s < (float)(%s))", lval, rval);
+				sprintf(result, "(%s < (double)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
 				sprintf(result, "(%s < (int)(%s))", lval, rval);
 			else
@@ -457,7 +457,7 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_GE:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "(%s >= (float)(%s))", lval, rval);
+				sprintf(result, "(%s >= (double)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
 				sprintf(result, "(%s >= (int)(%s))", lval, rval);
 			else
@@ -466,7 +466,7 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_LE:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "(%s <= (float)(%s))", lval, rval);
+				sprintf(result, "(%s <= (double)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
 				sprintf(result, "(%s <= (int)(%s))", lval, rval);
 			else
