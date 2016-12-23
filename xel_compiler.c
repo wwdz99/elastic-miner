@@ -32,6 +32,7 @@ bool create_c_source() {
 	fprintf(f, "#include <stdlib.h>\n");
 	fprintf(f, "#include <limits.h>\n");
 	fprintf(f, "#include <time.h>\n");
+	fprintf(f, "#include <gmp.h>\n");
 	if (use_elasticpl_math)
 		fprintf(f, "#include <math.h>\n");
 	if (use_elasticpl_crypto || use_elasticpl_bigint)
@@ -39,25 +40,29 @@ bool create_c_source() {
 	fprintf(f, "\n");
 #ifdef _MSC_VER
 	fprintf(f, "__declspec(thread) int32_t *m = NULL;\n");
-	fprintf(f, "__declspec(thread) float *f = NULL;\n");
+	fprintf(f, "__declspec(thread) double *f = NULL;\n");
 	fprintf(f, "__declspec(thread) mpz_t *b = NULL;\n");
 	fprintf(f, "__declspec(thread) uint32_t *state = NULL;\n\n");
 #else
 	fprintf(f, "__thread int32_t *m = NULL;\n");
-	fprintf(f, "__thread float *f = NULL;\n");
+	fprintf(f, "__thread double *f = NULL;\n");
 	fprintf(f, "__thread mpz_t *b = NULL;\n");
 	fprintf(f, "__thread uint32_t *state = NULL;\n\n");
 #endif
+
 	fprintf(f, "static const unsigned int mask32 = (CHAR_BIT*sizeof(uint32_t)-1);\n\n");
+
 	fprintf(f, "static uint32_t rotl32 (uint32_t x, unsigned int n) {\n");
 	fprintf(f, "\tn &= mask32;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers\n");
 	fprintf(f, "\treturn (x<<n) | (x>>( (-n)&mask32 ));\n");
 	fprintf(f, "}\n\n");
+
 	fprintf(f, "static uint32_t rotr32 (uint32_t x, unsigned int n) {\n");
 	fprintf(f, "\tn &= mask32;  // avoid undef behaviour with NDEBUG.  0 overhead for most types / compilers\n");
 	fprintf(f, "\treturn (x>>n) | (x<<( (-n)&mask32 ));\n");
 	fprintf(f, "}\n\n");
-	fprintf(f, "static int mangle(int x) {\n");
+
+	fprintf(f, "static int mangle_state(int x) {\n");
 	fprintf(f, "\tint mod = x %% 32;\n");
 	fprintf(f, "\tint leaf = mod %% 4;\n");
 	fprintf(f, "\tif (leaf == 0) {\n");
@@ -78,10 +83,24 @@ bool create_c_source() {
 	fprintf(f, "\t}\n");
 	fprintf(f, "\treturn x;\n");
 	fprintf(f, "}\n\n");
+
+	fprintf(f, "static void mangle(int index, bool is_float) {\n");
+	fprintf(f, "\tif (is_float) {\n");
+	fprintf(f, "\t\tuint32_t *f_val = (uint32_t *)(&f[index]);\n");
+	fprintf(f, "\t\tuint32_t val = f_val[0] ^ f_val[1];\n");
+	fprintf(f, "\t\tmangle_state(index);\n");
+	fprintf(f, "\t\tmangle_state(val);\n");
+	fprintf(f, "\t}\n");
+	fprintf(f, "\telse {\n");
+	fprintf(f, "\t\tmangle_state(index);\n");
+	fprintf(f, "\t\tmangle_state(m[index]);\n");
+	fprintf(f, "\t}\n");
+	fprintf(f, "}\n\n");
+
 #ifdef WIN32
-	fprintf(f, "__declspec(dllexport) void initialize(int32_t *vm_m, float *vm_f, mpz_t *vm_b, uint32_t *vm_state) {\n");
+	fprintf(f, "__declspec(dllexport) void initialize(int32_t *vm_m, double *vm_f, mpz_t *vm_b, uint32_t *vm_state) {\n");
 #else
-	fprintf(f, "void initialize(int32_t *vm_m, float *vm_f, mpz_t *vm_b, uint32_t *vm_state) {\n");
+	fprintf(f, "void initialize(int32_t *vm_m, double *vm_f, mpz_t *vm_b, uint32_t *vm_state) {\n");
 #endif
 	fprintf(f, "\tm = vm_m;\n");
 	fprintf(f, "\tf = vm_f;\n");
@@ -93,6 +112,7 @@ bool create_c_source() {
 #else
 	fprintf(f, "int execute() {\n");
 #endif
+	fprintf(f, "\tint index;\n");
 	fprintf(f, "\tint bounty_found;\n\n");
 	fprintf(f, "//The following code created by ElasticPL to C converter\n\n");
 	fprintf(f, "%s", &code[0]);
@@ -156,7 +176,7 @@ void create_instance(struct instance* inst, char *lib_name) {
 		fprintf(stderr, "Unable to load library: '%s' (Error - %d)", file_name, GetLastError());
 		exit(EXIT_FAILURE);
 	}
-	inst->initialize = (int(__cdecl *)(int32_t *, float *, mpz_t *, uint32_t *))GetProcAddress((HMODULE)inst->hndl, "initialize");
+	inst->initialize = (int(__cdecl *)(int32_t *, double *, mpz_t *, uint32_t *))GetProcAddress((HMODULE)inst->hndl, "initialize");
 	inst->execute = (int(__cdecl *)())GetProcAddress((HMODULE)inst->hndl, "execute");
 	if (!inst->initialize || !inst->execute) {
 		fprintf(stderr, "Unable to find library functions");
@@ -222,7 +242,8 @@ extern bool create_opencl_source(char *work_str) {
 	if (!f)
 		return false;
 
-	fprintf(f, "#pragma OPENCL EXTENSION cl_khr_byte_addressable_store : enable\n\n");
+	fprintf(f, "#pragma OPENCL EXTENSION cl_khr_byte_addressable_store : enable\n");
+	fprintf(f, "#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n\n");
 
 	fprintf(f, "/* The basic MD5 functions */\n");
 	fprintf(f, "#define F(x, y, z)          ((z) ^ ((x) & ((y) ^ (z))))\n");
@@ -391,7 +412,7 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "\treturn x;\n");
 	fprintf(f, "}\n\n");
 
-	fprintf(f, "__kernel void execute (global uint* restrict base_data, global int* restrict input_m, global float* restrict input_f, global uint* restrict output) {\n");
+	fprintf(f, "__kernel void execute (global uint* restrict base_data, global int* restrict input_m, global double* restrict input_f, global uint* restrict output) {\n");
 	fprintf(f, "\tint i, bounty_found;\n");
 	fprintf(f, "\tuint base_data_local[20];\n");
 	fprintf(f, "\tuint msg[16];\n");
@@ -403,7 +424,7 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "\tint q = get_global_id(1); // Index in the wavefront Dim2\n");
 	fprintf(f, "\tint idx = w + (q * get_global_size(0)); // Index in the 2D wavefront\n");
 	fprintf(f, "\tglobal int* m = &input_m[idx * 64000];\n");
-	fprintf(f, "\tglobal float* f = &input_f[idx * 1000];\n");
+	fprintf(f, "\tglobal double* f = &input_f[idx * 1000];\n");
 	fprintf(f, "\tglobal uint* out = &output[idx];\n\n");
 
 	fprintf(f, "\t// 96 Bytes of base_data is made up of:\n");

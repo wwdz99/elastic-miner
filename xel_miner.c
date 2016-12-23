@@ -82,7 +82,7 @@ unsigned char g_pow_target_str[33];
 uint32_t g_pow_target[4];
 
 __thread _ALIGN(64) int32_t *vm_m = NULL;
-__thread _ALIGN(64) float *vm_f = NULL;
+__thread _ALIGN(64) double *vm_f = NULL;
 __thread mpz_t *vm_b = NULL;
 __thread uint32_t *vm_state = NULL;
 __thread vm_stack_item *vm_stack = NULL;
@@ -524,7 +524,7 @@ static void *test_vm_thread(void *userdata) {
 	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
 	vm_stack_idx = -1;
 	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
-	vm_f = calloc(1000, sizeof(float));
+	vm_f = calloc(1000, sizeof(double));
 	vm_b = (mpz_t *)malloc(100 * sizeof(mpz_t));
 	for (i = 0; i < 100; i++)
 		mpz_init2(vm_b[i], 256);
@@ -1289,7 +1289,7 @@ static void *cpu_miner_thread(void *userdata) {
 	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
 	vm_stack_idx = -1;
 	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
-	vm_f = calloc(1000, sizeof(float));
+	vm_f = calloc(1000, sizeof(double));
 	vm_b = (mpz_t *)malloc(100 * sizeof(mpz_t));
 	for (i = 0; i < 100; i++)
 		mpz_init2(vm_b[i], 256);
@@ -2038,8 +2038,10 @@ int main(int argc, char **argv) {
 	// Initialize GPU Devices
 	if (opt_opencl) {
 		num_gpus = init_opencl_devices();
-		if (num_gpus == 0)
+		if (num_gpus == 0) {
+			applog(LOG_ERR, "ERROR: No OpenCL Devices that support 64bit Floating Point math found");
 			return 1;
+		}
 	}
 #else
 	if (opt_opencl) {

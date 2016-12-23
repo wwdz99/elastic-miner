@@ -108,7 +108,7 @@ extern int init_opencl_devices() {
 	cl_uint ret;
 	cl_uint platforms_n = 0;
 	cl_uint devices_n = 0;
-	char buffer[256];
+	char buffer[1024];
 	bool found;
 	int gpu_cnt = 0;
 
@@ -161,12 +161,21 @@ extern int init_opencl_devices() {
 				devices_n = 0;
 
 			for (j = 0; j < devices_n; j++) {
-				ret = clGetDeviceInfo(devices[j], CL_DEVICE_NAME, sizeof(buffer), buffer, NULL);
 
+				ret = clGetDeviceInfo(devices[j], CL_DEVICE_NAME, sizeof(buffer), buffer, NULL);
 				if (ret != CL_SUCCESS)
 					break;
 
 				applog(LOG_DEBUG, "    %d - %s", j, buffer);
+
+				ret = clGetDeviceInfo(devices[j], CL_DEVICE_EXTENSIONS, sizeof(buffer), buffer, NULL);
+				if (ret != CL_SUCCESS)
+					break;
+
+				if (!strstr(buffer, "cl_khr_fp64")) {
+					applog(LOG_DEBUG, "        *Device does not support 64bit Floating Point math");
+					break;
+				}
 
 				memcpy(&gpu[gpu_cnt].platform_id, &platforms[i], sizeof(cl_platform_id));
 				memcpy(&gpu[gpu_cnt].device_id, &devices[j], sizeof(cl_device_id));
@@ -240,8 +249,8 @@ extern bool calc_opencl_worksize(struct opencl_device *gpu) {
 	max_threads = (uint32_t)((uint32_t)((opt_opencl_gthreads ? opt_opencl_gthreads : 1024) / max_work_size) * max_work_size);
 
 	// Calculate Num Threads For This Device
-	// GLOB MEM NEEDED: 96 + (x * VM_MEMORY_SIZE * sizeof(int32_t)) + (x * VM_MEMORY_SIZE * sizeof(float)) + (x * sizeof(uint32_t))
-	double calc = ((double)global_mem - 96.0 - 650 * 1024 * 1024 /*Some 650 M space for who knows what*/) / (((double)VM_MEMORY_SIZE * sizeof(int32_t)) + (1000 * sizeof(float)) + sizeof(int32_t));
+	// GLOB MEM NEEDED: 96 + (x * VM_MEMORY_SIZE * sizeof(int32_t)) + (x * VM_MEMORY_SIZE * sizeof(double)) + (x * sizeof(uint32_t))
+	double calc = ((double)global_mem - 96.0 - 650 * 1024 * 1024 /*Some 650 M space for who knows what*/) / (((double)VM_MEMORY_SIZE * sizeof(int32_t)) + (1000 * sizeof(double)) + sizeof(int32_t));
 	size_t bound = (size_t)calc;
 
 	gpu->threads = (bound < max_threads) ? (int)bound : max_threads;
@@ -301,7 +310,7 @@ extern bool create_opencl_buffers(struct opencl_device *gpu) {
 		return false;
 	}
 
-	gpu->vm_f = clCreateBuffer(gpu->context, CL_MEM_WRITE_ONLY, gpu->threads * 1000 * sizeof(float), NULL, &ret);
+	gpu->vm_f = clCreateBuffer(gpu->context, CL_MEM_WRITE_ONLY, gpu->threads * 1000 * sizeof(double), NULL, &ret);
 
 	if (ret != CL_SUCCESS) {
 		applog(LOG_ERR, "ERROR: Unable to create OpenCL 'vm_f' buffer (Error: %d)", ret);
