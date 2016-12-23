@@ -51,7 +51,7 @@
 
 extern __thread _ALIGN(64) int32_t *vm_m;
 extern __thread _ALIGN(64) double *vm_f;
-extern __thread mpz_t *vm_b;
+extern __thread _ALIGN(64) uint32_t *vm_tmp;
 extern __thread vm_stack_item *vm_stack;
 extern __thread int vm_stack_idx;
 extern __thread uint32_t *vm_state;
@@ -183,11 +183,11 @@ struct instance {
 
 #ifdef WIN32
 	HINSTANCE hndl;
-	int(__cdecl* initialize)(int32_t *, double *, mpz_t *, uint32_t *);
+	int(__cdecl* initialize)(int32_t *, double *, uint32_t *, uint32_t *);
 	int(__cdecl* execute)();
 #else
 	void *hndl;
-	int(*initialize)(int32_t *, double *, mpz_t *, uint32_t *);
+	int(*initialize)(int32_t *, double *, uint32_t *, uint32_t *);
 	int(*execute)();
 #endif
 
