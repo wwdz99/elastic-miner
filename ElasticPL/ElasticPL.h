@@ -425,7 +425,7 @@ typedef struct AST {
 	NODE_TYPE type;
 	EXP_TYPE exp;
 	int32_t value;
-	float fvalue;
+	double fvalue;
 	unsigned char *svalue;
 	int token_num;
 	int line_num;
@@ -473,7 +473,7 @@ static ast* pop_exp();
 static void push_exp(ast* exp);
 static int pop_op();
 static void push_op(int token_id);
-static ast* add_exp(NODE_TYPE node_type, EXP_TYPE exp_type, int32_t value, float fvalue, unsigned char *svalue, int token_num, int line_num, DATA_TYPE data_type, ast* left, ast* right);
+static ast* add_exp(NODE_TYPE node_type, EXP_TYPE exp_type, int32_t value, double fvalue, unsigned char *svalue, int token_num, int line_num, DATA_TYPE data_type, ast* left, ast* right);
 extern char* get_node_str(NODE_TYPE node_type);
 extern void dump_vm_ast(ast* root);
 

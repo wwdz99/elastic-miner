@@ -13,7 +13,7 @@
 #include "ElasticPL.h"
 #include "../miner.h"
 
-static ast* add_exp(NODE_TYPE node_type, EXP_TYPE exp_type, int32_t value, float fvalue, unsigned char *svalue, int token_num, int line_num, DATA_TYPE data_type, ast* left, ast* right) {
+static ast* add_exp(NODE_TYPE node_type, EXP_TYPE exp_type, int32_t value, double fvalue, unsigned char *svalue, int token_num, int line_num, DATA_TYPE data_type, ast* left, ast* right) {
 	ast* e = calloc(1, sizeof(ast));
 	if (e) {
 		e->type = node_type;
@@ -399,13 +399,13 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 
 					//if (strlen(token->literal) <= 10) {
 						value = (long long)strtod(token->literal, NULL);
-						fvalue = (double)strtof(token->literal, NULL);
+						fvalue = (double)strtod(token->literal, NULL);
 //					}
 				}
 				else if (token->data_type == DT_FLOAT) {
 //					if (strlen(token->literal) <= 10) {
 						value = (long long)strtod(token->literal, NULL);
-						fvalue = (double)strtof(token->literal, NULL);
+						fvalue = (double)strtod(token->literal, NULL);
 //					}
 				}
 				else {
@@ -496,7 +496,7 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 		}
 	}
 
-	exp = add_exp(node_type, token->exp, (int32_t)value, (float)fvalue, svalue, token_num, token->line_num, token->data_type, left, right);
+	exp = add_exp(node_type, token->exp, (int32_t)value, fvalue, svalue, token_num, token->line_num, token->data_type, left, right);
 
 	if (exp)
 		push_exp(exp);
