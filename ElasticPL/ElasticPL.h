@@ -480,6 +480,7 @@ extern char* convert_ast_to_c();
 static char* convert(ast* exp);
 static char* get_index(char *lval);
 static char* append_strings(char * old, char * new);
+static char *replace(char* old, char* a, char* b);
 
 extern uint32_t calc_wcet();
 static uint32_t get_wcet(ast* exp);

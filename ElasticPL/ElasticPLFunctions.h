@@ -19,6 +19,11 @@
 #include <openssl/ec.h>
 #include <openssl/obj_mac.h>
 
+#define VM_TMP_MEMORY_SZ 4000
+
+#define MAX( a, b ) ( (a)>(b) ? (a) : (b) )
+#define MIN( a, b ) ( (a)<(b) ? (a) : (b) )
+
 extern void whirlpool_hash(const uint8_t *message, uint32_t len, uint8_t *hash);
 
 extern uint32_t epl_sha256(int idx, int len, int32_t *mem);

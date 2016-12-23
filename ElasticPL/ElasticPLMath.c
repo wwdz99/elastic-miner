@@ -97,9 +97,45 @@ extern void big_init_expr(int32_t *m, int len, int32_t a) {
 	m[len - 1] = a;
 }
 
-extern void big_add(int32_t *m1, int len1, int32_t *m2, int len2, int32_t *m3, int len3, uint32_t * tmp) {
-	;
+extern void big_add(int32_t *m1, int len1, int32_t *m2, int len2, int32_t *m3, int len3, uint32_t *tmp) {
+	int i, len;
+	uint64_t sum = 0;
+
+	printf("begin add...");
+	
+	len = MAX( len1, len2 );
+
+	// Reset Memory
+	for (i = 0; i < len1; i++)
+		m1[i] = 0;
+
+	// Check For Overflow
+	if (len > (VM_TMP_MEMORY_SZ - 1))
+		return;
+
+	printf("2...");
+
+	// Add m2[] + m3[]
+	for (i = 0; i < len; i++) {
+		sum += (uint64_t)(((i < len2) ? m2[len2 - i - 1] : 0) + ((i < len3) ? m3[len3 - i - 1] : 0));
+		tmp[i] = (uint32_t)sum;
+		sum >>= 32;	// VM Mem Uses 32 Bits
+	}
+
+	// Add Remainder
+	if (sum > 0)
+		tmp[len] = (uint32_t)sum;
+
+	// Copy Result To m1[] (Up To len1 Ints)
+	for (i = 0; i < len; i++) {
+		if (i >= len1)
+			break;
+		m1[len1 - i - 1] = tmp[i];
+	}
+	printf("end add...");
+
 }
+
 //extern void big_sub(mpz_t out, mpz_t a, mpz_t b) {
 //	;
 //}

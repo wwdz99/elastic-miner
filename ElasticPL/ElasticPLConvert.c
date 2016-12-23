@@ -632,7 +632,8 @@ static char* convert(ast* exp) {
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_ADD:
-			sprintf(result, "big_add( %s )", rval);
+			tmp = replace(rval, ", m[", ", &m[");
+			sprintf(result, "big_add( &%s, tmp )", tmp);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_SUB:
@@ -1066,4 +1067,27 @@ static char* append_strings(char * old, char * new) {
 	}
 
 	return out;
+}
+
+static char *replace(char* old, char* a, char* b) {
+	int idx = 0;
+	char *str = calloc(2, strlen(old));
+	char *ptr1, *ptr2;
+
+	ptr1 = old;
+	ptr2 = old;
+
+	while (ptr2) {
+		ptr2 = strstr(ptr1, a);
+		if (ptr2) {
+			strncpy(str + idx, ptr1, ptr2 - ptr1);
+			strcat(str, b);
+			ptr1 = ptr2 + strlen(a);
+			idx += strlen(str + idx);
+		}
+	}
+
+	strcat(str, ptr1);
+
+	return str;
 }
