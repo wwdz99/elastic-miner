@@ -2,7 +2,7 @@
 #define __MINER_H__
 
 #define PACKAGE_NAME "xel_miner"
-#define PACKAGE_VERSION "0.8"
+#define PACKAGE_VERSION "0.9"
 
 #define USER_AGENT PACKAGE_NAME "/" PACKAGE_VERSION
 #define MAX_CPUS 16
@@ -50,7 +50,7 @@
 #define VM_INPUTS 12
 
 extern __thread _ALIGN(64) int32_t *vm_m;
-extern __thread _ALIGN(64) float *vm_f;
+extern __thread _ALIGN(64) double *vm_f;
 extern __thread mpz_t *vm_b;
 extern __thread vm_stack_item *vm_stack;
 extern __thread int vm_stack_idx;
@@ -183,13 +183,11 @@ struct instance {
 
 #ifdef WIN32
 	HINSTANCE hndl;
-//	int(__cdecl* initialize)(int32_t *, float *, unsigned char **, uint32_t *);
-	int(__cdecl* initialize)(int32_t *, float *, mpz_t *, uint32_t *);
+	int(__cdecl* initialize)(int32_t *, double *, mpz_t *, uint32_t *);
 	int(__cdecl* execute)();
 #else
 	void *hndl;
-//	int(*initialize)(int32_t *, float *, unsigned char **, uint32_t *);
-	int(*initialize)(int32_t *, float *, mpz_t *, uint32_t *);
+	int(*initialize)(int32_t *, double *, mpz_t *, uint32_t *);
 	int(*execute)();
 #endif
 
