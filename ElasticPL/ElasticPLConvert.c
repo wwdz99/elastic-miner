@@ -17,8 +17,6 @@
 #include "ElasticPLFunctions.h"
 #include "../miner.h"
 
-#define RESULT_SZ 256
-
 char *tab[] = { "\t", "\t\t", "\t\t\t", "\t\t\t\t", "\t\t\t\t\t", "\t\t\t\t\t\t" };
 int tabs;
 
@@ -53,16 +51,15 @@ static char* get_index(char *lval) {
 	strcpy(index, &str[1]);
 	index[strlen(index) - 1] = 0;
 
-	free(lval);
 	return index;
 }
 
 // Use Post Order Traversal To Translate The Expressions In The AST to C
 static char* convert(ast* exp) {
-	char* lval = 0;
-	char* rval = 0;
-	char* tmp = 0;
-	char *result = 0;
+	char* lval = NULL;
+	char* rval = NULL;
+	char* tmp = NULL;
+	char *result = NULL;
 
 	bool l_is_float = false;
 	bool r_is_float = false;
@@ -83,7 +80,7 @@ static char* convert(ast* exp) {
 		}
 
 		// Check For If Statement As Right Side Is Conditional
-		if (exp->type != NODE_IF)
+		if ((exp->type != NODE_IF) && (exp->type != NODE_CONDITIONAL))
 			rval = convert(exp->right);
 
 		// Check If Leafs Are Float Or Int To Determine If Casting Is Needed
@@ -143,14 +140,14 @@ static char* convert(ast* exp) {
 		case NODE_IF:
 			if (exp->right->type != NODE_ELSE) {
 				rval = convert(exp->right);				// If Body (No Else Condition)
-				result = realloc(result, strlen(lval) + strlen(rval) + 256);
+				result = realloc(result, (lval ? strlen(lval) : 0) + (rval ? strlen(rval) : 0) + 256);
 				sprintf(result, "%sif( %s ) {\n%s%s%s}\n", tab[tabs - 1], lval, (rval[0] == '\t' ? "" : tab[tabs]), rval, tab[tabs - 1]);
 			}
 			else {
 				tmp = lval;
 				lval = convert(exp->right->left);		// If Body
 				rval = convert(exp->right->right);		// Else Body
-				result = realloc(result, strlen(lval) + strlen(rval) + 256);
+				result = realloc(result, (lval ? strlen(lval) : 0) + (rval ? strlen(rval) : 0) + 256);
 				sprintf(result, "%sif( %s ) {\n%s%s%s}\n%selse {\n%s%s%s}\n", tab[tabs - 1], tmp, (lval[0] == '\t' ? "" : tab[tabs]), lval, tab[tabs - 1], tab[tabs - 1], (rval[0] == '\t' ? "" : tab[tabs]), rval, tab[tabs - 1]);
 			}
 			if (tabs) tabs--;
@@ -159,6 +156,7 @@ static char* convert(ast* exp) {
 			tmp = lval;
 			lval = convert(exp->right->left);		// If Body
 			rval = convert(exp->right->right);		// Else Body
+			result = realloc(result, (lval ? strlen(lval) : 0) + (rval ? strlen(rval) : 0) + 256);
 			sprintf(result, "(( %s ) ? %s : %s)", tmp, lval, rval);
 			break;
 		case NODE_COND_ELSE:
@@ -1021,11 +1019,13 @@ static char* convert(ast* exp) {
 			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - Unsupported Operation (%d)\");\n", exp->type);
 		}
 
+		if (lval) free(lval);
+		if (rval) free(rval);
 		if (tmp) free(tmp);
 
 		// Terminate Statements
 		if (exp->end_stmnt) {
-			tmp = malloc(strlen(result) + 4);
+			tmp = malloc(strlen(result) + 20);
 			sprintf(tmp, "%s%s;\n", tab[tabs], result);
 			free(result);
 			result = tmp;
