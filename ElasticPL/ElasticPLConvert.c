@@ -17,9 +17,16 @@
 #include "ElasticPLFunctions.h"
 #include "../miner.h"
 
+#define RESULT_SZ 256
+
+char *tab[] = { "\t", "\t\t", "\t\t\t", "\t\t\t\t", "\t\t\t\t\t", "\t\t\t\t\t\t" };
+int tabs;
+
 extern char* convert_ast_to_c() {
 	char* ret = NULL;
 	int i;
+
+	tabs = 0;
 
 	use_elasticpl_crypto = false;
 	use_elasticpl_math = false;
@@ -35,19 +42,42 @@ extern char* convert_ast_to_c() {
 	return ret;
 }
 
+static char* get_index(char *lval) {
+	char *str, *index;
+
+	if (!lval)
+		return NULL;
+
+	index = malloc(strlen(lval));
+	str = strstr(lval, "[");
+	strcpy(index, &str[1]);
+	index[strlen(index) - 1] = 0;
+
+	free(lval);
+	return index;
+}
+
 // Use Post Order Traversal To Translate The Expressions In The AST to C
 static char* convert(ast* exp) {
 	char* lval = 0;
 	char* rval = 0;
 	char* tmp = 0;
-	char *result = malloc(sizeof(char) * 256);
-	result[0] = 0;
+	char *result = 0;
 
 	bool l_is_float = false;
 	bool r_is_float = false;
 
 	if (exp != NULL) {
 
+		// Determine Tab Indentations
+		if (exp->type == NODE_REPEAT) {
+			if (tabs < 4) tabs += 2;
+		}
+		else if (exp->type == NODE_IF) {
+			if (tabs < 5) tabs++;
+		}
+
+		// Process Left Side Statements
 		if (exp->left != NULL) {
 			lval = convert(exp->left);
 		}
@@ -61,6 +91,10 @@ static char* convert(ast* exp) {
 			l_is_float = (exp->left->is_float);
 		if (exp->right != NULL)
 			r_is_float = (exp->right->is_float);
+
+		// Allocate Memory For Results
+		result = malloc((lval ? strlen(lval) : 0) + (rval ? strlen(rval) : 0) + 256);
+		result[0] = 0;
 
 		switch (exp->type) {
 		case NODE_CONSTANT:
@@ -98,40 +132,41 @@ static char* convert(ast* exp) {
 				sprintf(result, "b[%s]", lval);
 			break;
 		case NODE_ASSIGN:
+			tmp = get_index(lval);
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s = (double)(%s)", lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] = (double)(%s);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s = (int)(%s)", lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] = (int)(%s);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else
-				sprintf(result, "%s = %s", lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] = %s;\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			break;
 		case NODE_IF:
 			if (exp->right->type != NODE_ELSE) {
 				rval = convert(exp->right);				// If Body (No Else Condition)
 				result = realloc(result, strlen(lval) + strlen(rval) + 256);
-				sprintf(result, "\tif( %s ) {\n\t%s\t}\n", lval, rval);
+				sprintf(result, "%sif( %s ) {\n%s%s%s}\n", tab[tabs - 1], lval, (rval[0] == '\t' ? "" : tab[tabs]), rval, tab[tabs - 1]);
 			}
 			else {
 				tmp = lval;
 				lval = convert(exp->right->left);		// If Body
 				rval = convert(exp->right->right);		// Else Body
 				result = realloc(result, strlen(lval) + strlen(rval) + 256);
-				sprintf(result, "\tif( %s ) {\n\t%s\t}\n\telse {\n\t%s\t}\n", tmp, lval, rval);
+				sprintf(result, "%sif( %s ) {\n%s%s%s}\n%selse {\n%s%s%s}\n", tab[tabs - 1], tmp, (lval[0] == '\t' ? "" : tab[tabs]), lval, tab[tabs - 1], tab[tabs - 1], (rval[0] == '\t' ? "" : tab[tabs]), rval, tab[tabs - 1]);
 			}
+			if (tabs) tabs--;
 			break;
 		case NODE_CONDITIONAL:
 			tmp = lval;
 			lval = convert(exp->right->left);		// If Body
 			rval = convert(exp->right->right);		// Else Body
-			result = realloc(result, strlen(lval) + strlen(rval) + 256);
 			sprintf(result, "(( %s ) ? %s : %s)", tmp, lval, rval);
 			break;
 		case NODE_COND_ELSE:
 		case NODE_ELSE:
 			break;
 		case NODE_REPEAT:
-			result = realloc(result, (2 * strlen(lval)) + strlen(rval) + 256);
-			sprintf(result, "\tif ( %s > 0 ) {\n\t\tint loop%d;\n\t\tfor (loop%d = 0; loop%d < ( %s ); loop%d++) {\n\t\t%s\t\t}\n\t}\n", lval, exp->token_num, exp->token_num, exp->token_num, lval, exp->token_num, rval);
+			sprintf(result, "%sif ( %s > 0 ) {\n%sint loop%d;\n%sfor (loop%d = 0; loop%d < ( %s ); loop%d++) {\n%s%s%s}\n%s}\n", tab[tabs - 2], lval, tab[tabs - 1], exp->token_num, tab[tabs - 1], exp->token_num, exp->token_num, lval, exp->token_num, "", rval, tab[tabs - 1], tab[tabs - 2]);
+			if (tabs > 1) tabs -= 2;
 			break;
 		case NODE_BREAK:
 			sprintf(result, "break");
@@ -140,10 +175,10 @@ static char* convert(ast* exp) {
 			sprintf(result, "continue");
 			break;
 		case NODE_BLOCK:
-			if (rval[0] == 0)
-				sprintf(result, "%s", lval);
+			if (lval[0] != '\t')
+				sprintf(result, "%s%s%s", tab[tabs], lval, (rval ? rval : ""));
 			else
-				sprintf(result, "%s\t%s", lval, rval);
+				sprintf(result, "%s%s", lval, (rval ? rval : ""));
 			break;
 		case NODE_INCREMENT_R:
 			sprintf(result, "++%s", lval);
@@ -163,108 +198,115 @@ static char* convert(ast* exp) {
 			exp->is_float = l_is_float | r_is_float;
 			break;
 		case NODE_ADD_ASSIGN:
+			tmp = get_index(lval);
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s += (double)(%s)", lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] += (double)(%s);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s += (int)(%s)", lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] += (int)(%s);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else
-				sprintf(result, "%s += %s", lval, rval);
-			exp->is_float = l_is_float;
+				sprintf(result, "index = %s;\n%s%s[index] += %s;\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			break;
 		case NODE_SUB_ASSIGN:
+			tmp = get_index(lval);
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s -= (double)(%s)", lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] -= (double)(%s);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s -= (int)(%s)", lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] -= (int)(%s);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else
-				sprintf(result, "%s -= %s", lval, rval);
-			exp->is_float = l_is_float;
+				sprintf(result, "index = %s;\n%s%s[index] -= %s;\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			break;
 		case NODE_MUL_ASSIGN:
+			tmp = get_index(lval);
 			if (l_is_float && !r_is_float)
-				sprintf(result, "%s *= (double)(%s)", lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] *= (double)(%s);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s *= (int)(%s)", lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] *= (int)(%s);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else
-				sprintf(result, "%s *= %s", lval, rval);
-			exp->is_float = l_is_float;
+				sprintf(result, "index = %s;\n%s%s[index] *= %s;\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			break;
 		case NODE_DIV_ASSIGN:
+			tmp = get_index(lval);
 			if (!l_is_float && !r_is_float)
-				sprintf(result, "%s = (((double)(%s) != 0.0) ? (int)((double)(%s) / (double)(%s)) : 0)", lval, rval, lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] = (((double)(%s) != 0.0) ? (int)((double)(%s[index]) / (double)(%s)) : 0);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), rval, (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "%s = (((%s != 0.0) ? %s / (double)(%s)) : 0.0)", lval, rval, lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] = (((double)(%s) != 0.0) ? %s[index] / (double)(%s) : 0.0);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), rval, (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s = ((%s != 0.0) ? (int)((double)(%s) / %s) : 0)", lval, rval, lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] = ((%s != 0.0) ? (int)((double)(%s[index]) / %s) : 0);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), rval, (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else
-				sprintf(result, "%s = ((%s != 0.0) ? %s / %s : 0.0)", lval, rval, lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] = ((%s != 0.0) ? %s[index] / %s : 0.0);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), rval, (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			exp->is_float = true;
 			break;
 		case NODE_MOD_ASSIGN:
-			if (l_is_float && r_is_float)
-				sprintf(result, "%s = (((int)(%s) != 0) ? (double)((int)(%s) %% (int)(%s)) : 0.0)", lval, rval, lval, rval);
+			tmp = get_index(lval);
+			if (!l_is_float && !r_is_float)
+				sprintf(result, "index = %s;\n%s%s[index] = ((%s != 0) ? %s[index] %% %s : 0);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), rval, (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "%s = ((%s != 0) ? (double)((int)(%s) %% %s) : 0.0)", lval, rval, lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] = ((%s != 0) ? (double)((int)(%s[index]) %% %s) : 0.0);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), rval, (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s = (((int)(%s) != 0) ? (%s %% (int)(%s)) : 0)", lval, rval, lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] = (((int)(%s) != 0) ? %s[index] %% (int)(%s) : 0);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), rval, (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else
-				sprintf(result, "%s = ((%s != 0) ? %s %% %s : 0.0)", lval, rval, lval, rval);
-			exp->is_float = false;
+				sprintf(result, "index = %s;\n%s%s[index] = (((int)(%s) != 0) ? (int)(%s[index]) %% (int)(%s) : 0.0);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), rval, (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
+			exp->is_float = true;
 			break;
 		case NODE_LSHFT_ASSIGN:
-			if (l_is_float && r_is_float)
-				sprintf(result, "(int)(%s) <<= (int)(%s)", lval, rval);
+			tmp = get_index(lval);
+			if (!l_is_float && !r_is_float)
+				sprintf(result, "index = %s;\n%s%s[index] = %s[index] << %s;\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "(int)(%s) <<= %s", lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] = (double)((int)(%s[index]) << %s);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s <<= (int)(%s)", lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] = %s[index] << (int)(%s);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else
-				sprintf(result, "%s <<= %s", lval, rval);
-			exp->is_float = false;
+				sprintf(result, "index = %s;\n%s%s[index] = (double)((int)(%s[index]) << (int)(%s));\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
+			exp->is_float = true;
 			break;
 		case NODE_RSHFT_ASSIGN:
-			if (l_is_float && r_is_float)
-				sprintf(result, "(int)(%s) >>= (int)(%s)", lval, rval);
+			tmp = get_index(lval);
+			if (!l_is_float && !r_is_float)
+				sprintf(result, "index = %s;\n%s%s[index] = %s[index] >> %s;\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "(int)(%s) >>= %s", lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] = (double)((int)(%s[index]) >> %s);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s >>= (int)(%s)", lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] = %s[index] >> (int)(%s);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else
-				sprintf(result, "%s >>= %s", lval, rval);
-			exp->is_float = false;
+				sprintf(result, "index = %s;\n%s%s[index] = (double)((int)(%s[index]) >> (int)(%s));\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
+			exp->is_float = true;
 			break;
 		case NODE_AND_ASSIGN:
-			if (l_is_float && r_is_float)
-				sprintf(result, "(int)(%s) &= (int)(%s)", lval, rval);
+			tmp = get_index(lval);
+			if (!l_is_float && !r_is_float)
+				sprintf(result, "index = %s;\n%s%s[index] = %s[index] & %s;\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "(int)(%s) &= %s", lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] = (double)((int)(%s[index]) & %s);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s &= (int)(%s)", lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] = %s[index] & (int)(%s);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else
-				sprintf(result, "%s &= %s", lval, rval);
-			exp->is_float = false;
+				sprintf(result, "index = %s;\n%s%s[index] = (double)((int)(%s[index]) & (int)(%s));\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
+			exp->is_float = true;
 			break;
 		case NODE_XOR_ASSIGN:
-			if (l_is_float && r_is_float)
-				sprintf(result, "(int)(%s) ^= (int)(%s)", lval, rval);
+			tmp = get_index(lval);
+			if (!l_is_float && !r_is_float)
+				sprintf(result, "index = %s;\n%s%s[index] = %s[index] ^ %s;\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "(int)(%s) ^= %s", lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] = (double)((int)(%s[index]) ^ %s);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s ^= (int)(%s)", lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] = %s[index] ^ (int)(%s);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else
-				sprintf(result, "%s ^= %s", lval, rval);
-			exp->is_float = false;
+				sprintf(result, "index = %s;\n%s%s[index] = (double)((int)(%s[index]) ^ (int)(%s));\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
+			exp->is_float = true;
 			break;
 		case NODE_OR_ASSIGN:
-			if (l_is_float && r_is_float)
-				sprintf(result, "(int)(%s) |= (int)(%s)", lval, rval);
+			tmp = get_index(lval);
+			if (!l_is_float && !r_is_float)
+				sprintf(result, "index = %s;\n%s%s[index] = %s[index] | %s;\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else if (l_is_float && !r_is_float)
-				sprintf(result, "(int)(%s) |= %s", lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] = (double)((int)(%s[index]) | %s);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "%s |= (int)(%s)", lval, rval);
+				sprintf(result, "index = %s;\n%s%s[index] = %s[index] | (int)(%s);\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			else
-				sprintf(result, "%s |= %s", lval, rval);
-			exp->is_float = false;
+				sprintf(result, "index = %s;\n%s%s[index] = (double)((int)(%s[index]) | (int)(%s));\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
+			exp->is_float = true;
 			break;
 		case NODE_DECREMENT_R:
 			sprintf(result, "--%s", lval);
@@ -368,14 +410,12 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_AND:
 			if (l_is_float && !r_is_float)
-				sprintf(result, "(%s >! (double)(%s))", lval, rval);
+				sprintf(result, "(%s && (double)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "(%s >! (int)(%s))", lval, rval);
+				sprintf(result, "(%s && (int)(%s))", lval, rval);
 			else
-				sprintf(result, "(%s >! %s)", lval, rval);
+				sprintf(result, "(%s && %s)", lval, rval);
 			exp->is_float = false;
-			//			sprintf(result, "%s >! %s", lval, rval);		// Required To Match Java Results
-			//			sprintf(result, "%s && %s", lval, rval);
 			break;
 		case NODE_OR:
 			if (l_is_float && !r_is_float)
@@ -481,10 +521,10 @@ static char* convert(ast* exp) {
 			sprintf(result, "\n\tbounty_found = (%s != 0 ? 1 : 0)", lval);
 			break;
 		case NODE_PARAM:
-			if (rval[0] == 0)
-				sprintf(result, "%s", lval);
-			else
+			if (rval)
 				sprintf(result, "%s, %s", lval, rval);
+			else
+				sprintf(result, "%s", lval);
 			break;
 		case NODE_SIN:
 			sprintf(result, "sin( %s )", rval);
@@ -981,19 +1021,15 @@ static char* convert(ast* exp) {
 			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - Unsupported Operation (%d)\");\n", exp->type);
 		}
 
-//		int xx = strlen(result);
+		if (tmp) free(tmp);
 
 		// Terminate Statements
 		if (exp->end_stmnt) {
 			tmp = malloc(strlen(result) + 4);
-			sprintf(tmp, "\t%s;\n", result);
+			sprintf(tmp, "%s%s;\n", tab[tabs], result);
 			free(result);
 			result = tmp;
 		}
-			
-//			sprintf(result, "\t %s; \n", result);
-
-//		xx = strlen(result);
 	}
 
 	return result;
@@ -1026,10 +1062,14 @@ static char* append_strings(char * old, char * new) {
 	}
 
 	// Free here
-	if (old != NULL)
+	if (old != NULL) {
 		free(old);
-	if (new != NULL)
+		old = NULL;
+	}
+	if (new != NULL) {
 		free(new);
+		new = NULL;
+	}
 
 	return out;
 }
