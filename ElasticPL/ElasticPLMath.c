@@ -12,8 +12,40 @@
 #include <stdint.h>
 #include <string.h>
 #include <stdio.h>
-#include <gmp.h>
 #include "ElasticPLFunctions.h"
+
+static bool hex2bin(uint32_t *p, int array_sz, const char *hex, int len) {
+	int i, j, idx;
+	unsigned char val;
+	unsigned char *c = (unsigned char*)p;
+	char hex_char[3];
+	char *ep;
+
+	if (array_sz <= 0 || len <= 0 || len > (8 * array_sz)) {
+		return false;
+	}
+
+	hex_char[2] = '\0';
+	idx = len - 1;
+
+	for (i = array_sz - 1; i >= 0; i--) {
+		for (j = 0; j < 4; j++) {
+			val = 0;
+			if (idx == 0) {
+				hex_char[1] = hex[idx--];
+				hex_char[0] = '0';
+				val = (unsigned char)strtol(hex_char, &ep, 16);
+			}
+			else if (idx > 0) {
+				hex_char[1] = hex[idx--];
+				hex_char[0] = hex[idx--];
+				val = (unsigned char)strtol(hex_char, &ep, 16);
+			}
+			c[(i * 4) + j] = val;
+		}
+	}
+	return true;
+}
 
 extern int32_t gcd(int32_t a, int32_t b) {
 	if (a < 0) a = -a;
@@ -26,112 +58,129 @@ extern int32_t gcd(int32_t a, int32_t b) {
 	return a;
 }
 
-extern void big_init_const(mpz_t out, unsigned char* str) {
+extern void big_init_const(int32_t *m, int len, unsigned char* str) {
+	int i;
+	uint32_t *val = malloc(len * sizeof(uint32_t));
+
+	// Reset Memory
+	for (i = 0; i < len; i++)
+		m[i] = 0;
 
 	if (!str)
 		return;
 
+	int x = strlen(str);
+
+	// Check For Hex - If Found, Convert To Decimal String
 	if (str[0] == '0' && str[1] == 'x' && strlen(str) > 2 && strlen(str) <= 66) {
-		mpz_init_set_str(out, str + 2, 16);
+		hex2bin(val, len, str + 2, strlen(str) - 2);
 	}
-	else if (str[0] == '0' && str[1] == 'b' && strlen(str) > 2 && strlen(str) <= 66) {
-		mpz_init_set_str(out, str + 2, 2);
+	else if (strlen(str) <= 10) {
+		for (i = 0; i < len; i++)
+			val[i] = (str[0] == '-') ? 0xFFFFFFFF : 0;
+		val[len-1] = (uint32_t)strtod(&str[0], NULL);
 	}
-	else {
-		mpz_init_set_str(out, str, 10);
-	}
+
+	for (i = 0; i < len; i++)
+		m[i] = val[i];
+
+	free(val);
 }
 
-extern void big_init_expr(mpz_t out, int32_t a) {
-	char str[15];
-	sprintf(str, "%d", a);
-	mpz_init_set_str(out, str, 10);
+extern void big_init_expr(int32_t *m, int len, int32_t a) {
+	int i;
+
+	// Reset Memory
+	for (i = 0; i < len; i++)
+		m[i] = 0;
+
+	m[len - 1] = a;
 }
 
-extern void big_add(mpz_t out, mpz_t a, mpz_t b) {
-	mpz_add(out, a, b);
-}
-extern void big_sub(mpz_t out, mpz_t a, mpz_t b) {
+extern void big_add(int32_t *m1, int len1, int32_t *m2, int len2, int32_t *m3, int len3, uint32_t * tmp) {
 	;
 }
-extern void big_mul(mpz_t out, mpz_t a, mpz_t b) {
-	;
-}
-extern void big_div(mpz_t out, mpz_t a, mpz_t b) {
-	;
-}
-extern void big_ceil_div(mpz_t out, mpz_t a, mpz_t b) {
-	;
-}
-extern void big_floor_div(mpz_t out, mpz_t a, mpz_t b) {
-	;
-}
-extern void big_truncate_div(mpz_t out, mpz_t a, mpz_t b) {
-	;
-}
-extern void big_div_exact(mpz_t out, mpz_t a, mpz_t b) {
-	;
-}
-extern void big_mod(mpz_t out, mpz_t a, mpz_t b) {
-	;
-}
-extern void big_neg(mpz_t out, mpz_t a, mpz_t b) {
-	;
-}
-extern void big_lshift(mpz_t out, mpz_t a, mpz_t b) {
-	;
-}
-extern void big_rshift(mpz_t out, mpz_t a, mpz_t b) {
-	;
-}
-extern void big_gcd(mpz_t out, mpz_t a, mpz_t b) {
-	;
-}
-extern int32_t big_divisible(mpz_t a, mpz_t b) {
-	return 0;
-}
-extern void big_congruent_mod_p(mpz_t a, mpz_t b, mpz_t p) {
-	;
-}
-extern void big_pow(mpz_t out, mpz_t a, uint32_t b) {
-	;
-}
-extern void big_pow2(mpz_t out, uint32_t b) {
-	;
-}
-extern void big_pow_mod_p(mpz_t out, mpz_t a, mpz_t b, mpz_t c) {
-	;
-}
-extern void big_pow2_mod_p(mpz_t out, mpz_t a, mpz_t b) {
-	;
-}
-extern int32_t big_compare(mpz_t a, mpz_t b) {
-	return 0;
-}
-extern int32_t big_compare_abs(mpz_t a, mpz_t b) {
-	return 0;
-}
-extern int32_t big_sign(mpz_t a) {
-	return 0;
-}
-extern void big_or(mpz_t out, mpz_t a, mpz_t b) {
-	;
-}
-extern void big_and(mpz_t out, mpz_t a, mpz_t b) {
-	;
-}
-extern void big_xor(mpz_t out, mpz_t a, mpz_t b) {
-	;
-}
-extern void big_or_integer(mpz_t out, mpz_t a, mpz_t b) {
-	;
-}
-extern void big_and_integer(mpz_t out, mpz_t a, mpz_t b) {
-	;
-}
-extern void big_xor_integer(mpz_t out, mpz_t a, mpz_t b) {
-	;
-}
-extern int32_t big_least_32bit(mpz_t a) {
-	return 0;
-}
+//extern void big_sub(mpz_t out, mpz_t a, mpz_t b) {
+//	;
+//}
+//extern void big_mul(mpz_t out, mpz_t a, mpz_t b) {
+//	;
+//}
+//extern void big_div(mpz_t out, mpz_t a, mpz_t b) {
+//	;
+//}
+//extern void big_ceil_div(mpz_t out, mpz_t a, mpz_t b) {
+//	;
+//}
+//extern void big_floor_div(mpz_t out, mpz_t a, mpz_t b) {
+//	;
+//}
+//extern void big_truncate_div(mpz_t out, mpz_t a, mpz_t b) {
+//	;
+//}
+//extern void big_div_exact(mpz_t out, mpz_t a, mpz_t b) {
+//	;
+//}
+//extern void big_mod(mpz_t out, mpz_t a, mpz_t b) {
+//	;
+//}
+//extern void big_neg(mpz_t out, mpz_t a, mpz_t b) {
+//	;
+//}
+//extern void big_lshift(mpz_t out, mpz_t a, mpz_t b) {
+//	;
+//}
+//extern void big_rshift(mpz_t out, mpz_t a, mpz_t b) {
+//	;
+//}
+//extern void big_gcd(mpz_t out, mpz_t a, mpz_t b) {
+//	;
+//}
+//extern int32_t big_divisible(mpz_t a, mpz_t b) {
+//	return 0;
+//}
+//extern void big_congruent_mod_p(mpz_t a, mpz_t b, mpz_t p) {
+//	;
+//}
+//extern void big_pow(mpz_t out, mpz_t a, uint32_t b) {
+//	;
+//}
+//extern void big_pow2(mpz_t out, uint32_t b) {
+//	;
+//}
+//extern void big_pow_mod_p(mpz_t out, mpz_t a, mpz_t b, mpz_t c) {
+//	;
+//}
+//extern void big_pow2_mod_p(mpz_t out, mpz_t a, mpz_t b) {
+//	;
+//}
+//extern int32_t big_compare(mpz_t a, mpz_t b) {
+//	return 0;
+//}
+//extern int32_t big_compare_abs(mpz_t a, mpz_t b) {
+//	return 0;
+//}
+//extern int32_t big_sign(mpz_t a) {
+//	return 0;
+//}
+//extern void big_or(mpz_t out, mpz_t a, mpz_t b) {
+//	;
+//}
+//extern void big_and(mpz_t out, mpz_t a, mpz_t b) {
+//	;
+//}
+//extern void big_xor(mpz_t out, mpz_t a, mpz_t b) {
+//	;
+//}
+//extern void big_or_integer(mpz_t out, mpz_t a, mpz_t b) {
+//	;
+//}
+//extern void big_and_integer(mpz_t out, mpz_t a, mpz_t b) {
+//	;
+//}
+//extern void big_xor_integer(mpz_t out, mpz_t a, mpz_t b) {
+//	;
+//}
+//extern int32_t big_least_32bit(mpz_t a) {
+//	return 0;
+//}

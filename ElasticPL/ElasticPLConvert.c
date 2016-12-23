@@ -104,29 +104,23 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_VAR_CONST:
 			if (exp->value < 0 || exp->value > VM_MEMORY_SIZE) {
-				if (exp->data_type == DT_INT)
-					sprintf(result, "m[0]");
-				else if (exp->data_type == DT_FLOAT)
+				if (exp->data_type == DT_FLOAT)
 					sprintf(result, "f[0]");
-				else if (exp->data_type == DT_BIGINT)
-					sprintf(result, "b[0]");
+				else
+					sprintf(result, "m[0]");
 			}
 			else {
-				if (exp->data_type == DT_INT)
-					sprintf(result, "m[%lu]", exp->value);
-				else if (exp->data_type == DT_FLOAT)
+				if (exp->data_type == DT_FLOAT)
 					sprintf(result, "f[%lu]", exp->value);
-				else if (exp->data_type == DT_BIGINT)
-					sprintf(result, "b[%lu]", exp->value);
+				else
+					sprintf(result, "m[%lu]", exp->value);
 			}
 			break;
 		case NODE_VAR_EXP:
-			if (exp->data_type == DT_INT)
-				sprintf(result, "m[%s]", lval);
-			else if (exp->data_type == DT_FLOAT)
+			if (exp->data_type == DT_FLOAT)
 				sprintf(result, "f[%s]", lval);
-			else if (exp->data_type == DT_BIGINT)
-				sprintf(result, "b[%s]", lval);
+			else
+				sprintf(result, "m[%s]", lval);
 			break;
 		case NODE_ASSIGN:
 			tmp = get_index(lval);
@@ -630,11 +624,11 @@ static char* convert(ast* exp) {
 			use_elasticpl_math = true;
 			break;
 		case NODE_BI_CONST:
-			sprintf(result, "big_init_const( %s )", rval);
+			sprintf(result, "big_init_const( &%s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_EXPR:
-			sprintf(result, "big_init_expr( %s )", rval);
+			sprintf(result, "big_init_expr( &%s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_ADD:
@@ -1072,27 +1066,4 @@ static char* append_strings(char * old, char * new) {
 	}
 
 	return out;
-}
-
-static char *replace(char* old, char* a, char* b) {
-	int idx = 0;
-	char *str = calloc(2, strlen(old));
-	char *ptr1, *ptr2;
-
-	ptr1 = old;
-	ptr2 = old;
-
-	while (ptr2) {
-		ptr2 = strstr(ptr1, a);
-		if (ptr2) {
-			strncpy(str + idx, ptr1, ptr2 - ptr1);
-			strcat(str, b);
-			ptr1 = ptr2 + strlen(a);
-			idx += strlen(str + idx);
-		}
-	}
-
-	strcat(str, ptr1);
-
-	return str;
 }

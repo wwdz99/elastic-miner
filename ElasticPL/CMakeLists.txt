@@ -22,15 +22,6 @@ ELSE (SSL_LIBRARY)
 	message(STATUS "  SSL:    Not Found!")
 ENDIF (SSL_LIBRARY)
 
-# Confirm GMP Has Been Installed
-find_library(GMP_LIBRARY libgmp.a REQUIRED)
-
-IF (GMP_LIBRARY)
-	message(STATUS "  GMP:    Found")
-ELSE (GMP_LIBRARY)
-	message(STATUS "  GMP:    Not Found!")
-ENDIF (GMP_LIBRARY)
-
 ADD_LIBRARY( ElasticPLFunctions STATIC
 	ElasticPLCrypto.c
 	ElasticPLMath.c
@@ -38,6 +29,6 @@ ADD_LIBRARY( ElasticPLFunctions STATIC
 	../crypto/whirlpool.c
 )
 
-target_link_libraries(ElasticPLFunctions crypto gmp)
+target_link_libraries(ElasticPLFunctions crypto)
 
 install(TARGETS ${PROJECT_NAME} DESTINATION ${PROJECT_SOURCE_DIR})

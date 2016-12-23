@@ -348,15 +348,11 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
 
 static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 	int i;
-	int32_t bvalue[4];
 	long long value = 0;
 	double fvalue = 0.0;
 	unsigned char *svalue = NULL;
 	NODE_TYPE node_type = NODE_ERROR;
 	ast *exp, *left = NULL, *right = NULL;
-
-	for (i = 0; i < 4; i++)
-		bvalue[i] = 0;
 
 	node_type = get_node_type(token, token_num);
 	
