@@ -637,7 +637,8 @@ static char* convert(ast* exp) {
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_SUB:
-			sprintf(result, "big_sub( %s )", rval);
+			tmp = replace(rval, ", m[", ", &m[");
+			sprintf(result, "big_sub( &%s, m, tmp )", tmp);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_MUL:
