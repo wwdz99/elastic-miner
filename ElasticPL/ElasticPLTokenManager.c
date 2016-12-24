@@ -128,7 +128,7 @@ struct EXP_TOKEN_LIST epl_token[] = {
 	{ "big_init_expr",				13,	TOKEN_BI_EXPR,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_add",					7,	TOKEN_BI_ADD,		EXP_FUNCTION,	6,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_sub",					7,	TOKEN_BI_SUB,		EXP_FUNCTION,	6,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_mul",					7,	TOKEN_BI_MUL,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
+	{ "big_mul",					7,	TOKEN_BI_MUL,		EXP_FUNCTION,	6,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_divisible",				13,	TOKEN_BI_DIVISIBLE,	EXP_FUNCTION,	2,	55,	DT_INT },	// Built In Big Int Functions
 	{ "big_div_exact",				13,	TOKEN_BI_DIV_EXACT,	EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_div",					7,	TOKEN_BI_DIV,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
