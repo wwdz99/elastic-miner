@@ -97,43 +97,42 @@ extern void big_init_expr(int32_t *m, int len, int32_t a) {
 	m[len - 1] = a;
 }
 
-extern void big_add(int32_t *m1, int len1, int32_t *m2, int len2, int32_t *m3, int len3, uint32_t *tmp) {
-	int i, len;
+extern void big_add(int32_t *m1, int32_t len1, int32_t *m2, int32_t len2, int32_t *m3, int32_t len3, uint32_t *tmp) {
+	size_t i;
+	int32_t len;
+	uint32_t t1, t2;
 	uint64_t sum = 0;
-
-	printf("begin add...");
 	
-	len = MAX( len1, len2 );
-
 	// Reset Memory
 	for (i = 0; i < len1; i++)
 		m1[i] = 0;
 
+	// Check For Invalid Lengths
+	if ((len1 < 0) || (len2 < 0) || (len3 < 0))
+		return;
+
 	// Check For Overflow
+	len = MAX(len2, len3);
 	if (len > (VM_TMP_MEMORY_SZ - 1))
 		return;
 
-	printf("2...");
-
 	// Add m2[] + m3[]
 	for (i = 0; i < len; i++) {
-		sum += (uint64_t)(((i < len2) ? m2[len2 - i - 1] : 0) + ((i < len3) ? m3[len3 - i - 1] : 0));
+		t1 = (uint32_t)((i < len2) ? m2[len2 - i - 1] : 0);
+		t2 = (uint32_t)((i < len3) ? m3[len3 - i - 1] : 0);
+		sum += (uint64_t)t1 + (uint64_t)t2;
 		tmp[i] = (uint32_t)sum;
 		sum >>= 32;	// VM Mem Uses 32 Bits
 	}
 
 	// Add Remainder
 	if (sum > 0)
-		tmp[len] = (uint32_t)sum;
+		tmp[len++] = (uint32_t)sum;
 
-	// Copy Result To m1[] (Up To len1 Ints)
-	for (i = 0; i < len; i++) {
-		if (i >= len1)
-			break;
+	// Copy Result To m1[]
+	len = MIN(len1, len);
+	for (i = 0; i < len; i++)
 		m1[len1 - i - 1] = tmp[i];
-	}
-	printf("end add...");
-
 }
 
 //extern void big_sub(mpz_t out, mpz_t a, mpz_t b) {
