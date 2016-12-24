@@ -100,8 +100,7 @@ extern void big_init_expr(int32_t *m, int len, int32_t a) {
 extern void big_add(int32_t *m1, int32_t len1, int32_t *m2, int32_t len2, int32_t *m3, int32_t len3, uint32_t *tmp) {
 	size_t i;
 	int32_t len;
-	uint32_t t1, t2;
-	uint64_t sum = 0;
+	uint64_t t1, t2, sum = 0;
 	
 	// Reset Memory
 	for (i = 0; i < len1; i++)
@@ -118,14 +117,14 @@ extern void big_add(int32_t *m1, int32_t len1, int32_t *m2, int32_t len2, int32_
 
 	// Add m2[] + m3[]
 	for (i = 0; i < len; i++) {
-		t1 = (uint32_t)((i < len2) ? m2[len2 - i - 1] : 0);
-		t2 = (uint32_t)((i < len3) ? m3[len3 - i - 1] : 0);
-		sum += (uint64_t)t1 + (uint64_t)t2;
+		t1 = (uint64_t)((i < len2) ? m2[len2 - i - 1] & 0xFFFFFFFF : 0);
+		t2 = (uint64_t)((i < len3) ? m3[len3 - i - 1] & 0xFFFFFFFF : 0);
+		sum += (t1 + t2);
 		tmp[i] = (uint32_t)sum;
 		sum >>= 32;	// VM Mem Uses 32 Bits
 	}
 
-	// Add Remainder
+	// Store Remainder
 	if (sum > 0)
 		tmp[len++] = (uint32_t)sum;
 
