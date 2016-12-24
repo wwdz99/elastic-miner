@@ -97,7 +97,7 @@ extern void big_init_expr(int32_t *m, int len, int32_t a) {
 	m[len - 1] = a;
 }
 
-extern void big_add(int32_t *m1, int32_t len1, int32_t *m2, int32_t len2, int32_t *m3, int32_t len3, uint32_t *tmp) {
+extern void big_add(int32_t *m1, int32_t len1, int32_t *m2, int32_t len2, int32_t *m3, int32_t len3, uint32_t *m, uint32_t *tmp) {
 	size_t i;
 	int32_t len;
 	uint64_t t1, t2, sum = 0;
@@ -108,6 +108,10 @@ extern void big_add(int32_t *m1, int32_t len1, int32_t *m2, int32_t len2, int32_
 
 	// Check For Invalid Lengths
 	if ((len1 < 0) || (len2 < 0) || (len3 < 0))
+		return;
+
+	// Check For Invalid Memory Locations
+	if (((m1 + len1 - m) >= 64000) || ((m2 + len2 - m) >= 64000) || ((m3 + len3 - m) >= 64000))
 		return;
 
 	// Check For Overflow
@@ -134,9 +138,49 @@ extern void big_add(int32_t *m1, int32_t len1, int32_t *m2, int32_t len2, int32_
 		m1[len1 - i - 1] = tmp[i];
 }
 
-//extern void big_sub(mpz_t out, mpz_t a, mpz_t b) {
-//	;
-//}
+extern void big_sub(int32_t *m1, int32_t len1, int32_t *m2, int32_t len2, int32_t *m3, int32_t len3, uint32_t *m, uint32_t *tmp) {
+	size_t i;
+	int32_t len;
+	uint64_t t1, t2, val = 0;
+
+	// Reset Memory
+	for (i = 0; i < len1; i++)
+		m1[i] = 0;
+
+	// Check For Invalid Lengths
+	if ((len1 < 0) || (len2 < 0) || (len3 < 0))
+		return;
+
+	// Check For Invalid Memory Locations
+	if (((m1 + len1 - m) >= 64000) || ((m2 + len2 - m) >= 64000) || ((m3 + len3 - m) >= 64000))
+		return;
+
+	// Check For Overflow
+	len = MAX(len2, len3);
+	if (len >(VM_TMP_MEMORY_SZ - 1))
+		return;
+
+	// Subtract m2[] - m3[]
+	for (i = 0; i < len; i++) {
+		t1 = (uint64_t)((i < len2) ? m2[len2 - i - 1] & 0xFFFFFFFF : 0);
+		t2 = (uint64_t)((i < len3) ? m3[len3 - i - 1] & 0xFFFFFFFF : 0);
+		val = t1 - t2 - val;
+		tmp[i] = (uint32_t)val;
+		val = (val >> 32) & 1;	// VM Mem Uses 32 Bits
+	}
+
+	// Copy Result To m1[]
+	len = MIN(len1, len);
+	for (i = 0; i < len; i++)
+		m1[len1 - i - 1] = tmp[i];
+
+	// Set MSBs For Negative Numbers
+	if (val > 0) {
+		for (i = len; i < len1; i++)
+			m1[len1 - i - 1] = 0xFFFFFFFF;
+	}
+}
+
 //extern void big_mul(mpz_t out, mpz_t a, mpz_t b) {
 //	;
 //}

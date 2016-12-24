@@ -41,8 +41,8 @@ extern int32_t gcd(int32_t	a, int32_t b);
 
 extern void big_init_const(int32_t *m, int len, unsigned char* str);
 extern void big_init_expr(int32_t *m, int len, int32_t a);
-extern void big_add(int32_t *m1, int32_t len1, int32_t *m2, int32_t len2, int32_t *m3, int32_t len3, uint32_t * tmp);
-//extern void big_sub(mpz_t out, mpz_t a, mpz_t b);
+extern void big_add(int32_t *m1, int32_t len1, int32_t *m2, int32_t len2, int32_t *m3, int32_t len3, uint32_t *m, uint32_t *tmp);
+extern void big_sub(int32_t *m1, int32_t len1, int32_t *m2, int32_t len2, int32_t *m3, int32_t len3, uint32_t *m, uint32_t *tmp);
 //extern void big_mul(mpz_t out, mpz_t a, mpz_t b);
 //extern void big_div(mpz_t out, mpz_t a, mpz_t b);
 //extern void big_ceil_div(mpz_t out, mpz_t a, mpz_t b);
