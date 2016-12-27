@@ -248,8 +248,11 @@ static bool add_token(SOURCE_TOKEN_LIST *token_list, int token_id, char *literal
 
 		// Determine If '-' Is Binary Or Unary
 		if (epl_token[token_id].type == TOKEN_SUB) {
-			if (token_list->num == 0 || token_list->token[token_list->num - 1].exp != EXP_EXPRESSION || token_list->token[token_list->num - 1].inputs > 1) {
+			if (token_list->num == 0)
 				token_id++;
+			else if (token_list->token[token_list->num - 1].type != TOKEN_CLOSE_PAREN) {
+				if (token_list->token[token_list->num - 1].exp != EXP_EXPRESSION || token_list->token[token_list->num - 1].inputs > 1)
+					token_id++;
 			}
 		}
 
