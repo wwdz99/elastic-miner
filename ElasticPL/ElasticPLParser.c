@@ -560,6 +560,7 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 		case TOKEN_VAR_BEGIN:
 		case TOKEN_OPEN_PAREN:
 		case TOKEN_BLOCK_BEGIN:
+		case TOKEN_CONDITIONAL:
 			push_op(i);
 			break;
 
