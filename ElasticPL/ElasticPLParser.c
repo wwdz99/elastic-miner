@@ -544,6 +544,12 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 
 	for (i = 0; i < token_list->num; i++) {
 
+		// Validate That No Verify Statements Are Embeded In Blocks
+		if ((stack_exp_idx >= 0) && (stack_exp[stack_exp_idx]->type == NODE_VERIFY)) {
+			printf("Syntax Error - Line: %d  Invalid Verify Statement\n", stack_exp[stack_exp_idx]->line_num);
+			return false;
+		}
+
 		switch (token_list->token[i].type) {
 
 		case TOKEN_COMMA:
@@ -579,6 +585,11 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 			while ((top_op >= 0) && (token_list->token[top_op].type != TOKEN_VAR_BEGIN)) {
 				token_id = pop_op();
 				if (!create_exp(&token_list->token[token_id], token_id)) return false;
+			}
+
+			if ((stack_exp_idx < 0) || stack_exp[stack_exp_idx]->token_num < top_op) {
+				printf("Syntax Error - Line: %d  Missing variable index\n", token_list->token[i].line_num);
+				return false;
 			}
 
 			// Set TOKEN_VAR_END To Match Data Type 
