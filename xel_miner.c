@@ -83,7 +83,7 @@ uint32_t g_pow_target[4];
 
 __thread _ALIGN(64) int32_t *vm_m = NULL;
 __thread _ALIGN(64) double *vm_f = NULL;
-__thread _ALIGN(64) uint32_t *vm_tmp = NULL;
+__thread mpz_t *vm_b = NULL;
 __thread uint32_t *vm_state = NULL;
 __thread vm_stack_item *vm_stack = NULL;
 __thread int vm_stack_idx;
@@ -525,9 +525,11 @@ static void *test_vm_thread(void *userdata) {
 	vm_stack_idx = -1;
 	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
 	vm_f = calloc(1000, sizeof(double));
-	vm_tmp = calloc(4000, sizeof(uint32_t));
+	vm_b = (mpz_t *)malloc(100 * sizeof(mpz_t));
+	for (i = 0; i < 100; i++)
+		mpz_init2(vm_b[i], 256);
 
-	if (!vm_m || !vm_f || !vm_tmp || !vm_stack) {
+	if (!vm_m || !vm_f || !vm_b || !vm_stack) {
 		applog(LOG_ERR, "%s: Unable to allocate VM memory", mythr->name);
 		exit(EXIT_FAILURE);
 	}
@@ -563,7 +565,7 @@ static void *test_vm_thread(void *userdata) {
 			free_compiler(inst);
 		inst = calloc(1, sizeof(struct instance));
 		create_instance(inst, "test");
-		inst->initialize(vm_m, vm_f, vm_tmp, vm_state);
+		inst->initialize(vm_m, vm_f, vm_b, vm_state);
 
 		// Execute The VM Logic
 		rc = inst->execute();
@@ -591,6 +593,11 @@ static void *test_vm_thread(void *userdata) {
 		if (vm_f[i])
 			printf("\t\t  vm_f[%d] = %f\n", i, vm_f[i]);
 	}
+	printf("\n\t  VM Big Ints:\n");
+	for (i = 0; i < 100; i++) {
+		if (vm_b[i]->_mp_size)
+			gmp_printf("\t\t  vm_b[%d] = %Zd\n", i, vm_b[i]);
+	}
 	printf("\n");
 
 	applog(LOG_NOTICE, "DEBUG: Compiler Test Complete");
@@ -598,7 +605,7 @@ static void *test_vm_thread(void *userdata) {
 
 	free(vm_m);
 	free(vm_f);
-	free(vm_tmp);
+	free(vm_b);
 	free(vm_state);
 	free(vm_stack);
 
@@ -1264,7 +1271,7 @@ static void *cpu_miner_thread(void *userdata) {
 	char s[16];
 	long hashes_done;
 	struct timeval tv_start, tv_end, diff;
-	int rc = 0;
+	int i, rc = 0;
 	unsigned char msg[41];
 	uint32_t *msg32 = (uint32_t *)msg;
 	uint32_t *workid32;
@@ -1283,9 +1290,11 @@ static void *cpu_miner_thread(void *userdata) {
 	vm_stack_idx = -1;
 	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
 	vm_f = calloc(1000, sizeof(double));
-	vm_tmp = calloc(4000, sizeof(int32_t));
+	vm_b = (mpz_t *)malloc(100 * sizeof(mpz_t));
+	for (i = 0; i < 100; i++)
+		mpz_init2(vm_b[i], 256);
 
-	if (!vm_m || !vm_f || !vm_tmp || !vm_state || !vm_stack) {
+	if (!vm_m || !vm_f || !vm_b || !vm_state || !vm_stack) {
 		applog(LOG_ERR, "CPU%d: Unable to allocate VM memory", thr_id);
 		goto out;
 	}
@@ -1317,7 +1326,7 @@ static void *cpu_miner_thread(void *userdata) {
 					free_compiler(inst);
 				inst = calloc(1, sizeof(struct instance));
 				create_instance(inst, work.work_str);
-				inst->initialize(vm_m, vm_f, vm_tmp, vm_state);
+				inst->initialize(vm_m, vm_f, vm_b, vm_state);
 			}
 		}
 		// Otherwise, Just Update POW Target
@@ -1404,7 +1413,7 @@ static void *cpu_miner_thread(void *userdata) {
 out:
 	if (vm_m) free(vm_m);
 	if (vm_f) free(vm_f);
-	if (vm_tmp) free(vm_tmp);
+	if (vm_b) free(vm_b);
 	if (vm_state) free(vm_state);
 	if (vm_stack) free(vm_stack);
 	tq_freeze(mythr->q);
