@@ -104,23 +104,29 @@ static char* convert(ast* exp) {
 			break;
 		case NODE_VAR_CONST:
 			if (exp->value < 0 || exp->value > VM_MEMORY_SIZE) {
-				if (exp->data_type == DT_FLOAT)
-					sprintf(result, "f[0]");
-				else
+				if (exp->data_type == DT_INT)
 					sprintf(result, "m[0]");
+				else if (exp->data_type == DT_FLOAT)
+					sprintf(result, "f[0]");
+				else if (exp->data_type == DT_BIGINT)
+					sprintf(result, "b[0]");
 			}
 			else {
-				if (exp->data_type == DT_FLOAT)
-					sprintf(result, "f[%lu]", exp->value);
-				else
+				if (exp->data_type == DT_INT)
 					sprintf(result, "m[%lu]", exp->value);
+				else if (exp->data_type == DT_FLOAT)
+					sprintf(result, "f[%lu]", exp->value);
+				else if (exp->data_type == DT_BIGINT)
+					sprintf(result, "b[%lu]", exp->value);
 			}
 			break;
 		case NODE_VAR_EXP:
-			if (exp->data_type == DT_FLOAT)
-				sprintf(result, "f[%s]", lval);
-			else
+			if (exp->data_type == DT_INT)
 				sprintf(result, "m[%s]", lval);
+			else if (exp->data_type == DT_FLOAT)
+				sprintf(result, "f[%s]", lval);
+			else if (exp->data_type == DT_BIGINT)
+				sprintf(result, "b[%s]", lval);
 			break;
 		case NODE_ASSIGN:
 			tmp = get_index(lval);
@@ -624,26 +630,23 @@ static char* convert(ast* exp) {
 			use_elasticpl_math = true;
 			break;
 		case NODE_BI_CONST:
-			sprintf(result, "big_init_const( &%s )", rval);
+			sprintf(result, "big_init_const( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_EXPR:
-			sprintf(result, "big_init_expr( &%s )", rval);
+			sprintf(result, "big_init_expr( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_ADD:
-			tmp = replace(rval, ", m[", ", &m[");
-			sprintf(result, "big_add( &%s, m, tmp )", tmp);
+			sprintf(result, "big_add( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_SUB:
-			tmp = replace(rval, ", m[", ", &m[");
-			sprintf(result, "big_sub( &%s, m, tmp )", tmp);
+			sprintf(result, "big_sub( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_MUL:
-			tmp = replace(rval, ", m[", ", &m[");
-			sprintf(result, "big_mul( &%s, m, tmp )", tmp);
+			sprintf(result, "big_mul( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_DIV:
