@@ -526,13 +526,20 @@ static void *test_vm_thread(void *userdata) {
 	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
 	vm_f = calloc(1000, sizeof(double));
 	vm_b = (mpz_t *)malloc(100 * sizeof(mpz_t));
-	for (i = 0; i < 100; i++)
-		mpz_init2(vm_b[i], 256);
+	for (i = 0; i < 100; i++) {
+		mpz_init(vm_b[i]);
+		mpz_set_ui(vm_b[i], 0);
+	}
 
 	if (!vm_m || !vm_f || !vm_b || !vm_stack) {
 		applog(LOG_ERR, "%s: Unable to allocate VM memory", mythr->name);
 		exit(EXIT_FAILURE);
 	}
+
+	//int bi_size = 0;
+	//big_init_const(vm_b[1], "0x0123456789abcdef", &bi_size);
+	//big_init_const(vm_b[2], "0xfedcba9876543210", &bi_size);
+	//big_add(vm_b[0], vm_b[1], vm_b[2], &bi_size);
 
 	applog(LOG_DEBUG, "DEBUG: Loading Test File");
 	if (!load_test_file(test_code))
@@ -1291,8 +1298,10 @@ static void *cpu_miner_thread(void *userdata) {
 	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
 	vm_f = calloc(1000, sizeof(double));
 	vm_b = (mpz_t *)malloc(100 * sizeof(mpz_t));
-	for (i = 0; i < 100; i++)
-		mpz_init2(vm_b[i], 256);
+	for (i = 0; i < 100; i++) {
+		mpz_init(vm_b[i]);
+		mpz_set_ui(vm_b[i], 0);
+	}
 
 	if (!vm_m || !vm_f || !vm_b || !vm_state || !vm_stack) {
 		applog(LOG_ERR, "CPU%d: Unable to allocate VM memory", thr_id);
