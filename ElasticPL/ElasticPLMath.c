@@ -214,12 +214,40 @@ extern void big_neg(mpz_t out, mpz_t a, uint32_t *bi_size) {
 	printf("a   - alloc: %d, size: %d, val: %08X\n", a->_mp_alloc, a->_mp_size, *a->_mp_d);
 }
 
-extern void big_lshift(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	;
+extern void big_lshift(mpz_t out, mpz_t a, int32_t b, uint32_t *bi_size) {
+	uint32_t res_sz;
+	uint32_t old_sz = (uint32_t)out->_mp_size;
+
+	res_sz = *bi_size + (int)(b / 32) + 1;  // At most multiplication will cause size to increase by b / 32 + 1
+	if ((res_sz > BIG_INT_MAX_SZ) || (b < 0))
+		mpz_set_ui(out, 0);
+	else
+		mpz_mul_2exp(out, a, b);
+
+	*bi_size += ((uint32_t)out->_mp_size - old_sz);
+	if (*bi_size < 0) *bi_size = 0;
+
+	printf("out - alloc: %d, size: %d, val: %08X\n", out->_mp_alloc, out->_mp_size, *out->_mp_d);
+	printf("a   - alloc: %d, size: %d, val: %08X\n", a->_mp_alloc, a->_mp_size, *a->_mp_d);
 }
-extern void big_rshift(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	;
+
+extern void big_rshift(mpz_t out, mpz_t a, int32_t b, uint32_t *bi_size) {
+	uint32_t res_sz;
+	uint32_t old_sz = (uint32_t)out->_mp_size;
+
+	// Right Shift should reduce the size
+	if (b < 0)
+		mpz_set_ui(out, 0);
+	else
+		mpz_div_2exp(out, a, b);
+
+	*bi_size += ((uint32_t)out->_mp_size - old_sz);
+	if (*bi_size < 0) *bi_size = 0;
+
+	printf("out - alloc: %d, size: %d, val: %08X\n", out->_mp_alloc, out->_mp_size, *out->_mp_d);
+	printf("a   - alloc: %d, size: %d, val: %08X\n", a->_mp_alloc, a->_mp_size, *a->_mp_d);
 }
+
 extern void big_gcd(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
 	uint32_t res_sz;
 	uint32_t old_sz = (uint32_t)out->_mp_size;
