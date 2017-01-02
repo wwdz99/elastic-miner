@@ -536,7 +536,7 @@ static void *test_vm_thread(void *userdata) {
 		exit(EXIT_FAILURE);
 	}
 
-	//int bi_size = 0;
+	//uint32_t bi_size = 0;
 	//big_init_const(vm_b[1], "0x0123456789abcdef", &bi_size);
 	//big_init_const(vm_b[2], "0xfedcba9876543210", &bi_size);
 	//big_add(vm_b[0], vm_b[1], vm_b[2], &bi_size);
