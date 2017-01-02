@@ -302,11 +302,15 @@ extern void big_pow2_mod_p(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
 	uint32_t old_sz = (uint32_t)out->_mp_size;
 
 	// TODO: Confirm Validation Logic
-	res_sz = *bi_size + b;  // At most POW will cause size to increase by b
+	res_sz = *bi_size + a->_mp_size;  // At most POW will cause size to increase by a
 	if (res_sz > BIG_INT_MAX_SZ)
 		mpz_set_ui(out, 0);
-	else
-		mpz_powm_ui(out, 2, a, b);
+	else {
+		mpz_t c;
+		mpz_set_ui(c, 2);
+		mpz_powm(out, c, a, b);
+		mpz_clear(c);
+	}
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
