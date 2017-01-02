@@ -630,127 +630,127 @@ static char* convert(ast* exp) {
 			use_elasticpl_math = true;
 			break;
 		case NODE_BI_CONST:
-			sprintf(result, "big_init_const( %s )", rval);
+			sprintf(result, "big_init_const( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_EXPR:
-			sprintf(result, "big_init_expr( %s )", rval);
+			sprintf(result, "big_init_expr( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_ADD:
-			sprintf(result, "big_add( %s )", rval);
+			sprintf(result, "big_add( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_SUB:
-			sprintf(result, "big_sub( %s )", rval);
+			sprintf(result, "big_sub( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_MUL:
-			sprintf(result, "big_mul( %s )", rval);
+			sprintf(result, "big_mul( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_DIV:
-			sprintf(result, "big_div( %s )", rval);
+			sprintf(result, "big_div( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_CEIL_DIV:
-			sprintf(result, "big_ceil_div( %s )", rval);
+			sprintf(result, "big_ceil_div( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_FLOOR_DIV:
-			sprintf(result, "big_floor_div( %s )", rval);
+			sprintf(result, "big_floor_div( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_TRUNC_DIV:
-			sprintf(result, "big_truncate_div( %s )", rval);
+			sprintf(result, "big_truncate_div( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_DIV_EXACT:
-			sprintf(result, "big_div_exact( %s )", rval);
+			sprintf(result, "big_div_exact( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_MOD:
-			sprintf(result, "big_mod( %s )", rval);
+			sprintf(result, "big_mod( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_NEG:
-			sprintf(result, "big_neg( %s )", rval);
+			sprintf(result, "big_neg( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_LSHIFT:
-			sprintf(result, "big_lshift( %s )", rval);
+			sprintf(result, "big_lshift( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_RSHIFT:
-			sprintf(result, "big_rshift( %s )", rval);
+			sprintf(result, "big_rshift( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_GCD:
-			sprintf(result, "big_gcd( %s )", rval);
+			sprintf(result, "big_gcd( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_DIVISIBLE:
-			sprintf(result, "big_divisible( %s )", rval);
+			sprintf(result, "big_divisible( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_CNGR_MOD_P:
-			sprintf(result, "big_congruent_mod_p( %s )", rval);
+			sprintf(result, "big_congruent_mod_p( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_POW:
-			sprintf(result, "big_pow( %s )", rval);
+			sprintf(result, "big_pow( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_POW2:
-			sprintf(result, "big_pow2( %s )", rval);
+			sprintf(result, "big_pow2( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_POW_MOD_P:
-			sprintf(result, "big_pow_mod_p( %s )", rval);
+			sprintf(result, "big_pow_mod_p( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_POW2_MOD_P:
-			sprintf(result, "big_pow2_mod_p( %s )", rval);
+			sprintf(result, "big_pow2_mod_p( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_COMP:
-			sprintf(result, "big_compare( %s )", rval);
+			sprintf(result, "big_compare( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_COMP_ABS:
-			sprintf(result, "big_compare_abs( %s )", rval);
+			sprintf(result, "big_compare_abs( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_SIGN:
-			sprintf(result, "big_sign( %s )", rval);
+			sprintf(result, "big_sign( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_OR:
-			sprintf(result, "big_or( %s )", rval);
+			sprintf(result, "big_or( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_AND:
-			sprintf(result, "big_and( %s )", rval);
+			sprintf(result, "big_and( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_XOR:
-			sprintf(result, "big_xor( %s )", rval);
+			sprintf(result, "big_xor( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_OR_INT:
-			sprintf(result, "big_or_integer( %s )", rval);
+			sprintf(result, "big_or_integer( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_AND_INT:
-			sprintf(result, "big_and_integer( %s )", rval);
+			sprintf(result, "big_and_integer( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_XOR_INT:
-			sprintf(result, "big_xor_integer( %s )", rval);
+			sprintf(result, "big_xor_integer( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_LEAST_32:
-			sprintf(result, "big_least_32bit( %s )", rval);
+			sprintf(result, "big_least_32bit( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_SHA256:

@@ -26,7 +26,8 @@ extern int32_t gcd(int32_t a, int32_t b) {
 	return a;
 }
 
-extern void big_init_const(mpz_t out, unsigned char* str) {
+extern void big_init_const(mpz_t out, unsigned char* str, int *bi_size) {
+	int old_sz = out->_mp_size;
 
 	if (!str)
 		return;
@@ -40,98 +41,116 @@ extern void big_init_const(mpz_t out, unsigned char* str) {
 	else {
 		mpz_init_set_str(out, str, 10);
 	}
+
+	*bi_size += (out->_mp_size - old_sz);
+	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_init_expr(mpz_t out, int32_t a) {
+extern void big_init_expr(mpz_t out, int32_t a, int *bi_size) {
 	char str[15];
+	int old_sz = out->_mp_size;
+
 	sprintf(str, "%d", a);
 	mpz_init_set_str(out, str, 10);
+
+	*bi_size += (out->_mp_size - old_sz);
+	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_add(mpz_t out, mpz_t a, mpz_t b) {
-	mpz_add(out, a, b);
+extern void big_add(mpz_t out, mpz_t a, mpz_t b, int *bi_size) {
+	int res_sz;
+	int old_sz = out->_mp_size;
+
+	res_sz = *bi_size + 1;  // At most addition will cause size to increase by 1
+	if (res_sz > BIG_INT_MAX_SZ)
+		mpz_init(out);
+	else
+		mpz_add(out, a, b);
+
+	*bi_size += (out->_mp_size - old_sz);
+	if (*bi_size < 0) *bi_size = 0;
 }
-extern void big_sub(mpz_t out, mpz_t a, mpz_t b) {
+extern void big_sub(mpz_t out, mpz_t a, mpz_t b, int *bi_size) {
 	;
 }
-extern void big_mul(mpz_t out, mpz_t a, mpz_t b) {
+extern void big_mul(mpz_t out, mpz_t a, mpz_t b, int *bi_size) {
 	;
 }
-extern void big_div(mpz_t out, mpz_t a, mpz_t b) {
+extern void big_div(mpz_t out, mpz_t a, mpz_t b, int *bi_size) {
 	;
 }
-extern void big_ceil_div(mpz_t out, mpz_t a, mpz_t b) {
+extern void big_ceil_div(mpz_t out, mpz_t a, mpz_t b, int *bi_size) {
 	;
 }
-extern void big_floor_div(mpz_t out, mpz_t a, mpz_t b) {
+extern void big_floor_div(mpz_t out, mpz_t a, mpz_t b, int *bi_size) {
 	;
 }
-extern void big_truncate_div(mpz_t out, mpz_t a, mpz_t b) {
+extern void big_truncate_div(mpz_t out, mpz_t a, mpz_t b, int *bi_size) {
 	;
 }
-extern void big_div_exact(mpz_t out, mpz_t a, mpz_t b) {
+extern void big_div_exact(mpz_t out, mpz_t a, mpz_t b, int *bi_size) {
 	;
 }
-extern void big_mod(mpz_t out, mpz_t a, mpz_t b) {
+extern void big_mod(mpz_t out, mpz_t a, mpz_t b, int *bi_size) {
 	;
 }
-extern void big_neg(mpz_t out, mpz_t a, mpz_t b) {
+extern void big_neg(mpz_t out, mpz_t a, mpz_t b, int *bi_size) {
 	;
 }
-extern void big_lshift(mpz_t out, mpz_t a, mpz_t b) {
+extern void big_lshift(mpz_t out, mpz_t a, mpz_t b, int *bi_size) {
 	;
 }
-extern void big_rshift(mpz_t out, mpz_t a, mpz_t b) {
+extern void big_rshift(mpz_t out, mpz_t a, mpz_t b, int *bi_size) {
 	;
 }
-extern void big_gcd(mpz_t out, mpz_t a, mpz_t b) {
+extern void big_gcd(mpz_t out, mpz_t a, mpz_t b, int *bi_size) {
 	;
 }
-extern int32_t big_divisible(mpz_t a, mpz_t b) {
+extern int32_t big_divisible(mpz_t a, mpz_t b, int *bi_size) {
 	return 0;
 }
-extern void big_congruent_mod_p(mpz_t a, mpz_t b, mpz_t p) {
+extern void big_congruent_mod_p(mpz_t a, mpz_t b, mpz_t p, int *bi_size) {
 	;
 }
-extern void big_pow(mpz_t out, mpz_t a, uint32_t b) {
+extern void big_pow(mpz_t out, mpz_t a, uint32_t b, int *bi_size) {
 	;
 }
-extern void big_pow2(mpz_t out, uint32_t b) {
+extern void big_pow2(mpz_t out, uint32_t b, int *bi_size) {
 	;
 }
-extern void big_pow_mod_p(mpz_t out, mpz_t a, mpz_t b, mpz_t c) {
+extern void big_pow_mod_p(mpz_t out, mpz_t a, mpz_t b, mpz_t c, int *bi_size) {
 	;
 }
-extern void big_pow2_mod_p(mpz_t out, mpz_t a, mpz_t b) {
+extern void big_pow2_mod_p(mpz_t out, mpz_t a, mpz_t b, int *bi_size) {
 	;
 }
-extern int32_t big_compare(mpz_t a, mpz_t b) {
+extern int32_t big_compare(mpz_t a, mpz_t b, int *bi_size) {
 	return 0;
 }
-extern int32_t big_compare_abs(mpz_t a, mpz_t b) {
+extern int32_t big_compare_abs(mpz_t a, mpz_t b, int *bi_size) {
 	return 0;
 }
-extern int32_t big_sign(mpz_t a) {
+extern int32_t big_sign(mpz_t a, int *bi_size) {
 	return 0;
 }
-extern void big_or(mpz_t out, mpz_t a, mpz_t b) {
+extern void big_or(mpz_t out, mpz_t a, mpz_t b, int *bi_size) {
 	;
 }
-extern void big_and(mpz_t out, mpz_t a, mpz_t b) {
+extern void big_and(mpz_t out, mpz_t a, mpz_t b, int *bi_size) {
 	;
 }
-extern void big_xor(mpz_t out, mpz_t a, mpz_t b) {
+extern void big_xor(mpz_t out, mpz_t a, mpz_t b, int *bi_size) {
 	;
 }
-extern void big_or_integer(mpz_t out, mpz_t a, mpz_t b) {
+extern void big_or_integer(mpz_t out, mpz_t a, mpz_t b, int *bi_size) {
 	;
 }
-extern void big_and_integer(mpz_t out, mpz_t a, mpz_t b) {
+extern void big_and_integer(mpz_t out, mpz_t a, mpz_t b, int *bi_size) {
 	;
 }
-extern void big_xor_integer(mpz_t out, mpz_t a, mpz_t b) {
+extern void big_xor_integer(mpz_t out, mpz_t a, mpz_t b, int *bi_size) {
 	;
 }
-extern int32_t big_least_32bit(mpz_t a) {
+extern int32_t big_least_32bit(mpz_t a, int *bi_size) {
 	return 0;
 }
