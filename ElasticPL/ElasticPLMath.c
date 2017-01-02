@@ -126,23 +126,94 @@ extern void big_div(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
 }
 
 extern void big_ceil_div(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	;
+	uint32_t res_sz;
+	uint32_t old_sz = (uint32_t)out->_mp_size;
+
+	// Division should reduce the size
+	mpz_cdiv_q(out, a, b);
+
+	*bi_size += ((uint32_t)out->_mp_size - old_sz);
+	if (*bi_size < 0) *bi_size = 0;
+
+	printf("out - alloc: %d, size: %d, val: %08X\n", out->_mp_alloc, out->_mp_size, *out->_mp_d);
+	printf("a   - alloc: %d, size: %d, val: %08X\n", a->_mp_alloc, a->_mp_size, *a->_mp_d);
+	printf("b   - alloc: %d, size: %d, val: %08X\n", b->_mp_alloc, b->_mp_size, *b->_mp_d);
 }
+
 extern void big_floor_div(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	;
+	uint32_t res_sz;
+	uint32_t old_sz = (uint32_t)out->_mp_size;
+
+	// Division should reduce the size
+	mpz_fdiv_q(out, a, b);
+
+	*bi_size += ((uint32_t)out->_mp_size - old_sz);
+	if (*bi_size < 0) *bi_size = 0;
+
+	printf("out - alloc: %d, size: %d, val: %08X\n", out->_mp_alloc, out->_mp_size, *out->_mp_d);
+	printf("a   - alloc: %d, size: %d, val: %08X\n", a->_mp_alloc, a->_mp_size, *a->_mp_d);
+	printf("b   - alloc: %d, size: %d, val: %08X\n", b->_mp_alloc, b->_mp_size, *b->_mp_d);
 }
+
 extern void big_truncate_div(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	;
+	uint32_t res_sz;
+	uint32_t old_sz = (uint32_t)out->_mp_size;
+
+	// Division should reduce the size
+	mpz_tdiv_q(out, a, b);
+
+	*bi_size += ((uint32_t)out->_mp_size - old_sz);
+	if (*bi_size < 0) *bi_size = 0;
+
+	printf("out - alloc: %d, size: %d, val: %08X\n", out->_mp_alloc, out->_mp_size, *out->_mp_d);
+	printf("a   - alloc: %d, size: %d, val: %08X\n", a->_mp_alloc, a->_mp_size, *a->_mp_d);
+	printf("b   - alloc: %d, size: %d, val: %08X\n", b->_mp_alloc, b->_mp_size, *b->_mp_d);
 }
+
 extern void big_div_exact(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	;
+	uint32_t res_sz;
+	uint32_t old_sz = (uint32_t)out->_mp_size;
+
+	// Division should reduce the size
+	mpz_divexact(out, a, b);
+
+	*bi_size += ((uint32_t)out->_mp_size - old_sz);
+	if (*bi_size < 0) *bi_size = 0;
+
+	printf("out - alloc: %d, size: %d, val: %08X\n", out->_mp_alloc, out->_mp_size, *out->_mp_d);
+	printf("a   - alloc: %d, size: %d, val: %08X\n", a->_mp_alloc, a->_mp_size, *a->_mp_d);
+	printf("b   - alloc: %d, size: %d, val: %08X\n", b->_mp_alloc, b->_mp_size, *b->_mp_d);
 }
+
 extern void big_mod(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	;
+	uint32_t res_sz;
+	uint32_t old_sz = (uint32_t)out->_mp_size;
+
+	// Mod should reduce the size
+	mpz_mod(out, a, b);
+
+	*bi_size += ((uint32_t)out->_mp_size - old_sz);
+	if (*bi_size < 0) *bi_size = 0;
+
+	printf("out - alloc: %d, size: %d, val: %08X\n", out->_mp_alloc, out->_mp_size, *out->_mp_d);
+	printf("a   - alloc: %d, size: %d, val: %08X\n", a->_mp_alloc, a->_mp_size, *a->_mp_d);
+	printf("b   - alloc: %d, size: %d, val: %08X\n", b->_mp_alloc, b->_mp_size, *b->_mp_d);
 }
-extern void big_neg(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	;
+
+extern void big_neg(mpz_t out, mpz_t a, uint32_t *bi_size) {
+	uint32_t res_sz;
+	uint32_t old_sz = (uint32_t)out->_mp_size;
+
+	// Neg should not affect the size
+	mpz_neg(out, a);
+
+	*bi_size += ((uint32_t)out->_mp_size - old_sz);
+	if (*bi_size < 0) *bi_size = 0;
+
+	printf("out - alloc: %d, size: %d, val: %08X\n", out->_mp_alloc, out->_mp_size, *out->_mp_d);
+	printf("a   - alloc: %d, size: %d, val: %08X\n", a->_mp_alloc, a->_mp_size, *a->_mp_d);
 }
+
 extern void big_lshift(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
 	;
 }
@@ -150,20 +221,33 @@ extern void big_rshift(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
 	;
 }
 extern void big_gcd(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	;
+	uint32_t res_sz;
+	uint32_t old_sz = (uint32_t)out->_mp_size;
+
+	// TODO: Not Sure How To Validate This one
+	mpz_gcd(out, a, b);
+
+	*bi_size += ((uint32_t)out->_mp_size - old_sz);
+	if (*bi_size < 0) *bi_size = 0;
+
+	printf("out - alloc: %d, size: %d, val: %08X\n", out->_mp_alloc, out->_mp_size, *out->_mp_d);
+	printf("a   - alloc: %d, size: %d, val: %08X\n", a->_mp_alloc, a->_mp_size, *a->_mp_d);
+	printf("b   - alloc: %d, size: %d, val: %08X\n", b->_mp_alloc, b->_mp_size, *b->_mp_d);
 }
-extern int32_t big_divisible(mpz_t a, mpz_t b, uint32_t *bi_size) {
-	return 0;
+
+extern int32_t big_divisible(mpz_t a, mpz_t b) {
+	return mpz_divisible_p(a, b);
 }
-extern void big_congruent_mod_p(mpz_t a, mpz_t b, mpz_t p, uint32_t *bi_size) {
-	;
+
+extern int32_t big_congruent_mod_p(mpz_t a, mpz_t b, mpz_t p) {
+	return mpz_congruent_p(a, b, p);
 }
 
 extern void big_pow(mpz_t out, mpz_t a, uint32_t b, uint32_t *bi_size) {
 	uint32_t res_sz;
 	uint32_t old_sz = (uint32_t)out->_mp_size;
 
-	res_sz = *bi_size + (a->_mp_size * b);  // At most multiplication will cause size to increase by a * b
+	res_sz = *bi_size + (a->_mp_size * b);  // At most POW will cause size to increase by a * b
 	if (res_sz > BIG_INT_MAX_SZ)
 		mpz_set_ui(out, 0);
 	else
@@ -177,41 +261,169 @@ extern void big_pow(mpz_t out, mpz_t a, uint32_t b, uint32_t *bi_size) {
 }
 
 extern void big_pow2(mpz_t out, uint32_t b, uint32_t *bi_size) {
-	;
+	uint32_t res_sz;
+	uint32_t old_sz = (uint32_t)out->_mp_size;
+
+	// TODO: Confirm Validation Logic
+	res_sz = *bi_size + b;  // At most POW2 will cause size to increase by b
+	if (res_sz > BIG_INT_MAX_SZ)
+		mpz_set_ui(out, 0);
+	else
+		mpz_ui_pow_ui(out, 2, b);
+
+	*bi_size += ((uint32_t)out->_mp_size - old_sz);
+	if (*bi_size < 0) *bi_size = 0;
+
+	printf("out - alloc: %d, size: %d, val: %08X\n", out->_mp_alloc, out->_mp_size, *out->_mp_d);
 }
+
 extern void big_pow_mod_p(mpz_t out, mpz_t a, mpz_t b, mpz_t c, uint32_t *bi_size) {
-	;
+	uint32_t res_sz;
+	uint32_t old_sz = (uint32_t)out->_mp_size;
+
+	// TODO: Confirm Validation Logic
+	res_sz = *bi_size + (a->_mp_size * b->_mp_size);  // At most POW will cause size to increase by a * b
+	if (res_sz > BIG_INT_MAX_SZ)
+		mpz_set_ui(out, 0);
+	else
+		mpz_powm(out, a, b, c);
+
+	*bi_size += ((uint32_t)out->_mp_size - old_sz);
+	if (*bi_size < 0) *bi_size = 0;
+
+	printf("out - alloc: %d, size: %d, val: %08X\n", out->_mp_alloc, out->_mp_size, *out->_mp_d);
+	printf("a   - alloc: %d, size: %d, val: %08X\n", a->_mp_alloc, a->_mp_size, *a->_mp_d);
+	printf("b   - alloc: %d, size: %d, val: %08X\n", b->_mp_alloc, b->_mp_size, *b->_mp_d);
+	printf("c   - alloc: %d, size: %d, val: %08X\n", c->_mp_alloc, c->_mp_size, *c->_mp_d);
 }
+
 extern void big_pow2_mod_p(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	;
+	uint32_t res_sz;
+	uint32_t old_sz = (uint32_t)out->_mp_size;
+
+	// TODO: Confirm Validation Logic
+	res_sz = *bi_size + b;  // At most POW will cause size to increase by b
+	if (res_sz > BIG_INT_MAX_SZ)
+		mpz_set_ui(out, 0);
+	else
+		mpz_powm_ui(out, 2, a, b);
+
+	*bi_size += ((uint32_t)out->_mp_size - old_sz);
+	if (*bi_size < 0) *bi_size = 0;
+
+	printf("out - alloc: %d, size: %d, val: %08X\n", out->_mp_alloc, out->_mp_size, *out->_mp_d);
+	printf("a   - alloc: %d, size: %d, val: %08X\n", a->_mp_alloc, a->_mp_size, *a->_mp_d);
+	printf("b   - alloc: %d, size: %d, val: %08X\n", b->_mp_alloc, b->_mp_size, *b->_mp_d);
 }
-extern int32_t big_compare(mpz_t a, mpz_t b, uint32_t *bi_size) {
-	return 0;
+
+extern int32_t big_compare(mpz_t a, mpz_t b) {
+	return mpz_cmp(a, b);
 }
-extern int32_t big_compare_abs(mpz_t a, mpz_t b, uint32_t *bi_size) {
-	return 0;
+
+extern int32_t big_compare_abs(mpz_t a, mpz_t b) {
+	return mpz_cmpabs(a, b);
 }
-extern int32_t big_sign(mpz_t a, uint32_t *bi_size) {
-	return 0;
+
+extern int32_t big_sign(mpz_t a) {
+	return mpz_sgn(a);
 }
+
 extern void big_or(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	;
+	uint32_t res_sz;
+	uint32_t old_sz = (uint32_t)out->_mp_size;
+
+	// TODO: Confirm Validation Logic
+	mpz_ior(out, a, b);
+
+	*bi_size += ((uint32_t)out->_mp_size - old_sz);
+	if (*bi_size < 0) *bi_size = 0;
+
+	printf("out - alloc: %d, size: %d, val: %08X\n", out->_mp_alloc, out->_mp_size, *out->_mp_d);
+	printf("a   - alloc: %d, size: %d, val: %08X\n", a->_mp_alloc, a->_mp_size, *a->_mp_d);
+	printf("b   - alloc: %d, size: %d, val: %08X\n", b->_mp_alloc, b->_mp_size, *b->_mp_d);
 }
+
 extern void big_and(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	;
+	uint32_t res_sz;
+	uint32_t old_sz = (uint32_t)out->_mp_size;
+
+	// TODO: Confirm Validation Logic
+	mpz_and(out, a, b);
+
+	*bi_size += ((uint32_t)out->_mp_size - old_sz);
+	if (*bi_size < 0) *bi_size = 0;
+
+	printf("out - alloc: %d, size: %d, val: %08X\n", out->_mp_alloc, out->_mp_size, *out->_mp_d);
+	printf("a   - alloc: %d, size: %d, val: %08X\n", a->_mp_alloc, a->_mp_size, *a->_mp_d);
+	printf("b   - alloc: %d, size: %d, val: %08X\n", b->_mp_alloc, b->_mp_size, *b->_mp_d);
 }
+
 extern void big_xor(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	;
+	uint32_t res_sz;
+	uint32_t old_sz = (uint32_t)out->_mp_size;
+
+	// TODO: Confirm Validation Logic
+	mpz_xor(out, a, b);
+
+	*bi_size += ((uint32_t)out->_mp_size - old_sz);
+	if (*bi_size < 0) *bi_size = 0;
+
+	printf("out - alloc: %d, size: %d, val: %08X\n", out->_mp_alloc, out->_mp_size, *out->_mp_d);
+	printf("a   - alloc: %d, size: %d, val: %08X\n", a->_mp_alloc, a->_mp_size, *a->_mp_d);
+	printf("b   - alloc: %d, size: %d, val: %08X\n", b->_mp_alloc, b->_mp_size, *b->_mp_d);
 }
-extern void big_or_integer(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	;
+
+extern void big_or_integer(mpz_t out, mpz_t a, int32_t b, uint32_t *bi_size) {
+	uint32_t res_sz;
+	uint32_t old_sz = (uint32_t)out->_mp_size;
+
+	// TODO: Confirm Validation Logic
+	mpz_t c;
+	mpz_set_ui(c, b);
+	mpz_ior(out, a, c);
+	mpz_clear(c);
+
+	*bi_size += ((uint32_t)out->_mp_size - old_sz);
+	if (*bi_size < 0) *bi_size = 0;
+
+	printf("out - alloc: %d, size: %d, val: %08X\n", out->_mp_alloc, out->_mp_size, *out->_mp_d);
+	printf("a   - alloc: %d, size: %d, val: %08X\n", a->_mp_alloc, a->_mp_size, *a->_mp_d);
 }
-extern void big_and_integer(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	;
+
+extern void big_and_integer(mpz_t out, mpz_t a, int32_t b, uint32_t *bi_size) {
+	uint32_t res_sz;
+	uint32_t old_sz = (uint32_t)out->_mp_size;
+
+	// TODO: Confirm Validation Logic
+	mpz_t c;
+	mpz_set_ui(c, b);
+	mpz_and(out, a, c);
+	mpz_clear(c);
+
+	*bi_size += ((uint32_t)out->_mp_size - old_sz);
+	if (*bi_size < 0) *bi_size = 0;
+
+	printf("out - alloc: %d, size: %d, val: %08X\n", out->_mp_alloc, out->_mp_size, *out->_mp_d);
+	printf("a   - alloc: %d, size: %d, val: %08X\n", a->_mp_alloc, a->_mp_size, *a->_mp_d);
 }
-extern void big_xor_integer(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	;
+
+extern void big_xor_integer(mpz_t out, mpz_t a, int32_t b, uint32_t *bi_size) {
+	uint32_t res_sz;
+	uint32_t old_sz = (uint32_t)out->_mp_size;
+
+	// TODO: Confirm Validation Logic
+	mpz_t c;
+	mpz_set_ui(c, b);
+	mpz_xor(out, a, c);
+	mpz_clear(c);
+
+	*bi_size += ((uint32_t)out->_mp_size - old_sz);
+	if (*bi_size < 0) *bi_size = 0;
+
+	printf("out - alloc: %d, size: %d, val: %08X\n", out->_mp_alloc, out->_mp_size, *out->_mp_d);
+	printf("a   - alloc: %d, size: %d, val: %08X\n", a->_mp_alloc, a->_mp_size, *a->_mp_d);
 }
-extern int32_t big_least_32bit(mpz_t a, uint32_t *bi_size) {
-	return 0;
+
+extern int32_t big_least_32bit(mpz_t a) {
+	return mpz_get_si(a);
 }

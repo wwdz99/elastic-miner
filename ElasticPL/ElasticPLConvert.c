@@ -694,7 +694,7 @@ static char* convert(ast* exp) {
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_CNGR_MOD_P:
-			sprintf(result, "big_congruent_mod_p( %s, &bi_size )", rval);
+			sprintf(result, "big_congruent_mod_p( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_POW:
@@ -714,15 +714,15 @@ static char* convert(ast* exp) {
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_COMP:
-			sprintf(result, "big_compare( %s, &bi_size )", rval);
+			sprintf(result, "big_compare( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_COMP_ABS:
-			sprintf(result, "big_compare_abs( %s, &bi_size )", rval);
+			sprintf(result, "big_compare_abs( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_SIGN:
-			sprintf(result, "big_sign( %s, &bi_size )", rval);
+			sprintf(result, "big_sign( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_OR:
@@ -750,7 +750,7 @@ static char* convert(ast* exp) {
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_LEAST_32:
-			sprintf(result, "big_least_32bit( %s, &bi_size )", rval);
+			sprintf(result, "big_least_32bit( %s )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_SHA256:
