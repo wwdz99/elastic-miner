@@ -603,7 +603,7 @@ static void *test_vm_thread(void *userdata) {
 	printf("\n\t  VM Big Ints:\n");
 	for (i = 0; i < 100; i++) {
 		if (vm_b[i]->_mp_size)
-			gmp_printf("\t\t  vm_b[%d] = %Zd\n", i, vm_b[i]);
+			gmp_printf("\t\t  vm_b[%d] (alloc: %d, size: %d) = %Zd\n", i, vm_b[i]->_mp_alloc, vm_b[i]->_mp_size, vm_b[i]);
 	}
 	printf("\n");
 
