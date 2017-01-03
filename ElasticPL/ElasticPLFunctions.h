@@ -42,6 +42,7 @@ extern int32_t gcd(int32_t	a, int32_t b);
 
 extern void big_init_const(mpz_t out, unsigned char* str, uint32_t *bi_size);
 extern void big_init_expr(mpz_t out, int32_t a, uint32_t *bi_size);
+extern void big_init_copy(mpz_t out, mpz_t a, uint32_t *bi_size);
 extern void big_add(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size);
 extern void big_sub(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size);
 extern void big_mul(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size);
