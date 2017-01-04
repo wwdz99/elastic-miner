@@ -637,6 +637,10 @@ static char* convert(ast* exp) {
 			sprintf(result, "big_init_expr( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;
 			break;
+		case NODE_BI_COPY:
+			sprintf(result, "big_copy( %s, &bi_size )", rval);
+			use_elasticpl_bigint = true;
+			break;
 		case NODE_BI_ADD:
 			sprintf(result, "big_add( %s, &bi_size )", rval);
 			use_elasticpl_bigint = true;

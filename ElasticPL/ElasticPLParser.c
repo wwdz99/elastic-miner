@@ -249,6 +249,7 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
 	case TOKEN_GCD:				node_type = NODE_GCD; 			break;
 	case TOKEN_BI_CONST:		node_type = NODE_BI_CONST;		break;
 	case TOKEN_BI_EXPR:			node_type = NODE_BI_EXPR;		break;
+	case TOKEN_BI_COPY:			node_type = NODE_BI_COPY;		break;
 	case TOKEN_BI_ADD:			node_type = NODE_BI_ADD;		break;
 	case TOKEN_BI_SUB:			node_type = NODE_BI_SUB;		break;
 	case TOKEN_BI_MUL:			node_type = NODE_BI_MUL;		break;

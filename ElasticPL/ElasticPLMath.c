@@ -62,13 +62,16 @@ extern void big_init_expr(mpz_t out, int32_t a, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_init_copy(mpz_t out, mpz_t a, uint32_t *bi_size) {
+extern void big_copy(mpz_t out, mpz_t a, uint32_t *bi_size) {
 	uint32_t old_sz = (uint32_t)out->_mp_size;
+	
+	if (out == a)
+		return;
 
 	// Reset The Big Int
 	mpz_clear(out);
 
-	mpz_set(out, a);
+	mpz_init_set(out, a);
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;

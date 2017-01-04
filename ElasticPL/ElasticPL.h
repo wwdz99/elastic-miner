@@ -19,7 +19,10 @@
 #define TOKEN_LIST_SIZE 1024
 #define PARSE_STACK_SIZE 512
 
-#define VM_MEMORY_SIZE 64000
+#define VM_MEMORY_SIZE	64000	// Number Of Integers Supported By ElasticPL
+#define VM_FLOAT_SIZE	1000	// Number Of Doubles Supported By ElasticPL
+#define VM_BI_SIZE		100		// Number Of Big Integers Supported By ElasticPL
+
 #define VM_STACK_SIZE 1024
 
 typedef enum {
@@ -102,6 +105,7 @@ typedef enum {
 	NODE_GCD,
 	NODE_BI_CONST,
 	NODE_BI_EXPR,
+	NODE_BI_COPY,
 	NODE_BI_ADD,
 	NODE_BI_SUB,
 	NODE_BI_MUL,
@@ -280,6 +284,7 @@ typedef enum {
 	TOKEN_GCD,
 	TOKEN_BI_CONST,
 	TOKEN_BI_EXPR,
+	TOKEN_BI_COPY,
 	TOKEN_BI_ADD,
 	TOKEN_BI_SUB,
 	TOKEN_BI_MUL,
@@ -373,7 +378,6 @@ typedef enum {
 	TOKEN_RIPEMD128
 } EPL_TOKEN_TYPE;
 
-
 typedef enum {
 	EXP_NONE,
 	EXP_STATEMENT,
@@ -389,7 +393,6 @@ typedef enum {
 	DT_NONE
 } DATA_TYPE;
 
-
 // Token Type / Literal Value From ElasticPL Source Code
 typedef struct {
 	int token_id;
@@ -402,14 +405,12 @@ typedef struct {
 	DATA_TYPE data_type;
 } SOURCE_TOKEN;
 
-
 // List Of All Tokens In ElasticPL Source Code
 typedef struct {
 	SOURCE_TOKEN *token;
 	int num;
 	int size;
 } SOURCE_TOKEN_LIST;
-
 
 struct EXP_TOKEN_LIST {
 	char* str;
@@ -451,7 +452,7 @@ ast **stack_exp;	// List Of Expresions For Parsing / Final Expression List
 int vm_ast_cnt;		// Number Of AST Root Nodes In VM
 ast **vm_ast;		// Final AST List For VM
 
-					// Function Declarations
+// Function Declarations
 extern bool create_epl_vm(char *source);
 static bool delete_epl_vm();
 
