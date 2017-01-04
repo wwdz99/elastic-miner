@@ -26,11 +26,14 @@ extern int32_t gcd(int32_t a, int32_t b) {
 	return a;
 }
 
-extern void big_init_const(mpz_t out, unsigned char* str, uint32_t *bi_size) {
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_init_const(mpz_t out, unsigned char* str, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz;
 
-	if (!str)
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || !str)
 		return;
+
+	old_sz = (uint32_t)out->_mp_size;
 
 	// Reset The Big Int
 	mpz_clear(out);
@@ -50,8 +53,14 @@ extern void big_init_const(mpz_t out, unsigned char* str, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_init_expr(mpz_t out, int32_t a, uint32_t *bi_size) {
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_init_expr(mpz_t out, int32_t a, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz;
+
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]))
+		return;
+
+	old_sz = (uint32_t)out->_mp_size;
 
 	// Reset The Big Int
 	mpz_clear(out);
@@ -62,8 +71,14 @@ extern void big_init_expr(mpz_t out, int32_t a, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_copy(mpz_t out, mpz_t a, uint32_t *bi_size) {
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_copy(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz;
+
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
+		return;
+
+	old_sz = (uint32_t)out->_mp_size;
 	
 	if (out == a)
 		return;
@@ -77,12 +92,17 @@ extern void big_copy(mpz_t out, mpz_t a, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_add(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_add(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
 
-	res_sz = *bi_size + 1;  // At most addition will cause size to increase by 1
-	if (res_sz > BIG_INT_MAX_SZ)
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+		return;
+
+	old_sz = (uint32_t)out->_mp_size;
+
+	new_sz = *bi_size + 1;  // At most addition will cause size to increase by 1
+	if (new_sz > BIG_INT_MAX_SZ)
 		mpz_set_ui(out, 0);
 	else
 		mpz_add(out, a, b);
@@ -91,12 +111,17 @@ extern void big_add(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_sub(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_sub(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
 
-	res_sz = *bi_size + 1;  // At most subtraction will cause size to increase by 1
-	if (res_sz > BIG_INT_MAX_SZ)
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+		return;
+
+	old_sz = (uint32_t)out->_mp_size;
+
+	new_sz = *bi_size + 1;  // At most subtraction will cause size to increase by 1
+	if (new_sz > BIG_INT_MAX_SZ)
 		mpz_set_ui(out, 0);
 	else
 		mpz_sub(out, a, b);
@@ -105,12 +130,17 @@ extern void big_sub(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_mul(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_mul(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
 
-	res_sz = *bi_size + (uint32_t)a->_mp_size + (uint32_t)b->_mp_size;  // At most multiplication will cause size to increase by a + b
-	if (res_sz > BIG_INT_MAX_SZ)
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+		return;
+
+	old_sz = (uint32_t)out->_mp_size;
+
+	new_sz = *bi_size + (uint32_t)a->_mp_size + (uint32_t)b->_mp_size;  // At most multiplication will cause size to increase by a + b
+	if (new_sz > BIG_INT_MAX_SZ)
 		mpz_set_ui(out, 0);
 	else
 		mpz_mul(out, a, b);
@@ -119,14 +149,17 @@ extern void big_mul(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_div(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_div(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
 
-	// TODO: Do we need division by zero check or use the gmp internal check
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+		return;
 
-	res_sz = *bi_size + (uint32_t)a->_mp_size;  // At most division will cause size to increase by a
-	if (res_sz > BIG_INT_MAX_SZ)
+	old_sz = (uint32_t)out->_mp_size;
+
+	new_sz = *bi_size + (uint32_t)a->_mp_size;  // At most division will cause size to increase by a
+	if ((new_sz > BIG_INT_MAX_SZ) || (b->_mp_size == 0))
 		mpz_set_ui(out, 0);
 	else
 		mpz_div(out, a, b);
@@ -135,14 +168,17 @@ extern void big_div(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_ceil_div(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_ceil_div(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
 
-	// TODO: Do we need division by zero check or use the gmp internal check
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+		return;
 
-	res_sz = *bi_size + (uint32_t)a->_mp_size;  // At most division will cause size to increase by a
-	if (res_sz > BIG_INT_MAX_SZ)
+	old_sz = (uint32_t)out->_mp_size;
+
+	new_sz = *bi_size + (uint32_t)a->_mp_size;  // At most division will cause size to increase by a
+	if ((new_sz > BIG_INT_MAX_SZ) || (b->_mp_size == 0))
 		mpz_set_ui(out, 0);
 	else
 		mpz_cdiv_q(out, a, b);
@@ -151,14 +187,17 @@ extern void big_ceil_div(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_floor_div(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_floor_div(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
 
-	// TODO: Do we need division by zero check or use the gmp internal check
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+		return;
 
-	res_sz = *bi_size + (uint32_t)a->_mp_size;  // At most division will cause size to increase by a
-	if (res_sz > BIG_INT_MAX_SZ)
+	old_sz = (uint32_t)out->_mp_size;
+
+	new_sz = *bi_size + (uint32_t)a->_mp_size;  // At most division will cause size to increase by a
+	if ((new_sz > BIG_INT_MAX_SZ) || (b->_mp_size == 0))
 		mpz_set_ui(out, 0);
 	else
 		mpz_fdiv_q(out, a, b);
@@ -167,14 +206,17 @@ extern void big_floor_div(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_truncate_div(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_truncate_div(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
 
-	// TODO: Do we need division by zero check or use the gmp internal check
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+		return;
 
-	res_sz = *bi_size + (uint32_t)a->_mp_size;  // At most division will cause size to increase by a
-	if (res_sz > BIG_INT_MAX_SZ)
+	old_sz = (uint32_t)out->_mp_size;
+
+	new_sz = *bi_size + (uint32_t)a->_mp_size;  // At most division will cause size to increase by a
+	if ((new_sz > BIG_INT_MAX_SZ) || (b->_mp_size == 0))
 		mpz_set_ui(out, 0);
 	else
 		mpz_tdiv_q(out, a, b);
@@ -183,14 +225,17 @@ extern void big_truncate_div(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_div_exact(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_div_exact(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
 
-	// TODO: Do we need division by zero check or use the gmp internal check
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+		return;
 
-	res_sz = *bi_size + (uint32_t)a->_mp_size;  // At most division will cause size to increase by a
-	if (res_sz > BIG_INT_MAX_SZ)
+	old_sz = (uint32_t)out->_mp_size;
+
+	new_sz = *bi_size + (uint32_t)a->_mp_size;  // At most division will cause size to increase by a
+	if ((new_sz > BIG_INT_MAX_SZ) || (b->_mp_size == 0))
 		mpz_set_ui(out, 0);
 	else
 		mpz_divexact(out, a, b);
@@ -199,14 +244,17 @@ extern void big_div_exact(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_mod(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_mod(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
 
-	// TODO: Do we need > 0 check or use the gmp internal check
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+		return;
 
-	res_sz = *bi_size + (uint32_t)a->_mp_size;  // At most division will cause size to increase by a
-	if (res_sz > BIG_INT_MAX_SZ)
+	old_sz = (uint32_t)out->_mp_size;
+
+	new_sz = *bi_size + (uint32_t)a->_mp_size;  // At most mod will cause size to increase by a
+	if ((new_sz > BIG_INT_MAX_SZ) || (b->_mp_size == 0))
 		mpz_set_ui(out, 0);
 	else
 		mpz_mod(out, a, b);
@@ -215,12 +263,17 @@ extern void big_mod(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_neg(mpz_t out, mpz_t a, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_neg(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
 
-	res_sz = *bi_size + (uint32_t)a->_mp_size;  // At most division will cause size to increase by a
-	if (res_sz > BIG_INT_MAX_SZ)
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
+		return;
+
+	old_sz = (uint32_t)out->_mp_size;
+
+	new_sz = *bi_size + (uint32_t)a->_mp_size;  // At most negation will cause size to increase by a
+	if (new_sz > BIG_INT_MAX_SZ)
 		mpz_set_ui(out, 0);
 	else
 		mpz_neg(out, a);
@@ -229,12 +282,17 @@ extern void big_neg(mpz_t out, mpz_t a, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_lshift(mpz_t out, mpz_t a, int32_t b, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_lshift(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
 
-	res_sz = *bi_size + (uint32_t)a->_mp_size + (int)(b / 32) + 1;  // At most left shift will cause size to increase by a + b / 32 + 1
-	if ((res_sz > BIG_INT_MAX_SZ) || (b < 0))
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
+		return;
+
+	old_sz = (uint32_t)out->_mp_size;
+
+	new_sz = *bi_size + (uint32_t)a->_mp_size + (int)(b / 32) + 1;  // At most left shift will cause size to increase by a + b / 32 + 1
+	if ((new_sz > BIG_INT_MAX_SZ) || (b < 0))
 		mpz_set_ui(out, 0);
 	else
 		mpz_mul_2exp(out, a, b);
@@ -243,12 +301,17 @@ extern void big_lshift(mpz_t out, mpz_t a, int32_t b, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_rshift(mpz_t out, mpz_t a, int32_t b, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_rshift(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
 
-	res_sz = *bi_size + (uint32_t)a->_mp_size;  // At most right shift will cause size to increase by a
-	if ((res_sz > BIG_INT_MAX_SZ) || (b < 0))
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
+		return;
+
+	old_sz = (uint32_t)out->_mp_size;
+
+	new_sz = *bi_size + (uint32_t)a->_mp_size;  // At most right shift will cause size to increase by a
+	if ((new_sz > BIG_INT_MAX_SZ) || (b < 0))
 		mpz_set_ui(out, 0);
 	else
 		mpz_div_2exp(out, a, b);
@@ -257,13 +320,21 @@ extern void big_rshift(mpz_t out, mpz_t a, int32_t b, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_gcd(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_gcd(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
+
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+		return;
+
+	old_sz = (uint32_t)out->_mp_size;
+
+	new_sz = *bi_size + (uint32_t)a->_mp_size;  // At most gcd will cause size to increase by a
+	if ((new_sz > BIG_INT_MAX_SZ) || (b->_mp_size == 0))
 
 	// TODO: Not sure how to validate this one
-	res_sz = *bi_size + (uint32_t)a->_mp_size;
-	if ((res_sz > BIG_INT_MAX_SZ) || (b < 0))
+	new_sz = *bi_size + (uint32_t)a->_mp_size;
+	if ((new_sz > BIG_INT_MAX_SZ) || (b < 0))
 		mpz_set_ui(out, 0);
 	else
 		mpz_gcd(out, a, b);
@@ -272,20 +343,35 @@ extern void big_gcd(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern int32_t big_divisible(mpz_t a, mpz_t b) {
+extern int32_t big_divisible(mpz_t a, mpz_t b, mpz_t *ptr) {
+
+	// Ensure Inputs Are Valid
+	if ((a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+		return 0;
+
 	return mpz_divisible_p(a, b);
 }
 
-extern int32_t big_congruent_mod_p(mpz_t a, mpz_t b, mpz_t p) {
+extern int32_t big_congruent_mod_p(mpz_t a, mpz_t b, mpz_t p, mpz_t *ptr) {
+
+	// Ensure Inputs Are Valid
+	if ((a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]) || (p < ptr[0]) || (p > ptr[99]))
+		return 0;
+
 	return mpz_congruent_p(a, b, p);
 }
 
-extern void big_pow(mpz_t out, mpz_t a, uint32_t b, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_pow(mpz_t out, mpz_t a, uint32_t b, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
 
-	res_sz = *bi_size + ((uint32_t)a->_mp_size * b);  // At most POW will cause size to increase by a * b
-	if (res_sz > BIG_INT_MAX_SZ)
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
+		return;
+
+	old_sz = (uint32_t)out->_mp_size;
+
+	new_sz = *bi_size + ((uint32_t)a->_mp_size * b);  // At most POW will cause size to increase by a * b
+	if (new_sz > BIG_INT_MAX_SZ)
 		mpz_set_ui(out, 0);
 	else
 		mpz_pow_ui(out, a, b);
@@ -294,13 +380,18 @@ extern void big_pow(mpz_t out, mpz_t a, uint32_t b, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_pow2(mpz_t out, uint32_t b, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_pow2(mpz_t out, uint32_t b, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
+
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]))
+		return;
+
+	old_sz = (uint32_t)out->_mp_size;
 
 	// TODO: Confirm Validation Logic
-	res_sz = *bi_size + b;  // At most POW2 will cause size to increase by b
-	if (res_sz > BIG_INT_MAX_SZ)
+	new_sz = *bi_size + b;  // At most POW2 will cause size to increase by b
+	if (new_sz > BIG_INT_MAX_SZ)
 		mpz_set_ui(out, 0);
 	else
 		mpz_ui_pow_ui(out, 2, b);
@@ -309,13 +400,18 @@ extern void big_pow2(mpz_t out, uint32_t b, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_pow_mod_p(mpz_t out, mpz_t a, mpz_t b, mpz_t c, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_pow_mod_p(mpz_t out, mpz_t a, mpz_t b, mpz_t c, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
+
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (c > ptr[99]) || (c < ptr[0]) || (c > ptr[99]))
+		return;
+
+	old_sz = (uint32_t)out->_mp_size;
 
 	// TODO: Confirm Validation Logic
-	res_sz = *bi_size + ((uint32_t)a->_mp_size * (uint32_t)b->_mp_size);  // At most POW will cause size to increase by a * b
-	if (res_sz > BIG_INT_MAX_SZ)
+	new_sz = *bi_size + ((uint32_t)a->_mp_size * (uint32_t)b->_mp_size);  // At most POW will cause size to increase by a * b
+	if (new_sz > BIG_INT_MAX_SZ)
 		mpz_set_ui(out, 0);
 	else
 		mpz_powm(out, a, b, c);
@@ -324,13 +420,18 @@ extern void big_pow_mod_p(mpz_t out, mpz_t a, mpz_t b, mpz_t c, uint32_t *bi_siz
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_pow2_mod_p(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_pow2_mod_p(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
+
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+		return;
+
+	old_sz = (uint32_t)out->_mp_size;
 
 	// TODO: Confirm Validation Logic
-	res_sz = *bi_size + (uint32_t)a->_mp_size;  // At most POW will cause size to increase by a
-	if (res_sz > BIG_INT_MAX_SZ)
+	new_sz = *bi_size + (uint32_t)a->_mp_size;  // At most POW will cause size to increase by a
+	if (new_sz > BIG_INT_MAX_SZ)
 		mpz_set_ui(out, 0);
 	else {
 		mpz_t c;
@@ -343,25 +444,45 @@ extern void big_pow2_mod_p(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern int32_t big_compare(mpz_t a, mpz_t b) {
+extern int32_t big_compare(mpz_t a, mpz_t b, mpz_t *ptr) {
+
+	// Ensure Inputs Are Valid
+	if ((a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+		return 0;
+
 	return mpz_cmp(a, b);
 }
 
-extern int32_t big_compare_abs(mpz_t a, mpz_t b) {
+extern int32_t big_compare_abs(mpz_t a, mpz_t b, mpz_t *ptr) {
+
+	// Ensure Inputs Are Valid
+	if ((a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+		return 0;
+
 	return mpz_cmpabs(a, b);
 }
 
-extern int32_t big_sign(mpz_t a) {
+extern int32_t big_sign(mpz_t a, mpz_t *ptr) {
+
+	// Ensure Inputs Are Valid
+	if ((a < ptr[0]) || (a > ptr[99]))
+		return 0;
+
 	return mpz_sgn(a);
 }
 
-extern void big_or(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_or(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
+
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+		return;
+
+	old_sz = (uint32_t)out->_mp_size;
 
 	// TODO: Confirm Validation Logic
-	res_sz = *bi_size + MAX((uint32_t)a->_mp_size, (uint32_t)b->_mp_size);  // At most POW will cause size to increase by max a , b
-	if (res_sz > BIG_INT_MAX_SZ)
+	new_sz = *bi_size + MAX((uint32_t)a->_mp_size, (uint32_t)b->_mp_size);  // At most POW will cause size to increase by max a , b
+	if (new_sz > BIG_INT_MAX_SZ)
 		mpz_set_ui(out, 0);
 	else
 		mpz_ior(out, a, b);
@@ -370,13 +491,18 @@ extern void big_or(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_and(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_and(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
+
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+		return;
+
+	old_sz = (uint32_t)out->_mp_size;
 
 	// TODO: Confirm Validation Logic
-	res_sz = *bi_size + MAX((uint32_t)a->_mp_size, (uint32_t)b->_mp_size);  // At most POW will cause size to increase by max a , b
-	if (res_sz > BIG_INT_MAX_SZ)
+	new_sz = *bi_size + MAX((uint32_t)a->_mp_size, (uint32_t)b->_mp_size);  // At most POW will cause size to increase by max a , b
+	if (new_sz > BIG_INT_MAX_SZ)
 		mpz_set_ui(out, 0);
 	else
 		mpz_and(out, a, b);
@@ -385,13 +511,18 @@ extern void big_and(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_xor(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_xor(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
+
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+		return;
+
+	old_sz = (uint32_t)out->_mp_size;
 
 	// TODO: Confirm Validation Logic
-	res_sz = *bi_size + MAX((uint32_t)a->_mp_size, (uint32_t)b->_mp_size);  // At most POW will cause size to increase by max a , b
-	if (res_sz > BIG_INT_MAX_SZ)
+	new_sz = *bi_size + MAX((uint32_t)a->_mp_size, (uint32_t)b->_mp_size);  // At most POW will cause size to increase by max a , b
+	if (new_sz > BIG_INT_MAX_SZ)
 		mpz_set_ui(out, 0);
 	else
 		mpz_xor(out, a, b);
@@ -400,12 +531,17 @@ extern void big_xor(mpz_t out, mpz_t a, mpz_t b, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_or_integer(mpz_t out, mpz_t a, int32_t b, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_or_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
 
-	res_sz = *bi_size + (uint32_t)a->_mp_size + 1;  // At most OR will cause size to increase by max a + 1
-	if (res_sz > BIG_INT_MAX_SZ)
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
+		return;
+
+	old_sz = (uint32_t)out->_mp_size;
+
+	new_sz = *bi_size + (uint32_t)a->_mp_size + 1;  // At most OR will cause size to increase by max a + 1
+	if (new_sz > BIG_INT_MAX_SZ)
 		mpz_set_ui(out, 0);
 	else {
 		mpz_t c;
@@ -418,12 +554,17 @@ extern void big_or_integer(mpz_t out, mpz_t a, int32_t b, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_and_integer(mpz_t out, mpz_t a, int32_t b, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_and_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
 
-	res_sz = *bi_size + (uint32_t)a->_mp_size + 1;  // At most OR will cause size to increase by max a + 1
-	if (res_sz > BIG_INT_MAX_SZ)
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
+		return;
+
+	old_sz = (uint32_t)out->_mp_size;
+
+	new_sz = *bi_size + (uint32_t)a->_mp_size + 1;  // At most OR will cause size to increase by max a + 1
+	if (new_sz > BIG_INT_MAX_SZ)
 		mpz_set_ui(out, 0);
 	else {
 		mpz_t c;
@@ -436,12 +577,17 @@ extern void big_and_integer(mpz_t out, mpz_t a, int32_t b, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern void big_xor_integer(mpz_t out, mpz_t a, int32_t b, uint32_t *bi_size) {
-	uint32_t res_sz;
-	uint32_t old_sz = (uint32_t)out->_mp_size;
+extern void big_xor_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_size) {
+	uint32_t old_sz, new_sz;
 
-	res_sz = *bi_size + (uint32_t)a->_mp_size + 1;  // At most OR will cause size to increase by max a + 1
-	if (res_sz > BIG_INT_MAX_SZ)
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
+		return;
+
+	old_sz = (uint32_t)out->_mp_size;
+
+	new_sz = *bi_size + (uint32_t)a->_mp_size + 1;  // At most OR will cause size to increase by max a + 1
+	if (new_sz > BIG_INT_MAX_SZ)
 		mpz_set_ui(out, 0);
 	else {
 		mpz_t c;
@@ -454,6 +600,11 @@ extern void big_xor_integer(mpz_t out, mpz_t a, int32_t b, uint32_t *bi_size) {
 	if (*bi_size < 0) *bi_size = 0;
 }
 
-extern int32_t big_least_32bit(mpz_t a) {
+extern int32_t big_least_32bit(mpz_t a, mpz_t *ptr) {
+
+	// Ensure Inputs Are Valid
+	if ((a < ptr[0]) || (a > ptr[99]))
+		return 0;
+
 	return mpz_get_si(a);
 }
