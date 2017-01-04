@@ -524,9 +524,9 @@ static void *test_vm_thread(void *userdata) {
 	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
 	vm_stack_idx = -1;
 	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
-	vm_f = calloc(1000, sizeof(double));
-	vm_b = (mpz_t *)malloc(100 * sizeof(mpz_t));
-	for (i = 0; i < 100; i++) {
+	vm_f = calloc(VM_FLOAT_SIZE, sizeof(double));
+	vm_b = (mpz_t *)malloc(VM_BI_SIZE * sizeof(mpz_t));
+	for (i = 0; i < VM_BI_SIZE; i++) {
 		mpz_init(vm_b[i]);
 		mpz_set_ui(vm_b[i], 0);
 	}
@@ -596,12 +596,12 @@ static void *test_vm_thread(void *userdata) {
 			printf("\t\t  vm_m[%d] = %d\n", i, vm_m[i]);
 	}
 	printf("\n\t   VM Floats:\n");
-	for (i = 0; i < 1000; i++) {
+	for (i = 0; i < VM_FLOAT_SIZE; i++) {
 		if (vm_f[i])
 			printf("\t\t  vm_f[%d] = %f\n", i, vm_f[i]);
 	}
 	printf("\n\t  VM Big Ints:\n");
-	for (i = 0; i < 100; i++) {
+	for (i = 0; i < VM_BI_SIZE; i++) {
 		if (vm_b[i]->_mp_size)
 			gmp_printf("\t\t  vm_b[%d] (alloc: %d, size: %d) = %Zd\n", i, vm_b[i]->_mp_alloc, vm_b[i]->_mp_size, vm_b[i]);
 	}
@@ -1296,9 +1296,9 @@ static void *cpu_miner_thread(void *userdata) {
 	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
 	vm_stack_idx = -1;
 	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
-	vm_f = calloc(1000, sizeof(double));
-	vm_b = (mpz_t *)malloc(100 * sizeof(mpz_t));
-	for (i = 0; i < 100; i++) {
+	vm_f = calloc(VM_FLOAT_SIZE, sizeof(double));
+	vm_b = (mpz_t *)malloc(VM_BI_SIZE * sizeof(mpz_t));
+	for (i = 0; i < VM_BI_SIZE; i++) {
 		mpz_init(vm_b[i]);
 		mpz_set_ui(vm_b[i], 0);
 	}

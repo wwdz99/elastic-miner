@@ -114,8 +114,17 @@ bool create_c_source() {
 #endif
 	fprintf(f, "\tint index;\n");
 	fprintf(f, "\tint bounty_found;\n");
-	fprintf(f, "\tuint32_t bi_size = 0;\n\n");
-	fprintf(f, "//The following code created by ElasticPL to C converter\n\n");
+
+	if (use_elasticpl_bigint) {
+		fprintf(f, "\tuint32_t bi_size = 0;\n\n");
+		fprintf(f, "\t// Reset Big Integers\n");
+		fprintf(f, "\tfor (index = 0; index < %d; index++) {\n", VM_BI_SIZE);
+		fprintf(f, "\t\tif (b[index]->_mp_size)\n");
+		fprintf(f, "\t\t\tmpz_clear(b[index]);\n");
+		fprintf(f, "\t}\n");
+	}
+
+	fprintf(f, "\n\t// The following code created by ElasticPL to C converter\n\n");
 	fprintf(f, "%s", &code[0]);
 	fprintf(f, "\n\treturn bounty_found;\n");
 	fprintf(f, "}\n");
