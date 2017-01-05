@@ -536,10 +536,16 @@ static void *test_vm_thread(void *userdata) {
 		exit(EXIT_FAILURE);
 	}
 
-	//uint32_t bi_size = 0;
+	uint32_t bi_size = 0;
 	//big_init_const(vm_b[1], "0x0123456789abcdef", &bi_size);
 	//big_init_const(vm_b[2], "0xfedcba9876543210", &bi_size);
 	//big_add(vm_b[0], vm_b[1], vm_b[2], &bi_size);
+	//big_init_const(vm_b[1], "0x16260783e40b16731673622ac8a5b045fc3ea4af70f727f3f9e92bdd3a1ddc42", vm_b, &bi_size);
+	//epl_ec_priv_to_pub2(vm_b[0], vm_b[1], true, NID_secp256k1, 32, vm_b, &bi_size);
+	//gmp_printf("vm_b[%d] (alloc: %d, size: %d) = %ZX\n", 1, vm_b[1]->_mp_alloc, vm_b[1]->_mp_size, vm_b[1]);
+	//gmp_printf("vm_b[%d] (alloc: %d, size: %d) = %ZX\n", 0, vm_b[0]->_mp_alloc, vm_b[0]->_mp_size, vm_b[0]);
+
+
 
 	applog(LOG_DEBUG, "DEBUG: Loading Test File");
 	if (!load_test_file(test_code))
@@ -603,7 +609,7 @@ static void *test_vm_thread(void *userdata) {
 	printf("\n\t  VM Big Ints:\n");
 	for (i = 0; i < VM_BI_SIZE; i++) {
 		if (vm_b[i]->_mp_size)
-			gmp_printf("\t\t  vm_b[%d] (alloc: %d, size: %d) = %Zd\n", i, vm_b[i]->_mp_alloc, vm_b[i]->_mp_size, vm_b[i]);
+			gmp_printf("\t\t  vm_b[%d] (alloc: %d, size: %d) = %ZX\n", i, vm_b[i]->_mp_alloc, vm_b[i]->_mp_size, vm_b[i]);
 	}
 	printf("\n");
 
