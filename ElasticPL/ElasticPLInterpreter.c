@@ -554,7 +554,7 @@ static int32_t interpret(ast* exp, bool mangle) {
 			return vm_bounty;
 		case NODE_PARAM:
 			break;
-		case NODE_SHA256:
+/*		case NODE_SHA256:
 			if (!get_param(exp, param, 2))
 				val = 0;
 			else
@@ -582,7 +582,7 @@ static int32_t interpret(ast* exp, bool mangle) {
 				val = epl_md5(param[0], param[1], vm_m);
 			//mangle_state(val);
 			return 1;
-/*		case NODE_SECP192K_PTP:
+		case NODE_SECP192K_PTP:
 			if (!get_param(exp, param, 2))
 				val = 0;
 			else

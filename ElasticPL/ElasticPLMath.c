@@ -619,7 +619,7 @@ extern void big_get_bin(mpz_t a, uint32_t *buf, size_t len, mpz_t *ptr) {
 	}
 
 	// Validate Buffer Can Hold Big Int
-	if ((a->_mp_size < 0) || ((a->_mp_size * 4) > len)) {
+	if ((a->_mp_size < 0) || ((size_t)(a->_mp_size * 4) > len)) {
 		free(buf);
 		buf = NULL;
 		return;

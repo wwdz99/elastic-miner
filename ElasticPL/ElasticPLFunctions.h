@@ -28,11 +28,11 @@
 
 extern void whirlpool_hash(const uint8_t *message, uint32_t len, uint8_t *hash);
 
-extern uint32_t epl_sha256(int idx, int len, int32_t *mem);
-extern uint32_t epl_sha512(int idx, int len, int32_t *mem);
-extern uint32_t epl_md5(int idx, int len, int32_t *mem);
-extern uint32_t epl_ripemd160(int idx, int len, int32_t *mem);
-extern uint32_t epl_whirlpool(int idx, int len, int32_t *mem);
+extern uint32_t epl_sha256(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size);
+extern uint32_t epl_sha512(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size);
+extern uint32_t epl_md5(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size);
+extern uint32_t epl_ripemd160(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size);
+extern uint32_t epl_whirlpool(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size);
 extern uint32_t epl_ec_priv_to_pub(mpz_t out, mpz_t a, bool compressed, int nid, size_t len, mpz_t *ptr, uint32_t *bi_size);
 extern uint32_t epl_ec_add(mpz_t out, bool comp, mpz_t a, bool compa, mpz_t b, bool compb, int nid, size_t comp_sz, size_t uncomp_sz, mpz_t *ptr, uint32_t *bi_size);
 extern uint32_t epl_ec_sub(mpz_t out, bool comp, mpz_t a, bool compa, mpz_t b, bool compb, int nid, size_t comp_sz, size_t uncomp_sz, mpz_t *ptr, uint32_t *bi_size);

@@ -38,227 +38,227 @@ static void dump_hex(unsigned char *label, unsigned char *bytes, int len) {
 	printf("\n");
 }
 
-extern uint32_t epl_sha256(int idx, int len, int32_t *mem) {
+extern uint32_t epl_sha256(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
 	sha256_ctx ctx;
-	unsigned char *msg;
-	unsigned char hash[32];
-	uint32_t *hash32 = (uint32_t *)hash;
-	uint32_t *msg32;
-	uint32_t value;
-	int i, n;
+	uint8_t hash[32], *buf = NULL;
+	size_t i, len, offset = 0;
+	uint32_t value = 0;
 
-	n = (int)(len / 4) + ((len % 4) ? 1 : 0);
-
-	// Check Boundary Conditions Of Inputs
-	if ((idx < 0) || (len <= 0) || ((idx + n) >= VM_MEMORY_SIZE) || ((idx + 8) >= VM_MEMORY_SIZE))
+	// Validate Inputs
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
 		return 0;
-
-	msg = (unsigned char *)malloc(n * sizeof(int));
-	if (!msg)
-		return 0;
-
-	msg32 = (uint32_t *)msg;
-
-	// Change Endianess Of Message
-	for (i = 0; i < n; i++) {
-		msg32[i] = swap32(mem[idx + i]);
-	}
-
-	//	dump_hex("Msg", (unsigned char*)(msg), len);
 
 	sha256_init(&ctx);
-	sha256_update(&ctx, msg, len);
+	len = a->_mp_size * 4;
+
+	if (len > 0) {
+		buf = malloc(len);
+
+		// Populate Buffer With Big Int Data
+		big_get_bin(a, (uint32_t *)buf, len, ptr);
+		if (!buf)
+			return 0;
+
+		// Check For Leading Zeros
+		for (i = 0; i < 3; i++) {
+			if (!buf[i]) {
+				offset++;
+				len--;
+			}
+		}
+		sha256_update(&ctx, buf + offset, len);
+	}
+	else
+		sha256_update(&ctx, "", 0);
+
 	sha256_final(&ctx, hash);
 
-	//	dump_hex("Hash", (unsigned char*)(hash), 32);
+//	dump_hex("Hash", hash, 32);
 
-	for (i = 0; i < 8; i++) {
-		mem[idx + i] = swap32(hash32[i]);
-	}
+	big_set_bin(out, hash, 32, ptr, bi_size);
 
 	// Get Value For Mangle State
-	value = swap32(hash32[0]);
+//	value = swap32(hash32[0]);
 
 	//	printf("Val: %d, %08X\n", value, value);
 
-	free(msg);
+	if (buf) free(buf);
 	return value;
 }
 
-extern uint32_t epl_sha512(int idx, int len, int32_t *mem) {
-	unsigned char *msg;
-	unsigned char hash[64];
-	uint32_t *hash32 = (uint32_t *)hash;
-	uint32_t *msg32;
-	uint32_t value;
-	int i, n;
+extern uint32_t epl_sha512(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
+	uint8_t hash[64], *buf = NULL;
+	size_t i, len, offset = 0;
+	uint32_t value = 0;
 
-	n = (int)(len / 4) + ((len % 4) ? 1 : 0);
-
-	// Check Boundary Conditions Of Inputs
-	if ((idx < 0) || (len <= 0) || ((idx + n) >= VM_MEMORY_SIZE) || ((idx + 16) >= VM_MEMORY_SIZE))
+	// Validate Inputs
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
 		return 0;
 
-	msg = (unsigned char *)malloc(n * sizeof(int));
-	if (!msg)
-		return 0;
+	len = a->_mp_size * 4;
 
-	msg32 = (uint32_t *)msg;
+	if (len > 0) {
+		buf = malloc(len);
 
-	// Change Endianess Of Message
-	for (i = 0; i < n; i++) {
-		msg32[i] = swap32(mem[idx + i]);
+		// Populate Buffer With Big Int Data
+		big_get_bin(a, (uint32_t *)buf, len, ptr);
+		if (!buf)
+			return 0;
+
+		// Check For Leading Zeros
+		for (i = 0; i < 3; i++) {
+			if (!buf[i]) {
+				offset++;
+				len--;
+			}
+		}
+		SHA512(buf + offset, len, hash);
 	}
+	else
+		SHA512("", 0, hash);
 
-	//	dump_hex("Msg", (unsigned char*)(msg), len);
+//	dump_hex("Hash", hash, 64);
 
-	SHA512(msg, len, hash);
-
-	//	dump_hex("Hash", (unsigned char*)(hash), 64);
-
-	for (i = 0; i < 16; i++) {
-		mem[idx + i] = swap32(hash32[i]);
-	}
+	big_set_bin(out, hash, 64, ptr, bi_size);
 
 	// Get Value For Mangle State
-	value = swap32(hash32[0]);
+	//	value = swap32(hash32[0]);
 
 	//	printf("Val: %d, %08X\n", value, value);
 
-	free(msg);
+	if (buf) free(buf);
 	return value;
 }
 
-extern uint32_t epl_md5(int idx, int len, int32_t *mem) {
-	unsigned char *msg;
-	unsigned char hash[16];
-	uint32_t *hash32 = (uint32_t *)hash;
-	uint32_t *msg32;
-	uint32_t value;
-	int i, n;
+extern uint32_t epl_md5(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
+	uint8_t hash[16], *buf = NULL;
+	size_t i, len, offset = 0;
+	uint32_t value = 0;
 
-	n = (int)(len / 4) + ((len % 4) ? 1 : 0);
-
-	// Check Boundary Conditions Of Inputs
-	if ((idx < 0) || (len <= 0) || ((idx + n) >= VM_MEMORY_SIZE) || ((idx + 4) >= VM_MEMORY_SIZE))
+	// Validate Inputs
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
 		return 0;
 
-	msg = (unsigned char *)malloc(n * sizeof(int));
-	if (!msg)
-		return 0;
+	len = a->_mp_size * 4;
 
-	msg32 = (uint32_t *)msg;
+	if (len > 0) {
+		buf = malloc(len);
 
-	// Change Endianess Of Message
-	for (i = 0; i < n; i++) {
-		msg32[i] = swap32(mem[idx + i]);
+		// Populate Buffer With Big Int Data
+		big_get_bin(a, (uint32_t *)buf, len, ptr);
+		if (!buf)
+			return 0;
+
+		// Check For Leading Zeros
+		for (i = 0; i < 3; i++) {
+			if (!buf[i]) {
+				offset++;
+				len--;
+			}
+		}
+		MD5(buf + offset, len, hash);
 	}
+	else
+		MD5("", 0, hash);
 
-	//	dump_hex("Msg", (unsigned char*)(msg), len);
+//	dump_hex("Hash", hash, 16);
 
-	MD5(msg, len, hash);
-
-	//	dump_hex("Hash", (unsigned char*)(hash), 16);
-
-	for (i = 0; i < 4; i++) {
-		mem[idx + i] = swap32(hash32[i]);
-	}
+	big_set_bin(out, hash, 16, ptr, bi_size);
 
 	// Get Value For Mangle State
-	value = swap32(hash32[0]);
+	//	value = swap32(hash32[0]);
 
 	//	printf("Val: %d, %08X\n", value, value);
 
-	free(msg);
+	if (buf) free(buf);
 	return value;
 }
 
-extern uint32_t epl_ripemd160(int idx, int len, int32_t *mem) {
-	unsigned char *msg;
-	unsigned char hash[20];
-	uint32_t *hash32 = (uint32_t *)hash;
-	uint32_t *msg32;
-	uint32_t value;
-	int i, n;
+extern uint32_t epl_ripemd160(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
+	uint8_t hash[20], *buf = NULL;
+	size_t i, len, offset = 0;
+	uint32_t value = 0;
 
-	n = (int)(len / 4) + ((len % 4) ? 1 : 0);
-
-	// Check Boundary Conditions Of Inputs
-	if ((idx < 0) || (len <= 0) || ((idx + n) >= VM_MEMORY_SIZE) || ((idx + 5) >= VM_MEMORY_SIZE))
+	// Validate Inputs
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
 		return 0;
 
-	msg = (unsigned char *)malloc(n * sizeof(int));
-	if (!msg)
-		return 0;
+	len = a->_mp_size * 4;
 
-	msg32 = (uint32_t *)msg;
+	if (len > 0) {
+		buf = malloc(len);
 
-	// Change Endianess Of Message
-	for (i = 0; i < n; i++) {
-		msg32[i] = swap32(mem[idx + i]);
+		// Populate Buffer With Big Int Data
+		big_get_bin(a, (uint32_t *)buf, len, ptr);
+		if (!buf)
+			return 0;
+
+		// Check For Leading Zeros
+		for (i = 0; i < 3; i++) {
+			if (!buf[i]) {
+				offset++;
+				len--;
+			}
+		}
+		RIPEMD160(buf + offset, len, hash);
 	}
+	else
+		RIPEMD160("", 0, hash);
 
-	//	dump_hex("Msg", (unsigned char*)(msg), len);
+//	dump_hex("Hash", hash, 20);
 
-	RIPEMD160(msg, len, hash);
-
-	//	dump_hex("Hash", (unsigned char*)(hash), 16);
-
-	for (i = 0; i < 5; i++) {
-		mem[idx + i] = swap32(hash32[i]);
-	}
+	big_set_bin(out, hash, 20, ptr, bi_size);
 
 	// Get Value For Mangle State
-	value = swap32(hash32[0]);
+	//	value = swap32(hash32[0]);
 
 	//	printf("Val: %d, %08X\n", value, value);
 
-	free(msg);
+	if (buf) free(buf);
 	return value;
 }
 
+extern uint32_t epl_whirlpool(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
+	uint8_t hash[64], *buf = NULL;
+	size_t i, len, offset = 0;
+	uint32_t value = 0;
 
-extern uint32_t epl_whirlpool(int idx, int len, int32_t *mem) {
-	unsigned char *msg;
-	unsigned char hash[64];
-	uint32_t *hash32 = (uint32_t *)hash;
-	uint32_t *msg32;
-	uint32_t value;
-	int i, n;
-
-	n = (int)(len / 4) + ((len % 4) ? 1 : 0);
-
-	// Check Boundary Conditions Of Inputs
-	if ((idx < 0) || (len <= 0) || ((idx + n) >= VM_MEMORY_SIZE) || ((idx + 16) >= VM_MEMORY_SIZE))
+	// Validate Inputs
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
 		return 0;
 
-	msg = (unsigned char *)malloc(n * sizeof(int));
-	if (!msg)
-		return 0;
+	len = a->_mp_size * 4;
 
-	msg32 = (uint32_t *)msg;
+	if (len > 0) {
+		buf = malloc(len);
 
-	// Change Endianess Of Message
-	for (i = 0; i < n; i++) {
-		msg32[i] = swap32(mem[idx + i]);
+		// Populate Buffer With Big Int Data
+		big_get_bin(a, (uint32_t *)buf, len, ptr);
+		if (!buf)
+			return 0;
+
+		// Check For Leading Zeros
+		for (i = 0; i < 3; i++) {
+			if (!buf[i]) {
+				offset++;
+				len--;
+			}
+		}
+		whirlpool_hash(buf + offset, len, hash);
 	}
+	else
+		whirlpool_hash("", 0, hash);
 
-	//	dump_hex("Msg", (unsigned char*)(msg), len);
+//	dump_hex("Hash", hash, 64);
 
-	whirlpool_hash(msg, len, hash);
-
-	//	dump_hex("Hash", (unsigned char*)(hash), 64);
-
-	for (i = 0; i < 16; i++) {
-		mem[idx + i] = swap32(hash32[i]);
-	}
+	big_set_bin(out, hash, 64, ptr, bi_size);
 
 	// Get Value For Mangle State
-	value = swap32(hash32[0]);
+	//	value = swap32(hash32[0]);
 
 	//	printf("Val: %d, %08X\n", value, value);
 
-	free(msg);
+	if (buf) free(buf);
 	return value;
 }
 
