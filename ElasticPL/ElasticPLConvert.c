@@ -758,19 +758,19 @@ static char* convert(ast* exp) {
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_SHA256:
-			sprintf(result, "\tm(epl_sha256( %s, mem ))", rval);
+			sprintf(result, "epl_sha256( %s, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SHA512:
-			sprintf(result, "\tm(epl_sha512( %s, mem ))", rval);
+			sprintf(result, "epl_sha512( %s, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_WHIRLPOOL:
-			sprintf(result, "\tm(epl_whirlpool( %s, mem ))", rval);
+			sprintf(result, "epl_whirlpool( %s, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_MD5:
-			sprintf(result, "\tm(epl_md5( %s, mem ))", rval);
+			sprintf(result, "epl_md5( %s, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192K_PTP:
@@ -778,19 +778,19 @@ static char* convert(ast* exp) {
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192K_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp192k1, 25, 49 ))", rval);
+			sprintf(result, "epl_ec_add( %s, NID_secp192k1, 25, 49, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192K_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp192k1, 25, 49 ))", rval);
+			sprintf(result, "epl_ec_sub( %s, NID_secp192k1, 25, 49, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192K_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp192k1, 25, 49 ))", rval);
+			sprintf(result, "epl_ec_mul( %s, NID_secp192k1, 25, 49, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192K_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp192k1, 25, 49 ))", rval);
+			sprintf(result, "epl_ec_neg( %s, NID_secp192k1, 25, 49, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192R_PTP:
@@ -818,19 +818,19 @@ static char* convert(ast* exp) {
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224K_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp224k1, 29, 57 ))", rval);
+			sprintf(result, "epl_ec_add( %s, NID_secp224k1, 29, 57, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224K_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp224k1, 29, 57 ))", rval);
+			sprintf(result, "epl_ec_sub( %s, NID_secp224k1, 29, 57, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224K_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp224k1, 29, 57 ))", rval);
+			sprintf(result, "epl_ec_mul( %s, NID_secp224k1, 29, 57, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224K_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp224k1, 29, 57 ))", rval);
+			sprintf(result, "epl_ec_neg( %s, NID_secp224k1, 29, 57, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224R_PTP:
@@ -838,19 +838,19 @@ static char* convert(ast* exp) {
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224R_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp224r1, 29, 57 ))", rval);
+			sprintf(result, "epl_ec_add( %s, NID_secp224r1, 29, 57, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224R_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp224r1, 29, 57 ))", rval);
+			sprintf(result, "epl_ec_sub( %s, NID_secp224r1, 29, 57, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224R_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp224r1, 29, 57 ))", rval);
+			sprintf(result, "epl_ec_mul( %s, NID_secp224r1, 29, 57, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224R_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp224r1, 29, 57 ))", rval);
+			sprintf(result, "epl_ec_neg( %s, NID_secp224r1, 29, 57, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256K_PTP:
@@ -858,19 +858,19 @@ static char* convert(ast* exp) {
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256K_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp256k1, 33, 65 ))", rval);
+			sprintf(result, "epl_ec_add( %s, NID_secp256k1, 33, 65, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256K_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp256k1, 33, 65 ))", rval);
+			sprintf(result, "epl_ec_sub( %s, NID_secp256k1, 33, 65, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256K_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp256k1, 33, 65 ))", rval);
+			sprintf(result, "epl_ec_mul( %s, NID_secp256k1, 33, 65, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256K_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp256k1, 33, 65 ))", rval);
+			sprintf(result, "epl_ec_neg( %s, NID_secp256k1, 33, 65, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256R_PTP:
@@ -908,19 +908,19 @@ static char* convert(ast* exp) {
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP384R_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp384r1, 49, 97 ))", rval);
+			sprintf(result, "epl_ec_add( %s, NID_secp384r1, 49, 97, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP384R_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp384r1, 49, 97 ))", rval);
+			sprintf(result, "epl_ec_sub( %s, NID_secp384r1, 49, 97, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP384R_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp384r1, 49, 97 ))", rval);
+			sprintf(result, "epl_ec_mul( %s, NID_secp384r1, 49, 97, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP384R_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp384r1, 49, 97 ))", rval);
+			sprintf(result, "epl_ec_neg( %s, NID_secp384r1, 49, 97, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V1_PTP:
@@ -928,19 +928,19 @@ static char* convert(ast* exp) {
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V1_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime192v1, 25, 49 ))", rval);
+			sprintf(result, "epl_ec_add( %s, NID_X9_62_prime192v1, 25, 49, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V1_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime192v1, 25, 49 ))", rval);
+			sprintf(result, "epl_ec_sub( %s, NID_X9_62_prime192v1, 25, 49, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V1_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime192v1, 25, 49 ))", rval);
+			sprintf(result, "epl_ec_mul( %s, NID_X9_62_prime192v1, 25, 49, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V1_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime192v1, 25, 49 ))", rval);
+			sprintf(result, "epl_ec_neg( %s, NID_X9_62_prime192v1, 25, 49, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V2_PTP:
@@ -948,19 +948,19 @@ static char* convert(ast* exp) {
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V2_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime192v2, 25, 49 ))", rval);
+			sprintf(result, "epl_ec_add( %s, NID_X9_62_prime192v2, 25, 49, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V2_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime192v2, 25, 49 ))", rval);
+			sprintf(result, "epl_ec_sub( %s, NID_X9_62_prime192v2, 25, 49, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V2_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime192v2, 25, 49 ))", rval);
+			sprintf(result, "epl_ec_mul( %s, NID_X9_62_prime192v2, 25, 49, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V2_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime192v2, 25, 49 ))", rval);
+			sprintf(result, "epl_ec_neg( %s, NID_X9_62_prime192v2, 25, 49, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V3_PTP:
@@ -968,19 +968,19 @@ static char* convert(ast* exp) {
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V3_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime192v3, 25, 49 ))", rval);
+			sprintf(result, "epl_ec_add( %s, NID_X9_62_prime192v3, 25, 49, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V3_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime192v3, 25, 49 ))", rval);
+			sprintf(result, "epl_ec_sub( %s, NID_X9_62_prime192v3, 25, 49, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V3_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime192v3, 25, 49 ))", rval);
+			sprintf(result, "epl_ec_mul( %s, NID_X9_62_prime192v3, 25, 49, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V3_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime192v3, 25, 49 ))", rval);
+			sprintf(result, "epl_ec_neg( %s, NID_X9_62_prime192v3, 25, 49, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM256V1_PTP:
@@ -988,29 +988,29 @@ static char* convert(ast* exp) {
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM256V1_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime256v1, 33, 65 ))", rval);
+			sprintf(result, "epl_ec_add( %s, NID_X9_62_prime256v1, 33, 65, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM256V1_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime256v1, 33, 65 ))", rval);
+			sprintf(result, "epl_ec_sub( %s, NID_X9_62_prime256v1, 33, 65, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM256V1_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime256v1, 33, 65 ))", rval);
+			sprintf(result, "epl_ec_mul( %s, NID_X9_62_prime256v1, 33, 65, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM256V1_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime256v1, 33, 65 ))", rval);
+			sprintf(result, "epl_ec_neg( %s, NID_X9_62_prime256v1, 33, 65, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_TIGER:
 			//Missing
-			sprintf(result, "Tiger( %s )", rval);
+			sprintf(result, "Tiger( %s , b, &bi_size)", rval);
 			//Missing
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_RIPEMD160:
-			sprintf(result, "\tm(epl_ripemd160( %s, mem ))", rval);
+			sprintf(result, "epl_ripemd160( %s, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_RIPEMD128:

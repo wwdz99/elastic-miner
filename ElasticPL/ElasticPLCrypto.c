@@ -278,8 +278,8 @@ extern uint32_t epl_ec_priv_to_pub(mpz_t out, mpz_t a, bool compressed, int nid,
 	if (!key)
 		return 0;
 
-	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]))
+	// Validate Inputs
+	if ((out < ptr[0]) || (out > ptr[99]) || (len <= 0))
 		return 0;
 
 	if (compressed)
@@ -324,8 +324,8 @@ extern uint32_t epl_ec_priv_to_pub(mpz_t out, mpz_t a, bool compressed, int nid,
 
 //	dump_hex("PK", buf, len);
 
-	len = (size_t)(len / 4);
-	big_set_bin(out, (uint32_t *)(buf + 1), len, ptr, bi_size);
+	// Write Public Key To Big Int
+	big_set_bin(out, buf, len, ptr, bi_size);
 
 	// Get Value For Mangle State
 //	value = swap32(buf32[0]);
@@ -341,57 +341,20 @@ extern uint32_t epl_ec_priv_to_pub(mpz_t out, mpz_t a, bool compressed, int nid,
 	return value;
 }
 
-extern uint32_t epl_ec_add(size_t idx1, bool comp1, size_t idx2, bool comp2, bool comp, int32_t *mem, int nid, size_t comp_sz, size_t uncomp_sz) {
-
+extern uint32_t epl_ec_add(mpz_t out, bool comp, mpz_t a, bool compa, mpz_t b, bool compb, int nid, size_t comp_sz, size_t uncomp_sz, mpz_t *ptr, uint32_t *bi_size) {
 	BN_CTX *ctx = NULL;
 	EC_GROUP *group = NULL;
 	EC_POINT *P = NULL;
 	EC_POINT *Q = NULL;
 	EC_POINT *R = NULL;
 
-	uint8_t *input1, *input2, buf[256];
-	uint32_t *input1_32, *input2_32, value;
-	uint32_t *buf32 = (uint32_t *)buf;
-	size_t buf_len;
-	size_t len1, len2;
-	int i, n, n1, n2;
+	uint8_t *buf;
+	size_t buf_len, len, len_a, len_b;
+	uint32_t value = 0;
 
-	if ((comp_sz <= 0) || (uncomp_sz <= 0))
+	// Validate Inputs
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]) || (comp_sz <= 0) || (uncomp_sz <= 0))
 		return 0;
-
-	// Initialize Point Data
-	if (!mem[idx1]) // Infinity
-		len1 = 1;
-	else
-		len1 = ((comp1) ? comp_sz : uncomp_sz);
-
-	if (!mem[idx2]) // Infinity
-		len2 = 1;
-	else
-		len2 = ((comp2) ? comp_sz : uncomp_sz);
-
-	n1 = (int)(len1 / 4) + ((len1 % 4) ? 1 : 0);
-	n2 = (int)(len2 / 4) + ((len2 % 4) ? 1 : 0);
-
-	if ((idx1 < 0) || (idx2 < 0) || ((idx1 + uncomp_sz) >= VM_MEMORY_SIZE) || ((idx2 + uncomp_sz) >= VM_MEMORY_SIZE))
-		return 0;
-
-	input1 = (uint8_t *)malloc(n1 * sizeof(int));
-	input2 = (uint8_t *)malloc(n2 * sizeof(int));
-	if (!input1 || !input2)
-		return 0;
-
-	input1_32 = (uint32_t *)input1;
-	input2_32 = (uint32_t *)input2;
-
-	// Change Endianess Of Input Data
-	for (i = 0; i < n1; i++)
-		input1_32[i] = swap32(mem[idx1 + i]);
-	for (i = 0; i < n2; i++)
-		input2_32[i] = swap32(mem[idx2 + i]);
-
-	//	dump_hex("Point1", (uint8_t*)(input1), len1);
-	//	dump_hex("Point2", (uint8_t*)(input2), len2);
 
 	// Initialize EC Data
 	ctx = BN_CTX_new();
@@ -400,39 +363,75 @@ extern uint32_t epl_ec_add(size_t idx1, bool comp1, size_t idx2, bool comp2, boo
 	Q = EC_POINT_new(group);
 	R = EC_POINT_new(group);
 
-	// Create EC Points & Add Them Together
-	if (!EC_POINT_oct2point(group, P, input1, len1, ctx))
-		return 0;
-	if (!EC_POINT_oct2point(group, Q, input2, len2, ctx))
-		return 0;
-	if (!EC_POINT_add(group, R, P, Q, ctx))
-		return 0;
+	buf_len = uncomp_sz + 3;
+	buf = malloc(buf_len);
 
-	memset(buf, 0, 256);
-	if (comp)
-		buf_len = EC_POINT_point2oct(group, R, POINT_CONVERSION_COMPRESSED, buf, 256, ctx);
-	else
-		buf_len = EC_POINT_point2oct(group, R, POINT_CONVERSION_UNCOMPRESSED, buf, 256, ctx);
+	len_a = (compa ? comp_sz : uncomp_sz);
+	len_b = (compb ? comp_sz : uncomp_sz);
 
-	if (!buf_len)
-		return 0;
-
-	//	dump_hex("Result", (uint8_t *)buf, buf_len);
-
-	// Copy Result Back To VM
-	n = (int)(buf_len / 4) + ((buf_len % 4) ? 1 : 0);
-	for (i = 0; i < n; i++) {
-		mem[idx1 + i] = swap32(buf32[i]);
+	// Populate Data For Point 1
+	if (a->_mp_size == 0) {		// Point 1 = Infinity
+		buf[3] = 0;
+		len_a = 1;
+	}
+	else {
+		big_get_bin(a, (uint32_t *)buf, buf_len, ptr);
+		if (!buf)
+			return 0;
 	}
 
+//	dump_hex("Point1", buf + 3, len_a);
+
+	if (!EC_POINT_oct2point(group, P, buf + 3, len_a, ctx)) {
+		free(buf);
+		return 0;
+	}
+
+	// Populate Data For Point 2
+	if (b->_mp_size == 0) {		// Point 2 = Infinity
+		buf[3] = 0;
+		len_b = 1;
+	}
+	else {
+		big_get_bin(b, (uint32_t *)buf, buf_len, ptr);
+		if (!buf)
+			return 0;
+	}
+
+//	dump_hex("Point2", buf + 3, len_b);
+
+	if (!EC_POINT_oct2point(group, Q, buf + 3, len_b, ctx)) {
+		free(buf);
+		return 0;
+	}
+
+	// Add Points
+	if (!EC_POINT_add(group, R, P, Q, ctx)) {
+		free(buf);
+		return 0;
+	}
+
+	if (comp)
+		len = EC_POINT_point2oct(group, R, POINT_CONVERSION_COMPRESSED, buf, buf_len, ctx);
+	else
+		len = EC_POINT_point2oct(group, R, POINT_CONVERSION_UNCOMPRESSED, buf, buf_len, ctx);
+
+	if (!len) {
+		free(buf);
+		return 0;
+	}
+
+//	dump_hex("P1 + P2", buf, len);
+
+	big_set_bin(out, buf, len, ptr, bi_size);
+
 	// Get Value For Mangle State
-	value = swap32(buf32[0]);
+//	value = swap32(buf32[0]);
 
 	//	printf("Val: %d, %08X\n", value, value);
 
 	// Free Resources
-	free(input1);
-	free(input2);
+	free(buf);
 	EC_POINT_free(P);
 	EC_POINT_free(Q);
 	EC_POINT_free(R);
@@ -442,57 +441,20 @@ extern uint32_t epl_ec_add(size_t idx1, bool comp1, size_t idx2, bool comp2, boo
 	return value;
 }
 
-extern uint32_t epl_ec_sub(size_t idx1, bool comp1, size_t idx2, bool comp2, bool comp, int32_t *mem, int nid, size_t comp_sz, size_t uncomp_sz) {
-
+extern uint32_t epl_ec_sub(mpz_t out, bool comp, mpz_t a, bool compa, mpz_t b, bool compb, int nid, size_t comp_sz, size_t uncomp_sz, mpz_t *ptr, uint32_t *bi_size) {
 	BN_CTX *ctx = NULL;
 	EC_GROUP *group = NULL;
 	EC_POINT *P = NULL;
 	EC_POINT *Q = NULL;
 	EC_POINT *R = NULL;
 
-	uint8_t *input1, *input2, buf[256];
-	uint32_t *input1_32, *input2_32, value;
-	uint32_t *buf32 = (uint32_t *)buf;
-	size_t buf_len;
-	size_t len1, len2;
-	size_t i, n, n1, n2;
+	uint8_t *buf;
+	size_t buf_len, len, len_a, len_b;
+	uint32_t value = 0;
 
-	if ((comp_sz <= 0) || (uncomp_sz <= 0))
+	// Validate Inputs
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]) || (comp_sz <= 0) || (uncomp_sz <= 0))
 		return 0;
-
-	// Initialize Point Data
-	if (!mem[idx1]) // Infinity
-		len1 = 1;
-	else
-		len1 = ((comp1) ? comp_sz : uncomp_sz);
-
-	if (!mem[idx2]) // Infinity
-		len2 = 1;
-	else
-		len2 = ((comp2) ? comp_sz : uncomp_sz);
-
-	n1 = (int)(len1 / 4) + ((len1 % 4) ? 1 : 0);
-	n2 = (int)(len2 / 4) + ((len2 % 4) ? 1 : 0);
-
-	if ((idx1 < 0) || (idx2 < 0) || ((idx1 + uncomp_sz) >= VM_MEMORY_SIZE) || ((idx2 + uncomp_sz) >= VM_MEMORY_SIZE))
-		return 0;
-
-	input1 = (uint8_t *)malloc(n1 * sizeof(int));
-	input2 = (uint8_t *)malloc(n2 * sizeof(int));
-	if (!input1 || !input2)
-		return 0;
-
-	input1_32 = (uint32_t *)input1;
-	input2_32 = (uint32_t *)input2;
-
-	// Change Endianess Of Input Data
-	for (i = 0; i < n1; i++)
-		input1_32[i] = swap32(mem[idx1 + i]);
-	for (i = 0; i < n2; i++)
-		input2_32[i] = swap32(mem[idx2 + i]);
-
-	//	dump_hex("Point1", (uint8_t*)(input1), len1);
-	//	dump_hex("Point2", (uint8_t*)(input2), len2);
 
 	// Initialize EC Data
 	ctx = BN_CTX_new();
@@ -501,41 +463,79 @@ extern uint32_t epl_ec_sub(size_t idx1, bool comp1, size_t idx2, bool comp2, boo
 	Q = EC_POINT_new(group);
 	R = EC_POINT_new(group);
 
-	// Create EC Points, Invert Q, Then Add Them Together
-	if (!EC_POINT_oct2point(group, P, input1, len1, ctx))
-		return 0;
-	if (!EC_POINT_oct2point(group, Q, input2, len2, ctx))
-		return 0;
-	if (!EC_POINT_invert(group, Q, ctx))
-		return 0;
-	if (!EC_POINT_add(group, R, P, Q, ctx))
-		return 0;
+	buf_len = uncomp_sz + 3;
+	buf = malloc(buf_len);
 
-	memset(buf, 0, 256);
-	if (comp)
-		buf_len = EC_POINT_point2oct(group, R, POINT_CONVERSION_COMPRESSED, buf, 256, ctx);
-	else
-		buf_len = EC_POINT_point2oct(group, R, POINT_CONVERSION_UNCOMPRESSED, buf, 256, ctx);
+	len_a = (compa ? comp_sz : uncomp_sz);
+	len_b = (compb ? comp_sz : uncomp_sz);
 
-	if (!buf_len)
-		return 0;
-
-	//	dump_hex("Result", (uint8_t *)buf, buf_len);
-
-	// Copy Result Back To VM
-	n = (int)(buf_len / 4) + ((buf_len % 4) ? 1 : 0);
-	for (i = 0; i < n; i++) {
-		mem[idx1 + i] = swap32(buf32[i]);
+	// Populate Data For Point 1
+	if (a->_mp_size == 0) {		// Point 1 = Infinity
+		buf[3] = 0;
+		len_a = 1;
+	}
+	else {
+		big_get_bin(a, (uint32_t *)buf, buf_len, ptr);
+		if (!buf)
+			return 0;
 	}
 
+//	dump_hex("Point1", buf + 3, len_a);
+
+	if (!EC_POINT_oct2point(group, P, buf + 3, len_a, ctx)) {
+		free(buf);
+		return 0;
+	}
+
+	// Populate Data For Point 2
+	if (b->_mp_size == 0) {		// Point 2 = Infinity
+		buf[3] = 0;
+		len_b = 1;
+	}
+	else {
+		big_get_bin(b, (uint32_t *)buf, buf_len, ptr);
+		if (!buf)
+			return 0;
+	}
+
+//	dump_hex("Point2", buf + 3, len_b);
+
+	if (!EC_POINT_oct2point(group, Q, buf + 3, len_b, ctx)) {
+		free(buf);
+		return 0;
+	}
+
+	// Invert Q, Then Add Points
+	if (!EC_POINT_invert(group, Q, ctx)) {
+		free(buf);
+		return 0;
+	}
+	if (!EC_POINT_add(group, R, P, Q, ctx)) {
+		free(buf);
+		return 0;
+	}
+
+	if (comp)
+		len = EC_POINT_point2oct(group, R, POINT_CONVERSION_COMPRESSED, buf, buf_len, ctx);
+	else
+		len = EC_POINT_point2oct(group, R, POINT_CONVERSION_UNCOMPRESSED, buf, buf_len, ctx);
+
+	if (!len) {
+		free(buf);
+		return 0;
+	}
+
+//	dump_hex("P1 - P2", buf, len);
+
+	big_set_bin(out, buf, len, ptr, bi_size);
+
 	// Get Value For Mangle State
-	value = swap32(buf32[0]);
+	//	value = swap32(buf32[0]);
 
 	//	printf("Val: %d, %08X\n", value, value);
 
 	// Free Resources
-	free(input1);
-	free(input2);
+	free(buf);
 	EC_POINT_free(P);
 	EC_POINT_free(Q);
 	EC_POINT_free(R);
@@ -545,80 +545,74 @@ extern uint32_t epl_ec_sub(size_t idx1, bool comp1, size_t idx2, bool comp2, boo
 	return value;
 }
 
-extern uint32_t epl_ec_neg(size_t idx1, bool comp1, bool comp, int32_t *mem, int nid, size_t comp_sz, size_t uncomp_sz) {
-
+extern uint32_t epl_ec_neg(mpz_t out, bool comp, mpz_t a, bool compa, int nid, size_t comp_sz, size_t uncomp_sz, mpz_t *ptr, uint32_t *bi_size) {
 	BN_CTX *ctx = NULL;
 	EC_GROUP *group = NULL;
 	EC_POINT *P = NULL;
 
-	uint8_t *input1, buf[256];
-	uint32_t *input1_32, value;
-	uint32_t *buf32 = (uint32_t *)buf;
-	size_t buf_len;
-	size_t len1;
-	size_t i, n, n1;
+	uint8_t *buf;
+	size_t buf_len, len;
+	uint32_t value = 0;
 
-	if ((comp_sz <= 0) || (uncomp_sz <= 0))
+	// Validate Inputs
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99])|| (comp_sz <= 0) || (uncomp_sz <= 0))
 		return 0;
-
-	// Initialize Point Data
-	if (!mem[idx1]) // Infinity
-		len1 = 1;
-	else
-		len1 = ((comp1) ? comp_sz : uncomp_sz);
-
-	n1 = (int)(len1 / 4) + ((len1 % 4) ? 1 : 0);
-
-	if ((idx1 < 0) || ((idx1 + uncomp_sz) >= VM_MEMORY_SIZE))
-		return 0;
-
-	input1 = (uint8_t *)malloc(n1 * sizeof(int));
-	if (!input1)
-		return 0;
-
-	input1_32 = (uint32_t *)input1;
-
-	// Change Endianess Of Input Data
-	for (i = 0; i < n1; i++)
-		input1_32[i] = swap32(mem[idx1 + i]);
-
-	//	dump_hex("Point1", (uint8_t*)(input1), len1);
 
 	// Initialize EC Data
 	ctx = BN_CTX_new();
 	group = EC_GROUP_new_by_curve_name(nid);
 	P = EC_POINT_new(group);
 
-	// Create EC Points, Invert Q, Then Add Them Together
-	if (!EC_POINT_oct2point(group, P, input1, len1, ctx))
-		return 0;
-	if (!EC_POINT_invert(group, P, ctx))
-		return 0;
+	buf_len = uncomp_sz + 3;
+	buf = malloc(buf_len);
 
-	memset(buf, 0, 256);
-	if (comp)
-		buf_len = EC_POINT_point2oct(group, P, POINT_CONVERSION_COMPRESSED, buf, 256, ctx);
-	else
-		buf_len = EC_POINT_point2oct(group, P, POINT_CONVERSION_UNCOMPRESSED, buf, 256, ctx);
+	len = (compa ? comp_sz : uncomp_sz);
 
-	if (!buf_len)
-		return 0;
-
-	//	dump_hex("Result", (uint8_t *)buf, buf_len);
-
-	// Copy Result Back To VM
-	n = (int)(buf_len / 4) + ((buf_len % 4) ? 1 : 0);
-	for (i = 0; i < n; i++) {
-		mem[idx1 + i] = swap32(buf32[i]);
+	// Populate Data For Point
+	if (a->_mp_size == 0) {		// Point 1 = Infinity
+		buf[3] = 0;
+		len = 1;
+	}
+	else {
+		big_get_bin(a, (uint32_t *)buf, buf_len, ptr);
+		if (!buf)
+			return 0;
 	}
 
+//	dump_hex("Point", buf + 3, len);
+
+	if (!EC_POINT_oct2point(group, P, buf + 3, len, ctx)) {
+		free(buf);
+		return 0;
+	}
+
+	// Invert Point
+	if (!EC_POINT_invert(group, P, ctx)) {
+		free(buf);
+		return 0;
+	}
+
+	if (comp)
+		len = EC_POINT_point2oct(group, P, POINT_CONVERSION_COMPRESSED, buf, buf_len, ctx);
+	else
+		len = EC_POINT_point2oct(group, P, POINT_CONVERSION_UNCOMPRESSED, buf, buf_len, ctx);
+
+	if (!len) {
+		free(buf);
+		return 0;
+	}
+
+//	dump_hex("-P", buf, len);
+
+	big_set_bin(out, buf, len, ptr, bi_size);
+
 	// Get Value For Mangle State
-	value = swap32(buf32[0]);
+	//	value = swap32(buf32[0]);
 
 	//	printf("Val: %d, %08X\n", value, value);
 
 	// Free Resources
-	free(input1);
+	free(buf);
 	EC_POINT_free(P);
 	EC_GROUP_free(group);
 	BN_CTX_free(ctx);
@@ -626,94 +620,105 @@ extern uint32_t epl_ec_neg(size_t idx1, bool comp1, bool comp, int32_t *mem, int
 	return value;
 }
 
-extern uint32_t epl_ec_mult(size_t idx1, bool comp1, size_t idx2, size_t n2, bool comp, int32_t *mem, int nid, size_t comp_sz, size_t uncomp_sz) {
-
+extern uint32_t epl_ec_mul(mpz_t out, bool comp, mpz_t a, bool compa, mpz_t b, int nid, size_t comp_sz, size_t uncomp_sz, mpz_t *ptr, uint32_t *bi_size) {
 	BN_CTX *ctx = NULL;
 	EC_GROUP *group = NULL;
-	EC_POINT *P = NULL;
-	BIGNUM *s = NULL;
+	EC_POINT *R = NULL;
+	EC_POINT *Q = NULL;
+	BIGNUM *N = NULL;
 
-	uint8_t *input1, *input2, buf[256];
-	uint32_t *input1_32, *input2_32, value;
-	uint32_t *buf32 = (uint32_t *)buf;
-	size_t buf_len;
-	size_t len1, len2;
-	size_t i, n, n1;
+	uint8_t *buf;
+	size_t buf_len, len, len_a, len_b;
+	uint32_t value = 0;
 
-	if ((comp_sz <= 0) || (uncomp_sz <= 0) || (n2 <= 0))
+	// Validate Inputs
+	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]) || (comp_sz <= 0) || (uncomp_sz <= 0))
 		return 0;
-
-	// Initialize Point Data
-	if (!mem[idx1]) // Infinity
-		len1 = 1;
-	else
-		len1 = ((comp1) ? comp_sz : uncomp_sz);
-
-	len2 = n2 * 4;
-	n1 = (int)(len1 / 4) + ((len1 % 4) ? 1 : 0);
-
-	if ((idx1 < 0) || (idx2 < 0) || ((idx1 + uncomp_sz) >= VM_MEMORY_SIZE) || ((idx2 + n2) >= VM_MEMORY_SIZE))
-		return 0;
-
-	input1 = (uint8_t *)malloc(n1 * sizeof(int));
-	input2 = (uint8_t *)malloc(n2 * sizeof(int));
-	if (!input1 || !input2)
-		return 0;
-
-	input1_32 = (uint32_t *)input1;
-	input2_32 = (uint32_t *)input2;
-
-	// Change Endianess Of Input Data
-	for (i = 0; i < n1; i++)
-		input1_32[i] = swap32(mem[idx1 + i]);
-	for (i = 0; i < n2; i++)
-		input2_32[i] = swap32(mem[idx2 + i]);
-
-	//	dump_hex("Point1", (uint8_t*)(input1), len1);
-	//	dump_hex("Scalar", (uint8_t*)(input2), len2);
 
 	// Initialize EC Data
 	ctx = BN_CTX_new();
 	group = EC_GROUP_new_by_curve_name(nid);
-	P = EC_POINT_new(group);
-	s = BN_new();
+	R = EC_POINT_new(group);
+	Q = EC_POINT_new(group);
+	N = BN_new();
 
-	// Create EC Point & Scalar, Then Multiply Them Together
-	if (!EC_POINT_oct2point(group, P, input1, len1, ctx))
-		return 0;
-	if (!BN_bin2bn(input2, len2, s))
-		return 0;
-	if (!EC_POINT_mul(group, P, s, NULL, NULL, ctx))
-		return 0;
+	len_a = (compa ? comp_sz : uncomp_sz);
+	len_b = 4 * b->_mp_size;
 
-	memset(buf, 0, 256);
-	if (comp)
-		buf_len = EC_POINT_point2oct(group, P, POINT_CONVERSION_COMPRESSED, buf, 256, ctx);
+	if (len_b > (len_a + 2))
+		buf_len = len_b;
 	else
-		buf_len = EC_POINT_point2oct(group, P, POINT_CONVERSION_UNCOMPRESSED, buf, 256, ctx);
+		buf_len = uncomp_sz + 3;
 
-	if (!buf_len)
-		return 0;
+	buf = malloc(buf_len);
 
-	//	dump_hex("Result", (uint8_t *)buf, buf_len);
-
-	// Copy Result Back To VM
-	n = (int)(buf_len / 4) + ((buf_len % 4) ? 1 : 0);
-	for (i = 0; i < n; i++) {
-		mem[idx1 + i] = swap32(buf32[i]);
+	// Populate Data For Point 1
+	if (a->_mp_size == 0) {		// Point 1 = Infinity
+		buf[3] = 0;
+		len_a = 1;
+	}
+	else {
+		big_get_bin(a, (uint32_t *)buf, buf_len, ptr);
+		if (!buf)
+			return 0;
 	}
 
+//	dump_hex("Point1", buf + 3, len_a);
+
+	if (!EC_POINT_oct2point(group, Q, buf + 3, len_a, ctx)) {
+		free(buf);
+		return 0;
+	}
+
+	// Populate Data For Scalar
+	if (b->_mp_size == 0) {		// Scalar = Infinity
+		buf[0] = 0;
+		len_b = 1;
+	}
+	else {
+		big_get_bin(b, (uint32_t *)buf, buf_len, ptr);
+		if (!buf)
+			return 0;
+	}
+
+//	dump_hex("Scalar", buf, len_b);
+
+	if (!BN_bin2bn(buf, len_b, N)) {
+		free(buf);
+		return 0;
+	}
+
+	// Multiply Points
+	if (!EC_POINT_mul(group, R, N, Q, NULL, ctx)) {
+		free(buf);
+		return 0;
+	}
+
+	if (comp)
+		len = EC_POINT_point2oct(group, R, POINT_CONVERSION_COMPRESSED, buf, buf_len, ctx);
+	else
+		len = EC_POINT_point2oct(group, R, POINT_CONVERSION_UNCOMPRESSED, buf, buf_len, ctx);
+
+	if (!len) {
+		free(buf);
+		return 0;
+	}
+
+//	dump_hex("P1 * P2", buf, len);
+
+	big_set_bin(out, buf, len, ptr, bi_size);
+
 	// Get Value For Mangle State
-	value = swap32(buf32[0]);
+	//	value = swap32(buf32[0]);
 
 	//	printf("Val: %d, %08X\n", value, value);
 
 	// Free Resources
-	free(input1);
-	free(input2);
-	EC_POINT_free(P);
+	free(buf);
+	EC_POINT_free(R);
+	EC_POINT_free(Q);
+	BN_free(N);
 	EC_GROUP_free(group);
-	BN_free(s);
 	BN_CTX_free(ctx);
 
 	return value;

@@ -628,11 +628,11 @@ extern void big_get_bin(mpz_t a, uint32_t *buf, size_t len, mpz_t *ptr) {
 	mpz_export(buf, NULL, 1, 4, 1, 0, a);
 }
 
-extern void big_set_bin(mpz_t a, uint32_t *buf, size_t len, mpz_t *ptr, uint32_t *bi_size) {
+extern void big_set_bin(mpz_t a, uint8_t *buf, size_t len, mpz_t *ptr, uint32_t *bi_size) {
 
 	// Ensure Inputs Are Valid
 	if ((a < ptr[0]) || (a > ptr[99]) || !buf || len <= 0)
 		return;
 
-	mpz_import(a, len, 1, 4, 1, 0, buf);
+	mpz_import(a, len, 1, 1, 1, 0, buf);
 }

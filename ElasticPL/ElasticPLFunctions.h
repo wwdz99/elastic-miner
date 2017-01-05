@@ -34,10 +34,10 @@ extern uint32_t epl_md5(int idx, int len, int32_t *mem);
 extern uint32_t epl_ripemd160(int idx, int len, int32_t *mem);
 extern uint32_t epl_whirlpool(int idx, int len, int32_t *mem);
 extern uint32_t epl_ec_priv_to_pub(mpz_t out, mpz_t a, bool compressed, int nid, size_t len, mpz_t *ptr, uint32_t *bi_size);
-extern uint32_t epl_ec_add(size_t idx1, bool comp1, size_t idx2, bool comp2, bool comp, int32_t *mem, int nid, size_t comp_sz, size_t uncomp_sz);
-extern uint32_t epl_ec_sub(size_t idx1, bool comp1, size_t idx2, bool comp2, bool comp, int32_t *mem, int nid, size_t comp_sz, size_t uncomp_sz);
-extern uint32_t epl_ec_neg(size_t idx1, bool comp1, bool comp, int32_t *mem, int nid, size_t comp_sz, size_t uncomp_sz);
-extern uint32_t epl_ec_mult(size_t idx1, bool comp1, size_t idx2, size_t n2, bool comp, int32_t *mem, int nid, size_t comp_sz, size_t uncomp_sz);
+extern uint32_t epl_ec_add(mpz_t out, bool comp, mpz_t a, bool compa, mpz_t b, bool compb, int nid, size_t comp_sz, size_t uncomp_sz, mpz_t *ptr, uint32_t *bi_size);
+extern uint32_t epl_ec_sub(mpz_t out, bool comp, mpz_t a, bool compa, mpz_t b, bool compb, int nid, size_t comp_sz, size_t uncomp_sz, mpz_t *ptr, uint32_t *bi_size);
+extern uint32_t epl_ec_neg(mpz_t out, bool comp, mpz_t a, bool compa, int nid, size_t comp_sz, size_t uncomp_sz, mpz_t *ptr, uint32_t *bi_size);
+extern uint32_t epl_ec_mul(mpz_t out, bool comp, mpz_t a, bool compa, mpz_t b, int nid, size_t comp_sz, size_t uncomp_sz, mpz_t *ptr, uint32_t *bi_size);
 
 extern int32_t gcd(int32_t	a, int32_t b);
 
@@ -74,6 +74,6 @@ extern void big_and_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t 
 extern void big_xor_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_size);
 extern int32_t big_least_32bit(mpz_t a, mpz_t *ptr);
 extern void big_get_bin(mpz_t a, uint32_t *buf, size_t len, mpz_t *ptr);
-extern void big_set_bin(mpz_t a, uint32_t *buf, size_t len, mpz_t *ptr, uint32_t *bi_size);
+extern void big_set_bin(mpz_t a, uint8_t *buf, size_t len, mpz_t *ptr, uint32_t *bi_size);
 
 #endif // ELASTICPLFUNCTIONS_H_
