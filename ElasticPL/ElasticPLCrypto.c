@@ -262,82 +262,81 @@ extern uint32_t epl_whirlpool(int idx, int len, int32_t *mem) {
 	return value;
 }
 
-extern uint32_t epl_ec_priv_to_pub(size_t idx, bool compressed, int32_t *mem, int nid, size_t len) {
+extern uint32_t epl_ec_priv_to_pub(mpz_t out, mpz_t a, bool compressed, int nid, size_t len, mpz_t *ptr, uint32_t *bi_size) {
 
 	EC_KEY *key = NULL;
 	EC_POINT *pub_key = NULL;
 	const EC_GROUP *group = NULL;
-	BIGNUM priv_key;
+	BIGNUM *priv_key = NULL;
 
-	uint8_t *input, buf[256];
-	uint32_t *input32, value;
-	uint32_t *buf32 = (uint32_t *)buf;
+	uint8_t *buf;
 	size_t buf_len;
-	int i, n;
-
-	n = (int)(len / 4) + ((len % 4) ? 1 : 0);
-
-	// Check Boundary Conditions Of Inputs
-	if ((idx < 0) || (len <= 0) || ((idx + n) >= VM_MEMORY_SIZE))
-		return 0;
-
-	input = (uint8_t *)malloc(n * sizeof(int));
-	if (!input)
-		return 0;
-
-	input32 = (uint32_t *)input;
-
-	// Change Endianess Of Private Key
-	for (i = 0; i < n; i++) {
-		//		printf("m[%d] = %lu, %08X\n", i + idx, mem[idx + i], mem[idx + i]);
-		input32[i] = swap32(mem[idx + i]);
-	}
-
-	//	dump_hex("PrivKey", (uint8_t*)(input), len);
+	uint32_t value = 0;
 
 	// Init Empty OpenSSL EC Keypair
 	key = EC_KEY_new_by_curve_name(nid);
 	if (!key)
 		return 0;
 
-	// Set Private Key Through BIGNUM
-	BN_init(&priv_key);
-	BN_bin2bn(input, len, &priv_key);
-	if (!EC_KEY_set_private_key(key, &priv_key))
+	// Ensure Inputs Are Valid
+	if ((out < ptr[0]) || (out > ptr[99]))
 		return 0;
+
+	if (compressed)
+		buf_len = len + 1;
+	else
+		buf_len = ((len * 2) + 1);
+
+	buf = malloc(buf_len);
+
+	// Populate Buffer With Big Int Data
+	big_get_bin(a, (uint32_t *)buf, len, ptr);
+	if (!buf)
+		return 0;
+	
+//	dump_hex("PrivKey", buf, len);
+
+	// Set Private Key Through BIGNUM
+	priv_key = BN_new();
+	BN_bin2bn(buf, len, priv_key);
+	if (!EC_KEY_set_private_key(key, priv_key)) {
+		free(buf);
+		return 0;
+	}
 
 	// Derive Public Key From Private Key And Group
 	group = EC_KEY_get0_group(key);
 	pub_key = EC_POINT_new(group);
-	if (!EC_POINT_mul(group, pub_key, &priv_key, NULL, NULL, NULL))
+	if (!EC_POINT_mul(group, pub_key, priv_key, NULL, NULL, NULL)) {
+		free(buf);
 		return 0;
-
-	memset(buf, 0, 256);
-	if (compressed)
-		buf_len = EC_POINT_point2oct(group, pub_key, POINT_CONVERSION_COMPRESSED, buf, 256, NULL);
-	else
-		buf_len = EC_POINT_point2oct(group, pub_key, POINT_CONVERSION_UNCOMPRESSED, buf, 256, NULL);
-
-	if (!buf_len)
-		return 0;
-
-	//	dump_hex("PK", buf, buf_len);
-
-	n = (int)(buf_len / 4) + ((buf_len % 4) ? 1 : 0);
-	for (i = 0; i < n; i++) {
-		mem[idx + i] = swap32(buf32[i]);
 	}
 
+	if (compressed)
+		len = EC_POINT_point2oct(group, pub_key, POINT_CONVERSION_COMPRESSED, buf, buf_len, NULL);
+	else
+		len = EC_POINT_point2oct(group, pub_key, POINT_CONVERSION_UNCOMPRESSED, buf, buf_len, NULL);
+
+	if (!len) {
+		free(buf);
+		return 0;
+	}
+
+//	dump_hex("PK", buf, len);
+
+	len = (size_t)(len / 4);
+	big_set_bin(out, (uint32_t *)(buf + 1), len, ptr, bi_size);
+
 	// Get Value For Mangle State
-	value = swap32(buf32[0]);
+//	value = swap32(buf32[0]);
 
 	//	printf("Val: %d, %08X\n", value, value);
 
 	// Free Resources
-	free(input);
+	free(buf);
 	EC_KEY_free(key);
 	EC_POINT_free(pub_key);
-	BN_clear_free(&priv_key);
+	BN_clear_free(priv_key);
 
 	return value;
 }

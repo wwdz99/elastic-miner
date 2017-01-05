@@ -39,10 +39,10 @@ extern void big_init_const(mpz_t out, unsigned char* str, mpz_t *ptr, uint32_t *
 	mpz_clear(out);
 
 	// TODO: Determine Max Len Elastic Allows For Hex / Binary Strings
-	if (str[0] == '0' && str[1] == 'x' && strlen(str) > 2 && strlen(str) <= 66) {
+	if (str[0] == '0' && str[1] == 'x' && strlen(str) > 2 && strlen(str) <= 256) {
 		mpz_init_set_str(out, str + 2, 16);
 	}
-	else if (str[0] == '0' && str[1] == 'b' && strlen(str) > 2 && strlen(str) <= 66) {
+	else if (str[0] == '0' && str[1] == 'b' && strlen(str) > 2 && strlen(str) <= 256) {
 		mpz_init_set_str(out, str + 2, 2);
 	}
 	else {
@@ -607,4 +607,32 @@ extern int32_t big_least_32bit(mpz_t a, mpz_t *ptr) {
 		return 0;
 
 	return mpz_get_si(a);
+}
+
+extern void big_get_bin(mpz_t a, uint32_t *buf, size_t len, mpz_t *ptr) {
+
+	// Ensure Inputs Are Valid
+	if ((a < ptr[0]) || (a > ptr[99])) {
+		free(buf);
+		buf = NULL;
+		return;
+	}
+
+	// Validate Buffer Can Hold Big Int
+	if ((a->_mp_size < 0) || ((a->_mp_size * 4) > len)) {
+		free(buf);
+		buf = NULL;
+		return;
+	}
+
+	mpz_export(buf, NULL, 1, 4, 1, 0, a);
+}
+
+extern void big_set_bin(mpz_t a, uint32_t *buf, size_t len, mpz_t *ptr, uint32_t *bi_size) {
+
+	// Ensure Inputs Are Valid
+	if ((a < ptr[0]) || (a > ptr[99]) || !buf || len <= 0)
+		return;
+
+	mpz_import(a, len, 1, 4, 1, 0, buf);
 }

@@ -774,7 +774,7 @@ static char* convert(ast* exp) {
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192K_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp192k1, 24 ))", rval);
+			sprintf(result, "epl_ec_priv_to_pub( %s, NID_secp192k1, 24, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192K_PA:
@@ -814,7 +814,7 @@ static char* convert(ast* exp) {
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224K_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp224k1, 28 ))", rval);
+			sprintf(result, "epl_ec_priv_to_pub( %s, NID_secp224k1, 28, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224K_PA:
@@ -834,7 +834,7 @@ static char* convert(ast* exp) {
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224R_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp224r1, 28 ))", rval);
+			sprintf(result, "epl_ec_priv_to_pub( %s, NID_secp224r1, 28, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224R_PA:
@@ -854,7 +854,7 @@ static char* convert(ast* exp) {
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256K_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp256k1, 32 ))", rval);
+			sprintf(result, "epl_ec_priv_to_pub( %s, NID_secp256k1, 32, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256K_PA:
@@ -904,7 +904,7 @@ static char* convert(ast* exp) {
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP384R_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp384r1, 48 ))", rval);
+			sprintf(result, "epl_ec_priv_to_pub( %s, NID_secp384r1, 48, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP384R_PA:
@@ -924,7 +924,7 @@ static char* convert(ast* exp) {
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V1_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v1, 24 ))", rval);
+			sprintf(result, "epl_ec_priv_to_pub( %s, NID_X9_62_prime192v1, 24, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V1_PA:
@@ -944,7 +944,7 @@ static char* convert(ast* exp) {
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V2_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v2, 24 ))", rval);
+			sprintf(result, "epl_ec_priv_to_pub( %s, NID_X9_62_prime192v2, 24, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V2_PA:
@@ -964,7 +964,7 @@ static char* convert(ast* exp) {
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V3_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v3, 24 ))", rval);
+			sprintf(result, "epl_ec_priv_to_pub( %s, NID_X9_62_prime192v3, 24, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V3_PA:
@@ -984,7 +984,7 @@ static char* convert(ast* exp) {
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM256V1_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime256v1, 32 ))", rval);
+			sprintf(result, "epl_ec_priv_to_pub( %s, NID_X9_62_prime256v1, 32, b, &bi_size )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM256V1_PA:

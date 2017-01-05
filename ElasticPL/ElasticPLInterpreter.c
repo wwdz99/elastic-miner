@@ -582,7 +582,7 @@ static int32_t interpret(ast* exp, bool mangle) {
 				val = epl_md5(param[0], param[1], vm_m);
 			//mangle_state(val);
 			return 1;
-		case NODE_SECP192K_PTP:
+/*		case NODE_SECP192K_PTP:
 			if (!get_param(exp, param, 2))
 				val = 0;
 			else
@@ -897,7 +897,7 @@ static int32_t interpret(ast* exp, bool mangle) {
 				val = epl_ec_neg(param[0], param[1], param[2], vm_m, NID_X9_62_prime256v1, 33, 65);
 			//mangle_state(val);
 			return 1;
-
+*/
 		default:
 			applog(LOG_ERR, "ERROR: VM Runtime - Unsupported Operation (%d)", exp->type);
 	}
