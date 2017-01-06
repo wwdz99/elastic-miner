@@ -612,20 +612,14 @@ extern int32_t big_least_32bit(mpz_t a, mpz_t *ptr) {
 extern size_t big_get_bin(mpz_t a, uint8_t *buf, size_t len, mpz_t *ptr) {
 
 	// Ensure Inputs Are Valid
-	if ((a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || !buf || len <= 0) {
-		if (buf) free(buf);
-		buf = NULL;
+	if ((a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || !buf || len <= 0) 
 		return 0;
-	}
 
 	size_t bi_sz = (size_t)(a->_mp_size * 4);
 	
 	// Validate Buffer Can Hold Big Int
-	if (bi_sz > len) {
-		free(buf);
-		buf = NULL;
+	if (bi_sz > len)
 		return 0;
-	}
 
 	mpz_export(buf, &bi_sz, 1, 1, 1, 0, a);
 

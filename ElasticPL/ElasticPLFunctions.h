@@ -29,6 +29,7 @@
 #define VM_BI_SIZE 100
 #endif
 
+#define EC_BUF_SZ		100		// Max Bytes For Elliptic Curve Key Buffer
 #define BIG_INT_MAX_SZ 1000		// Total Size (in Ints) For All Big Integers Combined
 
 #define MAX( a, b ) ( (a)>(b) ? (a) : (b) )
