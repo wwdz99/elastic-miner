@@ -401,10 +401,8 @@ extern uint32_t epl_ec_sub(mpz_t out, bool comp, mpz_t a, bool compa, mpz_t b, b
 	else
 		len = EC_POINT_point2oct(group, R, POINT_CONVERSION_UNCOMPRESSED, buf, EC_BUF_SZ, ctx);
 
-	if (!len) {
-		free(buf);
+	if (!len)
 		return 0;
-	}
 
 //	dump_hex("P1 - P2", buf, len);
 
@@ -514,7 +512,7 @@ extern uint32_t epl_ec_mul(mpz_t out, bool comp, mpz_t a, bool compa, mpz_t b, i
 	if (!EC_POINT_oct2point(group, Q, buf, len, ctx))
 		return 0;
 
-	dump_hex("Point1", buf, len);
+//	dump_hex("Point1", buf, len);
 
 	// Populate Data For Scalar
 	if (b->_mp_size == 0) {		// Scalar = Infinity
@@ -536,7 +534,7 @@ extern uint32_t epl_ec_mul(mpz_t out, bool comp, mpz_t a, bool compa, mpz_t b, i
 		return 0;
 	}
 
-	dump_hex("Scalar", buf_b, len_b);
+//	dump_hex("Scalar", buf_b, len_b);
 	free(buf_b);
 
 

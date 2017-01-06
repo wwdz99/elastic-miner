@@ -26,12 +26,12 @@ extern int32_t gcd(int32_t a, int32_t b) {
 	return a;
 }
 
-extern void big_init_const(mpz_t out, unsigned char* str, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_init_const(mpz_t out, unsigned char* str, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || !str)
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -51,14 +51,17 @@ extern void big_init_const(mpz_t out, unsigned char* str, mpz_t *ptr, uint32_t *
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_init_expr(mpz_t out, int32_t a, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_init_expr(mpz_t out, int32_t a, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -69,19 +72,22 @@ extern void big_init_expr(mpz_t out, int32_t a, mpz_t *ptr, uint32_t *bi_size) {
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_copy(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_copy(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 	
 	if (out == a)
-		return;
+		return 0;
 
 	// Reset The Big Int
 	mpz_clear(out);
@@ -90,14 +96,17 @@ extern void big_copy(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_add(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_add(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -109,14 +118,17 @@ extern void big_add(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) 
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_sub(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_sub(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -128,14 +140,17 @@ extern void big_sub(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) 
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_mul(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_mul(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -147,14 +162,17 @@ extern void big_mul(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) 
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_div(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_div(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -166,14 +184,17 @@ extern void big_div(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) 
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_ceil_div(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_ceil_div(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -185,14 +206,17 @@ extern void big_ceil_div(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_s
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_floor_div(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_floor_div(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -204,14 +228,17 @@ extern void big_floor_div(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_truncate_div(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_truncate_div(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -223,14 +250,17 @@ extern void big_truncate_div(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_div_exact(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_div_exact(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -242,14 +272,17 @@ extern void big_div_exact(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_mod(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_mod(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -261,14 +294,17 @@ extern void big_mod(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) 
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_neg(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_neg(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -280,14 +316,17 @@ extern void big_neg(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_lshift(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_lshift(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -299,14 +338,17 @@ extern void big_lshift(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_s
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_rshift(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_rshift(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -318,14 +360,17 @@ extern void big_rshift(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_s
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_gcd(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_gcd(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -341,6 +386,9 @@ extern void big_gcd(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) 
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
 extern int32_t big_divisible(mpz_t a, mpz_t b, mpz_t *ptr) {
@@ -361,12 +409,12 @@ extern int32_t big_congruent_mod_p(mpz_t a, mpz_t b, mpz_t p, mpz_t *ptr) {
 	return mpz_congruent_p(a, b, p);
 }
 
-extern void big_pow(mpz_t out, mpz_t a, uint32_t b, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_pow(mpz_t out, mpz_t a, uint32_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -378,14 +426,17 @@ extern void big_pow(mpz_t out, mpz_t a, uint32_t b, mpz_t *ptr, uint32_t *bi_siz
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_pow2(mpz_t out, uint32_t b, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_pow2(mpz_t out, uint32_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -398,14 +449,17 @@ extern void big_pow2(mpz_t out, uint32_t b, mpz_t *ptr, uint32_t *bi_size) {
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_pow_mod_p(mpz_t out, mpz_t a, mpz_t b, mpz_t c, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_pow_mod_p(mpz_t out, mpz_t a, mpz_t b, mpz_t c, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (c > ptr[VM_BI_SIZE]) || (c < ptr[0]) || (c > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -418,14 +472,17 @@ extern void big_pow_mod_p(mpz_t out, mpz_t a, mpz_t b, mpz_t c, mpz_t *ptr, uint
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_pow2_mod_p(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_pow2_mod_p(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -442,6 +499,9 @@ extern void big_pow2_mod_p(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
 extern int32_t big_compare(mpz_t a, mpz_t b, mpz_t *ptr) {
@@ -471,12 +531,12 @@ extern int32_t big_sign(mpz_t a, mpz_t *ptr) {
 	return mpz_sgn(a);
 }
 
-extern void big_or(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_or(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -489,14 +549,17 @@ extern void big_or(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_and(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_and(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -509,14 +572,17 @@ extern void big_and(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) 
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_xor(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_xor(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -529,14 +595,17 @@ extern void big_xor(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) 
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_or_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_or_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -552,14 +621,17 @@ extern void big_or_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_and_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_and_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -575,14 +647,17 @@ extern void big_and_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t 
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
-extern void big_xor_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_size) {
+extern int32_t big_xor_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
 	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]))
-		return;
+		return 0;
 
 	old_sz = (uint32_t)out->_mp_size;
 
@@ -598,6 +673,9 @@ extern void big_xor_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t 
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
+
+	// Return Lowest 32 Bit of Big Int To Be Mangled
+	return mpz_get_si(out);
 }
 
 extern int32_t big_least_32bit(mpz_t a, mpz_t *ptr) {
