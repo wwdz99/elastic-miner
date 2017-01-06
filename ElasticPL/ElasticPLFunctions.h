@@ -21,6 +21,14 @@
 
 #include <gmp.h>
 
+
+#ifndef VM_MEMORY_SIZE
+#define VM_MEMORY_SIZE 64000
+#endif
+#ifndef VM_BI_SIZE
+#define VM_BI_SIZE 100
+#endif
+
 #define BIG_INT_MAX_SZ 1000		// Total Size (in Ints) For All Big Integers Combined
 
 #define MAX( a, b ) ( (a)>(b) ? (a) : (b) )
@@ -33,7 +41,7 @@ extern uint32_t epl_sha512(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size);
 extern uint32_t epl_md5(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size);
 extern uint32_t epl_ripemd160(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size);
 extern uint32_t epl_whirlpool(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size);
-extern uint32_t epl_ec_priv_to_pub(mpz_t out, mpz_t a, bool compressed, int nid, size_t len, mpz_t *ptr, uint32_t *bi_size);
+extern uint32_t epl_ec_priv_to_pub(mpz_t out, mpz_t a, bool compressed, int nid, size_t comp_sz, size_t uncomp_sz, mpz_t *ptr, uint32_t *bi_size);
 extern uint32_t epl_ec_add(mpz_t out, bool comp, mpz_t a, bool compa, mpz_t b, bool compb, int nid, size_t comp_sz, size_t uncomp_sz, mpz_t *ptr, uint32_t *bi_size);
 extern uint32_t epl_ec_sub(mpz_t out, bool comp, mpz_t a, bool compa, mpz_t b, bool compb, int nid, size_t comp_sz, size_t uncomp_sz, mpz_t *ptr, uint32_t *bi_size);
 extern uint32_t epl_ec_neg(mpz_t out, bool comp, mpz_t a, bool compa, int nid, size_t comp_sz, size_t uncomp_sz, mpz_t *ptr, uint32_t *bi_size);
@@ -73,7 +81,7 @@ extern void big_or_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *
 extern void big_and_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_size);
 extern void big_xor_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_size);
 extern int32_t big_least_32bit(mpz_t a, mpz_t *ptr);
-extern void big_get_bin(mpz_t a, uint32_t *buf, size_t len, mpz_t *ptr);
+extern size_t big_get_bin(mpz_t a, uint8_t *buf, size_t len, mpz_t *ptr);
 extern void big_set_bin(mpz_t a, uint8_t *buf, size_t len, mpz_t *ptr, uint32_t *bi_size);
 
 #endif // ELASTICPLFUNCTIONS_H_

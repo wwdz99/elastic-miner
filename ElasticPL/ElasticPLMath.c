@@ -30,7 +30,7 @@ extern void big_init_const(mpz_t out, unsigned char* str, mpz_t *ptr, uint32_t *
 	uint32_t old_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || !str)
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || !str)
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -57,7 +57,7 @@ extern void big_init_expr(mpz_t out, int32_t a, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -75,7 +75,7 @@ extern void big_copy(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -96,7 +96,7 @@ extern void big_add(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) 
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -115,7 +115,7 @@ extern void big_sub(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) 
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -134,7 +134,7 @@ extern void big_mul(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) 
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -153,7 +153,7 @@ extern void big_div(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) 
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -172,7 +172,7 @@ extern void big_ceil_div(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_s
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -191,7 +191,7 @@ extern void big_floor_div(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -210,7 +210,7 @@ extern void big_truncate_div(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -229,7 +229,7 @@ extern void big_div_exact(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -248,7 +248,7 @@ extern void big_mod(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) 
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -267,7 +267,7 @@ extern void big_neg(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -286,7 +286,7 @@ extern void big_lshift(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_s
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -305,7 +305,7 @@ extern void big_rshift(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *bi_s
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -324,7 +324,7 @@ extern void big_gcd(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) 
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -346,7 +346,7 @@ extern void big_gcd(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) 
 extern int32_t big_divisible(mpz_t a, mpz_t b, mpz_t *ptr) {
 
 	// Ensure Inputs Are Valid
-	if ((a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+	if ((a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
 		return 0;
 
 	return mpz_divisible_p(a, b);
@@ -355,7 +355,7 @@ extern int32_t big_divisible(mpz_t a, mpz_t b, mpz_t *ptr) {
 extern int32_t big_congruent_mod_p(mpz_t a, mpz_t b, mpz_t p, mpz_t *ptr) {
 
 	// Ensure Inputs Are Valid
-	if ((a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]) || (p < ptr[0]) || (p > ptr[99]))
+	if ((a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]) || (p < ptr[0]) || (p > ptr[VM_BI_SIZE]))
 		return 0;
 
 	return mpz_congruent_p(a, b, p);
@@ -365,7 +365,7 @@ extern void big_pow(mpz_t out, mpz_t a, uint32_t b, mpz_t *ptr, uint32_t *bi_siz
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -384,7 +384,7 @@ extern void big_pow2(mpz_t out, uint32_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -404,7 +404,7 @@ extern void big_pow_mod_p(mpz_t out, mpz_t a, mpz_t b, mpz_t c, mpz_t *ptr, uint
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (c > ptr[99]) || (c < ptr[0]) || (c > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (c > ptr[VM_BI_SIZE]) || (c < ptr[0]) || (c > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -424,7 +424,7 @@ extern void big_pow2_mod_p(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -447,7 +447,7 @@ extern void big_pow2_mod_p(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi
 extern int32_t big_compare(mpz_t a, mpz_t b, mpz_t *ptr) {
 
 	// Ensure Inputs Are Valid
-	if ((a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+	if ((a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
 		return 0;
 
 	return mpz_cmp(a, b);
@@ -456,7 +456,7 @@ extern int32_t big_compare(mpz_t a, mpz_t b, mpz_t *ptr) {
 extern int32_t big_compare_abs(mpz_t a, mpz_t b, mpz_t *ptr) {
 
 	// Ensure Inputs Are Valid
-	if ((a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+	if ((a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
 		return 0;
 
 	return mpz_cmpabs(a, b);
@@ -465,7 +465,7 @@ extern int32_t big_compare_abs(mpz_t a, mpz_t b, mpz_t *ptr) {
 extern int32_t big_sign(mpz_t a, mpz_t *ptr) {
 
 	// Ensure Inputs Are Valid
-	if ((a < ptr[0]) || (a > ptr[99]))
+	if ((a < ptr[0]) || (a > ptr[VM_BI_SIZE]))
 		return 0;
 
 	return mpz_sgn(a);
@@ -475,7 +475,7 @@ extern void big_or(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) {
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -495,7 +495,7 @@ extern void big_and(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) 
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -515,7 +515,7 @@ extern void big_xor(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t *bi_size) 
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]) || (b < ptr[0]) || (b > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || (b < ptr[0]) || (b > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -535,7 +535,7 @@ extern void big_or_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t *
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -558,7 +558,7 @@ extern void big_and_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t 
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -581,7 +581,7 @@ extern void big_xor_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t 
 	uint32_t old_sz, new_sz;
 
 	// Ensure Inputs Are Valid
-	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
+	if ((out < ptr[0]) || (out > ptr[VM_BI_SIZE]) || (a < ptr[0]) || (a > ptr[VM_BI_SIZE]))
 		return;
 
 	old_sz = (uint32_t)out->_mp_size;
@@ -603,35 +603,39 @@ extern void big_xor_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_t 
 extern int32_t big_least_32bit(mpz_t a, mpz_t *ptr) {
 
 	// Ensure Inputs Are Valid
-	if ((a < ptr[0]) || (a > ptr[99]))
+	if ((a < ptr[0]) || (a > ptr[VM_BI_SIZE]))
 		return 0;
 
 	return mpz_get_si(a);
 }
 
-extern void big_get_bin(mpz_t a, uint32_t *buf, size_t len, mpz_t *ptr) {
+extern size_t big_get_bin(mpz_t a, uint8_t *buf, size_t len, mpz_t *ptr) {
 
 	// Ensure Inputs Are Valid
-	if ((a < ptr[0]) || (a > ptr[99])) {
-		free(buf);
+	if ((a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || !buf || len <= 0) {
+		if (buf) free(buf);
 		buf = NULL;
-		return;
+		return 0;
 	}
 
+	size_t bi_sz = (size_t)(a->_mp_size * 4);
+	
 	// Validate Buffer Can Hold Big Int
-	if ((a->_mp_size < 0) || ((size_t)(a->_mp_size * 4) > len)) {
+	if (bi_sz > len) {
 		free(buf);
 		buf = NULL;
-		return;
+		return 0;
 	}
 
-	mpz_export(buf, NULL, 1, 4, 1, 0, a);
+	mpz_export(buf, &bi_sz, 1, 1, 1, 0, a);
+
+	return bi_sz;
 }
 
 extern void big_set_bin(mpz_t a, uint8_t *buf, size_t len, mpz_t *ptr, uint32_t *bi_size) {
 
 	// Ensure Inputs Are Valid
-	if ((a < ptr[0]) || (a > ptr[99]) || !buf || len <= 0)
+	if ((a < ptr[0]) || (a > ptr[VM_BI_SIZE]) || !buf || len <= 0)
 		return;
 
 	mpz_import(a, len, 1, 1, 1, 0, buf);

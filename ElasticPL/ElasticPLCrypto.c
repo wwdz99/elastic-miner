@@ -21,14 +21,6 @@
 #include "../crypto/sha2.h"
 #include "ElasticPLFunctions.h"
 
-#ifndef VM_MEMORY_SIZE
-#define VM_MEMORY_SIZE 64000
-#endif
-
-static uint32_t swap32(int a) {
-	return ((a << 24) | ((a << 8) & 0x00FF0000) | ((a >> 8) & 0x0000FF00) | ((a >> 24) & 0x000000FF));
-}
-
 static void dump_hex(unsigned char *label, unsigned char *bytes, int len) {
 	int i;
 
@@ -41,7 +33,7 @@ static void dump_hex(unsigned char *label, unsigned char *bytes, int len) {
 extern uint32_t epl_sha256(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
 	sha256_ctx ctx;
 	uint8_t hash[32], *buf = NULL;
-	size_t i, len, offset = 0;
+	size_t buf_len, len;
 	uint32_t value = 0;
 
 	// Validate Inputs
@@ -49,24 +41,17 @@ extern uint32_t epl_sha256(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
 		return 0;
 
 	sha256_init(&ctx);
-	len = a->_mp_size * 4;
 
-	if (len > 0) {
-		buf = malloc(len);
+	if (a->_mp_size) {
+		buf_len = a->_mp_size * 4;
+		buf = malloc(buf_len);
 
 		// Populate Buffer With Big Int Data
-		big_get_bin(a, (uint32_t *)buf, len, ptr);
+		len = big_get_bin(a, buf, buf_len, ptr);
 		if (!buf)
 			return 0;
 
-		// Check For Leading Zeros
-		for (i = 0; i < 3; i++) {
-			if (!buf[i]) {
-				offset++;
-				len--;
-			}
-		}
-		sha256_update(&ctx, buf + offset, len);
+		sha256_update(&ctx, buf, len);
 	}
 	else
 		sha256_update(&ctx, "", 0);
@@ -75,12 +60,12 @@ extern uint32_t epl_sha256(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
 
 //	dump_hex("Hash", hash, 32);
 
+	// Save Result As Big Int
 	big_set_bin(out, hash, 32, ptr, bi_size);
 
 	// Get Value For Mangle State
-//	value = swap32(hash32[0]);
-
-	//	printf("Val: %d, %08X\n", value, value);
+	value = mpz_get_si(out);
+//	printf("Val: %d, %08X\n", value, value);
 
 	if (buf) free(buf);
 	return value;
@@ -88,43 +73,35 @@ extern uint32_t epl_sha256(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
 
 extern uint32_t epl_sha512(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
 	uint8_t hash[64], *buf = NULL;
-	size_t i, len, offset = 0;
+	size_t buf_len, len;
 	uint32_t value = 0;
 
 	// Validate Inputs
 	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
 		return 0;
 
-	len = a->_mp_size * 4;
-
-	if (len > 0) {
-		buf = malloc(len);
+	if (a->_mp_size) {
+		buf_len = a->_mp_size * 4;
+		buf = malloc(buf_len);
 
 		// Populate Buffer With Big Int Data
-		big_get_bin(a, (uint32_t *)buf, len, ptr);
+		len = big_get_bin(a, buf, buf_len, ptr);
 		if (!buf)
 			return 0;
 
-		// Check For Leading Zeros
-		for (i = 0; i < 3; i++) {
-			if (!buf[i]) {
-				offset++;
-				len--;
-			}
-		}
-		SHA512(buf + offset, len, hash);
+		SHA512(buf, len, hash);
 	}
 	else
 		SHA512("", 0, hash);
 
 //	dump_hex("Hash", hash, 64);
 
+	// Save Result As Big Int
 	big_set_bin(out, hash, 64, ptr, bi_size);
 
 	// Get Value For Mangle State
-	//	value = swap32(hash32[0]);
-
-	//	printf("Val: %d, %08X\n", value, value);
+	value = mpz_get_si(out);
+//	printf("Val: %d, %08X\n", value, value);
 
 	if (buf) free(buf);
 	return value;
@@ -132,43 +109,35 @@ extern uint32_t epl_sha512(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
 
 extern uint32_t epl_md5(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
 	uint8_t hash[16], *buf = NULL;
-	size_t i, len, offset = 0;
+	size_t buf_len, len;
 	uint32_t value = 0;
 
 	// Validate Inputs
 	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
 		return 0;
 
-	len = a->_mp_size * 4;
-
-	if (len > 0) {
-		buf = malloc(len);
+	if (a->_mp_size) {
+		buf_len = a->_mp_size * 4;
+		buf = malloc(buf_len);
 
 		// Populate Buffer With Big Int Data
-		big_get_bin(a, (uint32_t *)buf, len, ptr);
+		len = big_get_bin(a, buf, buf_len, ptr);
 		if (!buf)
 			return 0;
 
-		// Check For Leading Zeros
-		for (i = 0; i < 3; i++) {
-			if (!buf[i]) {
-				offset++;
-				len--;
-			}
-		}
-		MD5(buf + offset, len, hash);
+		MD5(buf, len, hash);
 	}
 	else
 		MD5("", 0, hash);
 
 //	dump_hex("Hash", hash, 16);
 
+	// Save Result As Big Int
 	big_set_bin(out, hash, 16, ptr, bi_size);
 
 	// Get Value For Mangle State
-	//	value = swap32(hash32[0]);
-
-	//	printf("Val: %d, %08X\n", value, value);
+	value = mpz_get_si(out);
+//	printf("Val: %d, %08X\n", value, value);
 
 	if (buf) free(buf);
 	return value;
@@ -176,43 +145,35 @@ extern uint32_t epl_md5(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
 
 extern uint32_t epl_ripemd160(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
 	uint8_t hash[20], *buf = NULL;
-	size_t i, len, offset = 0;
+	size_t buf_len, len;
 	uint32_t value = 0;
 
 	// Validate Inputs
 	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
 		return 0;
 
-	len = a->_mp_size * 4;
-
-	if (len > 0) {
-		buf = malloc(len);
+	if (a->_mp_size) {
+		buf_len = a->_mp_size * 4;
+		buf = malloc(buf_len);
 
 		// Populate Buffer With Big Int Data
-		big_get_bin(a, (uint32_t *)buf, len, ptr);
+		len = big_get_bin(a, buf, buf_len, ptr);
 		if (!buf)
 			return 0;
 
-		// Check For Leading Zeros
-		for (i = 0; i < 3; i++) {
-			if (!buf[i]) {
-				offset++;
-				len--;
-			}
-		}
-		RIPEMD160(buf + offset, len, hash);
+		RIPEMD160(buf, len, hash);
 	}
 	else
 		RIPEMD160("", 0, hash);
 
 //	dump_hex("Hash", hash, 20);
 
+	// Save Result As Big Int
 	big_set_bin(out, hash, 20, ptr, bi_size);
 
 	// Get Value For Mangle State
-	//	value = swap32(hash32[0]);
-
-	//	printf("Val: %d, %08X\n", value, value);
+	value = mpz_get_si(out);
+//	printf("Val: %d, %08X\n", value, value);
 
 	if (buf) free(buf);
 	return value;
@@ -220,49 +181,41 @@ extern uint32_t epl_ripemd160(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size)
 
 extern uint32_t epl_whirlpool(mpz_t out, mpz_t a, mpz_t *ptr, uint32_t *bi_size) {
 	uint8_t hash[64], *buf = NULL;
-	size_t i, len, offset = 0;
+	size_t buf_len, len;
 	uint32_t value = 0;
 
 	// Validate Inputs
 	if ((out < ptr[0]) || (out > ptr[99]) || (a < ptr[0]) || (a > ptr[99]))
 		return 0;
 
-	len = a->_mp_size * 4;
-
-	if (len > 0) {
-		buf = malloc(len);
+	if (a->_mp_size) {
+		buf_len = a->_mp_size * 4;
+		buf = malloc(buf_len);
 
 		// Populate Buffer With Big Int Data
-		big_get_bin(a, (uint32_t *)buf, len, ptr);
+		len = big_get_bin(a, buf, buf_len, ptr);
 		if (!buf)
 			return 0;
 
-		// Check For Leading Zeros
-		for (i = 0; i < 3; i++) {
-			if (!buf[i]) {
-				offset++;
-				len--;
-			}
-		}
-		whirlpool_hash(buf + offset, len, hash);
+		whirlpool_hash(buf, len, hash);
 	}
 	else
 		whirlpool_hash("", 0, hash);
 
 //	dump_hex("Hash", hash, 64);
 
+	// Save Result As Big Int
 	big_set_bin(out, hash, 64, ptr, bi_size);
 
 	// Get Value For Mangle State
-	//	value = swap32(hash32[0]);
-
+	value = mpz_get_si(out);
 	//	printf("Val: %d, %08X\n", value, value);
 
 	if (buf) free(buf);
 	return value;
 }
 
-extern uint32_t epl_ec_priv_to_pub(mpz_t out, mpz_t a, bool compressed, int nid, size_t len, mpz_t *ptr, uint32_t *bi_size) {
+extern uint32_t epl_ec_priv_to_pub(mpz_t out, mpz_t a, bool compressed, int nid, size_t comp_sz, size_t uncomp_sz, mpz_t *ptr, uint32_t *bi_size) {
 
 	EC_KEY *key = NULL;
 	EC_POINT *pub_key = NULL;
@@ -270,7 +223,7 @@ extern uint32_t epl_ec_priv_to_pub(mpz_t out, mpz_t a, bool compressed, int nid,
 	BIGNUM *priv_key = NULL;
 
 	uint8_t *buf;
-	size_t buf_len;
+	size_t buf_len, len;
 	uint32_t value = 0;
 
 	// Init Empty OpenSSL EC Keypair
@@ -279,18 +232,15 @@ extern uint32_t epl_ec_priv_to_pub(mpz_t out, mpz_t a, bool compressed, int nid,
 		return 0;
 
 	// Validate Inputs
-	if ((out < ptr[0]) || (out > ptr[99]) || (len <= 0))
+	if ((out < ptr[0]) || (out > ptr[99]))
 		return 0;
 
-	if (compressed)
-		buf_len = len + 1;
-	else
-		buf_len = ((len * 2) + 1);
-
+	len = (compressed) ? comp_sz : uncomp_sz;
+	buf_len = len + 4;
 	buf = malloc(buf_len);
 
 	// Populate Buffer With Big Int Data
-	big_get_bin(a, (uint32_t *)buf, len, ptr);
+	big_get_bin(a, buf, buf_len, ptr);
 	if (!buf)
 		return 0;
 	
@@ -324,13 +274,12 @@ extern uint32_t epl_ec_priv_to_pub(mpz_t out, mpz_t a, bool compressed, int nid,
 
 //	dump_hex("PK", buf, len);
 
-	// Write Public Key To Big Int
+	// Save Result As Big Int
 	big_set_bin(out, buf, len, ptr, bi_size);
 
 	// Get Value For Mangle State
-//	value = swap32(buf32[0]);
-
-	//	printf("Val: %d, %08X\n", value, value);
+	value = mpz_get_si(out);
+//	printf("Val: %d, %08X\n", value, value);
 
 	// Free Resources
 	free(buf);
@@ -363,44 +312,43 @@ extern uint32_t epl_ec_add(mpz_t out, bool comp, mpz_t a, bool compa, mpz_t b, b
 	Q = EC_POINT_new(group);
 	R = EC_POINT_new(group);
 
+	len_a = (compa ? comp_sz : uncomp_sz);
+	len_b = (compb ? comp_sz : uncomp_sz);
 	buf_len = uncomp_sz + 3;
 	buf = malloc(buf_len);
 
-	len_a = (compa ? comp_sz : uncomp_sz);
-	len_b = (compb ? comp_sz : uncomp_sz);
-
 	// Populate Data For Point 1
 	if (a->_mp_size == 0) {		// Point 1 = Infinity
-		buf[3] = 0;
+		buf[0] = 0;
 		len_a = 1;
 	}
 	else {
-		big_get_bin(a, (uint32_t *)buf, buf_len, ptr);
+		big_get_bin(a, buf, buf_len, ptr);
 		if (!buf)
 			return 0;
 	}
 
-//	dump_hex("Point1", buf + 3, len_a);
+//	dump_hex("Point1", buf, len_a);
 
-	if (!EC_POINT_oct2point(group, P, buf + 3, len_a, ctx)) {
+	if (!EC_POINT_oct2point(group, P, buf, len_a, ctx)) {
 		free(buf);
 		return 0;
 	}
 
 	// Populate Data For Point 2
 	if (b->_mp_size == 0) {		// Point 2 = Infinity
-		buf[3] = 0;
+		buf[0] = 0;
 		len_b = 1;
 	}
 	else {
-		big_get_bin(b, (uint32_t *)buf, buf_len, ptr);
+		big_get_bin(b, buf, buf_len, ptr);
 		if (!buf)
 			return 0;
 	}
 
-//	dump_hex("Point2", buf + 3, len_b);
+//	dump_hex("Point2", buf, len_b);
 
-	if (!EC_POINT_oct2point(group, Q, buf + 3, len_b, ctx)) {
+	if (!EC_POINT_oct2point(group, Q, buf, len_b, ctx)) {
 		free(buf);
 		return 0;
 	}
@@ -423,12 +371,12 @@ extern uint32_t epl_ec_add(mpz_t out, bool comp, mpz_t a, bool compa, mpz_t b, b
 
 //	dump_hex("P1 + P2", buf, len);
 
+	// Save Result As Big Int
 	big_set_bin(out, buf, len, ptr, bi_size);
 
 	// Get Value For Mangle State
-//	value = swap32(buf32[0]);
-
-	//	printf("Val: %d, %08X\n", value, value);
+	value = mpz_get_si(out);
+//	printf("Val: %d, %08X\n", value, value);
 
 	// Free Resources
 	free(buf);
@@ -463,44 +411,43 @@ extern uint32_t epl_ec_sub(mpz_t out, bool comp, mpz_t a, bool compa, mpz_t b, b
 	Q = EC_POINT_new(group);
 	R = EC_POINT_new(group);
 
+	len_a = (compa ? comp_sz : uncomp_sz);
+	len_b = (compb ? comp_sz : uncomp_sz);
 	buf_len = uncomp_sz + 3;
 	buf = malloc(buf_len);
 
-	len_a = (compa ? comp_sz : uncomp_sz);
-	len_b = (compb ? comp_sz : uncomp_sz);
-
 	// Populate Data For Point 1
 	if (a->_mp_size == 0) {		// Point 1 = Infinity
-		buf[3] = 0;
+		buf[0] = 0;
 		len_a = 1;
 	}
 	else {
-		big_get_bin(a, (uint32_t *)buf, buf_len, ptr);
+		big_get_bin(a, buf, buf_len, ptr);
 		if (!buf)
 			return 0;
 	}
 
-//	dump_hex("Point1", buf + 3, len_a);
+//	dump_hex("Point1", buf, len_a);
 
-	if (!EC_POINT_oct2point(group, P, buf + 3, len_a, ctx)) {
+	if (!EC_POINT_oct2point(group, P, buf, len_a, ctx)) {
 		free(buf);
 		return 0;
 	}
 
 	// Populate Data For Point 2
 	if (b->_mp_size == 0) {		// Point 2 = Infinity
-		buf[3] = 0;
+		buf[0] = 0;
 		len_b = 1;
 	}
 	else {
-		big_get_bin(b, (uint32_t *)buf, buf_len, ptr);
+		big_get_bin(b, buf, buf_len, ptr);
 		if (!buf)
 			return 0;
 	}
 
-//	dump_hex("Point2", buf + 3, len_b);
+//	dump_hex("Point2", buf, len_b);
 
-	if (!EC_POINT_oct2point(group, Q, buf + 3, len_b, ctx)) {
+	if (!EC_POINT_oct2point(group, Q, buf, len_b, ctx)) {
 		free(buf);
 		return 0;
 	}
@@ -527,11 +474,11 @@ extern uint32_t epl_ec_sub(mpz_t out, bool comp, mpz_t a, bool compa, mpz_t b, b
 
 //	dump_hex("P1 - P2", buf, len);
 
+	// Save Result As Big Int
 	big_set_bin(out, buf, len, ptr, bi_size);
 
 	// Get Value For Mangle State
-	//	value = swap32(buf32[0]);
-
+	value = mpz_get_si(out);
 	//	printf("Val: %d, %08X\n", value, value);
 
 	// Free Resources
@@ -563,25 +510,24 @@ extern uint32_t epl_ec_neg(mpz_t out, bool comp, mpz_t a, bool compa, int nid, s
 	group = EC_GROUP_new_by_curve_name(nid);
 	P = EC_POINT_new(group);
 
+	len = (compa ? comp_sz : uncomp_sz);
 	buf_len = uncomp_sz + 3;
 	buf = malloc(buf_len);
 
-	len = (compa ? comp_sz : uncomp_sz);
-
 	// Populate Data For Point
 	if (a->_mp_size == 0) {		// Point 1 = Infinity
-		buf[3] = 0;
+		buf[0] = 0;
 		len = 1;
 	}
 	else {
-		big_get_bin(a, (uint32_t *)buf, buf_len, ptr);
+		big_get_bin(a, buf, buf_len, ptr);
 		if (!buf)
 			return 0;
 	}
 
-//	dump_hex("Point", buf + 3, len);
+//	dump_hex("Point", buf, len);
 
-	if (!EC_POINT_oct2point(group, P, buf + 3, len, ctx)) {
+	if (!EC_POINT_oct2point(group, P, buf, len, ctx)) {
 		free(buf);
 		return 0;
 	}
@@ -604,12 +550,12 @@ extern uint32_t epl_ec_neg(mpz_t out, bool comp, mpz_t a, bool compa, int nid, s
 
 //	dump_hex("-P", buf, len);
 
+	// Save Result As Big Int
 	big_set_bin(out, buf, len, ptr, bi_size);
 
 	// Get Value For Mangle State
-	//	value = swap32(buf32[0]);
-
-	//	printf("Val: %d, %08X\n", value, value);
+	value = mpz_get_si(out);
+//	printf("Val: %d, %08X\n", value, value);
 
 	// Free Resources
 	free(buf);
@@ -644,28 +590,24 @@ extern uint32_t epl_ec_mul(mpz_t out, bool comp, mpz_t a, bool compa, mpz_t b, i
 
 	len_a = (compa ? comp_sz : uncomp_sz);
 	len_b = 4 * b->_mp_size;
-
-	if (len_b > (len_a + 2))
-		buf_len = len_b;
-	else
-		buf_len = uncomp_sz + 3;
+	buf_len = MAX(len_b, uncomp_sz + 3);
 
 	buf = malloc(buf_len);
 
 	// Populate Data For Point 1
 	if (a->_mp_size == 0) {		// Point 1 = Infinity
-		buf[3] = 0;
+		buf[0] = 0;
 		len_a = 1;
 	}
 	else {
-		big_get_bin(a, (uint32_t *)buf, buf_len, ptr);
+		big_get_bin(a,buf, buf_len, ptr);
 		if (!buf)
 			return 0;
 	}
 
-//	dump_hex("Point1", buf + 3, len_a);
+//	dump_hex("Point1", buf, len_a);
 
-	if (!EC_POINT_oct2point(group, Q, buf + 3, len_a, ctx)) {
+	if (!EC_POINT_oct2point(group, Q, buf, len_a, ctx)) {
 		free(buf);
 		return 0;
 	}
@@ -676,7 +618,7 @@ extern uint32_t epl_ec_mul(mpz_t out, bool comp, mpz_t a, bool compa, mpz_t b, i
 		len_b = 1;
 	}
 	else {
-		big_get_bin(b, (uint32_t *)buf, buf_len, ptr);
+		big_get_bin(b, buf, buf_len, ptr);
 		if (!buf)
 			return 0;
 	}
@@ -706,12 +648,12 @@ extern uint32_t epl_ec_mul(mpz_t out, bool comp, mpz_t a, bool compa, mpz_t b, i
 
 //	dump_hex("P1 * P2", buf, len);
 
+	// Save Result As Big Int
 	big_set_bin(out, buf, len, ptr, bi_size);
 
 	// Get Value For Mangle State
-	//	value = swap32(buf32[0]);
-
-	//	printf("Val: %d, %08X\n", value, value);
+	value = mpz_get_si(out);
+//	printf("Val: %d, %08X\n", value, value);
 
 	// Free Resources
 	free(buf);
