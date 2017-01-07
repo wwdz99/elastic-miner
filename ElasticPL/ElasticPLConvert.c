@@ -555,12 +555,12 @@ static char* convert(ast* exp) {
 			use_elasticpl_math = true;
 			break;
 		case NODE_ASIN:
-			sprintf(result, "(((%s >= -1.0) && (%s <= 1.0)) ? asinh( %s ) : 0.0)", rval, rval, rval);
+			sprintf(result, "(((%s >= -1.0) && (%s <= 1.0)) ? asin( %s ) : 0.0)", rval, rval, rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_ACOS:
-			sprintf(result, "(((%s >= -1.0) && (%s <= 1.0)) ? acosh( %s ) : 0.0)", rval, rval, rval);
+			sprintf(result, "(((%s >= -1.0) && (%s <= 1.0)) ? acos( %s ) : 0.0)", rval, rval, rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
