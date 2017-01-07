@@ -68,9 +68,20 @@ static ast* pop_exp() {
 }
 
 static bool validate_input_num(SOURCE_TOKEN *token, NODE_TYPE node_type) {
+	int i, num_exps = 0;
+
+	if (token->inputs == 0)
+		return true;
+
+	// Count The Number Of Expressions On The Stack
+	for (i = stack_exp_idx; i >= 0; i--) {
+		if (stack_exp[i]->end_stmnt)
+			break;
+		num_exps++;
+	}
 
 	// Validate That There Are Enough Expressions On The Stack
-	if (stack_exp_idx < (token->inputs - 1)) {
+	if (num_exps < token->inputs) {
 		applog(LOG_ERR, "Syntax Error - Line: %d  Invalid parameters for '%s'", token->line_num, get_node_str(node_type));
 		return false;
 	}

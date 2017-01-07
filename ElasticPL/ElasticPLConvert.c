@@ -56,9 +56,9 @@ static char* get_index(char *lval) {
 
 // Use Post Order Traversal To Translate The Expressions In The AST to C
 static char* convert(ast* exp) {
-	char* lval = NULL;
-	char* rval = NULL;
-	char* tmp = NULL;
+	char *lval = NULL;
+	char *rval = NULL;
+	char *tmp = NULL;
 	char *result = NULL;
 
 	bool l_is_float = false;
@@ -540,12 +540,12 @@ static char* convert(ast* exp) {
 			use_elasticpl_math = true;
 			break;
 		case NODE_SINH:
-			sprintf(result, "sinh( %s )", rval);
+			sprintf(result, "(((%s >= -1.0) && (%s <= 1.0)) ? sinh( %s ) : 0.0)", rval, rval, rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_COSH:
-			sprintf(result, "cos( %s )", rval);
+			sprintf(result, "(((%s >= -1.0) && (%s <= 1.0)) ? cosh( %s ) : 0.0)", rval, rval, rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
@@ -555,12 +555,12 @@ static char* convert(ast* exp) {
 			use_elasticpl_math = true;
 			break;
 		case NODE_ASIN:
-			sprintf(result, "asin( %s )", rval);
+			sprintf(result, "(((%s >= -1.0) && (%s <= 1.0)) ? asinh( %s ) : 0.0)", rval, rval, rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_ACOS:
-			sprintf(result, "acos( %s )", rval);
+			sprintf(result, "(((%s >= -1.0) && (%s <= 1.0)) ? acosh( %s ) : 0.0)", rval, rval, rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
@@ -570,22 +570,24 @@ static char* convert(ast* exp) {
 			use_elasticpl_math = true;
 			break;
 		case NODE_ATAN2:
-			sprintf(result, "atan2( %s )", rval);
+			tmp = strstr(rval, ",");	// Point To Second Argurment
+			sprintf(result, "((%s != 0) ? atan2( %s ) : 0.0)", tmp + 1, rval);
+			tmp = NULL;
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_EXPNT:
-			sprintf(result, "exp( %s )", rval);
+			sprintf(result, "(((%s >= -708.0) && (%s <= 709.0)) ? exp( %s ) : 0.0)", rval, rval, rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_LOG:
-			sprintf(result, "log( %s )", rval);
+			sprintf(result, "((%s > 0) ? log( %s ) : 0.0)", rval, rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
 		case NODE_LOG10:
-			sprintf(result, "log10( %s )", rval);
+			sprintf(result, "((%s > 0) ? log10( %s ) : 0.0)", rval, rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
@@ -595,7 +597,7 @@ static char* convert(ast* exp) {
 			use_elasticpl_math = true;
 			break;
 		case NODE_SQRT:
-			sprintf(result, "sqrt( %s )", rval);
+			sprintf(result, "((%s > 0) ? sqrt( %s ) : 0.0)", rval, rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
@@ -620,7 +622,9 @@ static char* convert(ast* exp) {
 			use_elasticpl_math = true;
 			break;
 		case NODE_FMOD:
-			sprintf(result, "fmod( %s )", rval);
+			tmp = strstr(rval, ",");	// Point To Second Argurment
+			sprintf(result, "((%s != 0) ? fmod( %s ) : 0.0)", tmp + 1, rval);
+			tmp = NULL;
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
@@ -628,6 +632,7 @@ static char* convert(ast* exp) {
 			sprintf(result, "gcd( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
+			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_CONST:
 			sprintf(result, "big_init_const( %s, b, &bi_size )", rval);
