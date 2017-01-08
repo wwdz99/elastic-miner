@@ -145,8 +145,8 @@ struct EXP_TOKEN_LIST epl_token[] = {
 	{ "big_congruent_mod_p",		19,	TOKEN_BI_CNGR_MOD_P,EXP_FUNCTION,	3,	55,	DT_INT },	// Built In Big Int Functions
 	{ "big_pow2_mod_p",				14,	TOKEN_BI_POW2_MOD_P,EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_pow_mod_p",				13,	TOKEN_BI_POW_MOD_P,	EXP_FUNCTION,	4,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_pow2",					8,	TOKEN_BI_POW2,		EXP_FUNCTION,	2,	55,	DT_INT },	// Built In Big Int Functions
-	{ "big_pow",					7,	TOKEN_BI_POW,		EXP_FUNCTION,	3,	55,	DT_INT },	// Built In Big Int Functions
+	{ "big_pow2",					8,	TOKEN_BI_POW2,		EXP_FUNCTION,	2,	55,	DT_NONE },	// Built In Big Int Functions
+	{ "big_pow",					7,	TOKEN_BI_POW,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
 	{ "big_compare_abs",			15,	TOKEN_BI_COMP_ABS,	EXP_FUNCTION,	2,	55,	DT_INT },	// Built In Big Int Functions
 	{ "big_compare",				11,	TOKEN_BI_COMP,		EXP_FUNCTION,	2,	55,	DT_INT },	// Built In Big Int Functions
 	{ "big_sign",					8,	TOKEN_BI_SIGN,		EXP_FUNCTION,	1,	55,	DT_INT },	// Built In Big Int Functions

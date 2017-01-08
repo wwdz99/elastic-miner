@@ -635,67 +635,67 @@ static char* convert(ast* exp) {
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_CONST:
-			sprintf(result, "big_init_const( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_init_const( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_EXPR:
-			sprintf(result, "big_init_expr( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_init_expr( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_COPY:
-			sprintf(result, "big_copy( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_copy( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_ADD:
-			sprintf(result, "big_add( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_add( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_SUB:
-			sprintf(result, "big_sub( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_sub( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_MUL:
-			sprintf(result, "big_mul( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_mul( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_DIV:
-			sprintf(result, "big_div( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_div( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_CEIL_DIV:
-			sprintf(result, "big_ceil_div( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_ceil_div( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_FLOOR_DIV:
-			sprintf(result, "big_floor_div( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_floor_div( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_TRUNC_DIV:
-			sprintf(result, "big_truncate_div( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_truncate_div( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_DIV_EXACT:
-			sprintf(result, "big_div_exact( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_div_exact( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_MOD:
-			sprintf(result, "big_mod( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_mod( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_NEG:
-			sprintf(result, "big_neg( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_neg( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_LSHIFT:
-			sprintf(result, "big_lshift( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_lshift( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_RSHIFT:
-			sprintf(result, "big_rshift( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_rshift( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_GCD:
-			sprintf(result, "big_gcd( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_gcd( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_DIVISIBLE:
@@ -707,19 +707,19 @@ static char* convert(ast* exp) {
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_POW:
-			sprintf(result, "big_pow( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_pow( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_POW2:
-			sprintf(result, "big_pow2( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_pow2( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_POW_MOD_P:
-			sprintf(result, "big_pow_mod_p( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_pow_mod_p( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_POW2_MOD_P:
-			sprintf(result, "big_pow2_mod_p( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_pow2_mod_p( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_COMP:
@@ -735,27 +735,27 @@ static char* convert(ast* exp) {
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_OR:
-			sprintf(result, "big_or( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_or( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_AND:
-			sprintf(result, "big_and( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_and( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_XOR:
-			sprintf(result, "big_xor( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_xor( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_OR_INT:
-			sprintf(result, "big_or_integer( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_or_integer( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_AND_INT:
-			sprintf(result, "big_and_integer( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_and_integer( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_XOR_INT:
-			sprintf(result, "big_xor_integer( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( big_xor_integer( %s, b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_LEAST_32:
@@ -763,265 +763,203 @@ static char* convert(ast* exp) {
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_SHA256:
-			sprintf(result, "epl_sha256( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_sha256( %s, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SHA512:
-			sprintf(result, "epl_sha512( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_sha512( %s, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_WHIRLPOOL:
-			sprintf(result, "epl_whirlpool( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_whirlpool( %s, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_MD5:
-			sprintf(result, "epl_md5( %s, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_md5( %s, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192K_PTP:
-			sprintf(result, "epl_ec_priv_to_pub( %s, NID_secp192k1, 24, 48, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_priv_to_pub( %s, NID_secp192k1, 24, 48, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192K_PA:
-			sprintf(result, "epl_ec_add( %s, NID_secp192k1, 25, 49, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_add( %s, NID_secp192k1, 25, 49, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192K_PS:
-			sprintf(result, "epl_ec_sub( %s, NID_secp192k1, 25, 49, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_sub( %s, NID_secp192k1, 25, 49, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192K_PSM:
-			sprintf(result, "epl_ec_mul( %s, NID_secp192k1, 25, 49, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_mul( %s, NID_secp192k1, 25, 49, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP192K_PN:
-			sprintf(result, "epl_ec_neg( %s, NID_secp192k1, 25, 49, b, &bi_size )", rval);
-			use_elasticpl_crypto = true;
-			break;
-		case NODE_SECP192R_PTP:
-			sprintf(result, "SECP192R1PrivToPub( %s )", rval);
-			use_elasticpl_crypto = true;
-			break;
-		case NODE_SECP192R_PA:
-			sprintf(result, "SECP192R1PointAdd( %s )", rval);
-			use_elasticpl_crypto = true;
-			break;
-		case NODE_SECP192R_PS:
-			sprintf(result, "SECP192R1PointSub( %s )", rval);
-			use_elasticpl_crypto = true;
-			break;
-		case NODE_SECP192R_PSM:
-			sprintf(result, "SECP192R1PointScalarMult( %s )", rval);
-			use_elasticpl_crypto = true;
-			break;
-		case NODE_SECP192R_PN:
-			sprintf(result, "SECP192R1PointNegate( %s )", rval);
+			sprintf(result, "mangle_state( epl_ec_neg( %s, NID_secp192k1, 25, 49, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224K_PTP:
-			sprintf(result, "epl_ec_priv_to_pub( %s, NID_secp224k1, 28, 56, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_priv_to_pub( %s, NID_secp224k1, 28, 56, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224K_PA:
-			sprintf(result, "epl_ec_add( %s, NID_secp224k1, 29, 57, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_add( %s, NID_secp224k1, 29, 57, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224K_PS:
-			sprintf(result, "epl_ec_sub( %s, NID_secp224k1, 29, 57, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_sub( %s, NID_secp224k1, 29, 57, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224K_PSM:
-			sprintf(result, "epl_ec_mul( %s, NID_secp224k1, 29, 57, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_mul( %s, NID_secp224k1, 29, 57, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224K_PN:
-			sprintf(result, "epl_ec_neg( %s, NID_secp224k1, 29, 57, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_neg( %s, NID_secp224k1, 29, 57, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224R_PTP:
-			sprintf(result, "epl_ec_priv_to_pub( %s, NID_secp224r1, 28, 56, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_priv_to_pub( %s, NID_secp224r1, 28, 56, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224R_PA:
-			sprintf(result, "epl_ec_add( %s, NID_secp224r1, 29, 57, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_add( %s, NID_secp224r1, 29, 57, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224R_PS:
-			sprintf(result, "epl_ec_sub( %s, NID_secp224r1, 29, 57, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_sub( %s, NID_secp224r1, 29, 57, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224R_PSM:
-			sprintf(result, "epl_ec_mul( %s, NID_secp224r1, 29, 57, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_mul( %s, NID_secp224r1, 29, 57, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP224R_PN:
-			sprintf(result, "epl_ec_neg( %s, NID_secp224r1, 29, 57, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_neg( %s, NID_secp224r1, 29, 57, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256K_PTP:
-			sprintf(result, "epl_ec_priv_to_pub( %s, NID_secp256k1, 32, 64, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_priv_to_pub( %s, NID_secp256k1, 32, 64, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256K_PA:
-			sprintf(result, "epl_ec_add( %s, NID_secp256k1, 33, 65, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_add( %s, NID_secp256k1, 33, 65, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256K_PS:
-			sprintf(result, "epl_ec_sub( %s, NID_secp256k1, 33, 65, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_sub( %s, NID_secp256k1, 33, 65, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256K_PSM:
-			sprintf(result, "epl_ec_mul( %s, NID_secp256k1, 33, 65, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_mul( %s, NID_secp256k1, 33, 65, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP256K_PN:
-			sprintf(result, "epl_ec_neg( %s, NID_secp256k1, 33, 65, b, &bi_size )", rval);
-			use_elasticpl_crypto = true;
-			break;
-		case NODE_SECP256R_PTP:
-			//Missing
-			sprintf(result, "SECP256R1PrivToPub( %s )", rval);
-			//Missing
-			use_elasticpl_crypto = true;
-			break;
-		case NODE_SECP256R_PA:
-			//Missing
-			sprintf(result, "SECP256R1PointAdd( %s )", rval);
-			//Missing
-			use_elasticpl_crypto = true;
-			break;
-		case NODE_SECP256R_PS:
-			//Missing
-			sprintf(result, "SECP256R1PointSub( %s )", rval);
-			//Missing
-			use_elasticpl_crypto = true;
-			break;
-		case NODE_SECP256R_PSM:
-			//Missing
-			sprintf(result, "SECP256R1PointScalarMult( %s )", rval);
-			//Missing
-			use_elasticpl_crypto = true;
-			break;
-		case NODE_SECP256R_PN:
-			//Missing
-			sprintf(result, "SECP256R1PointNegate( %s )", rval);
-			//Missing
+			sprintf(result, "mangle_state( epl_ec_neg( %s, NID_secp256k1, 33, 65, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP384R_PTP:
-			sprintf(result, "epl_ec_priv_to_pub( %s, NID_secp384r1, 48, 96, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_priv_to_pub( %s, NID_secp384r1, 48, 96, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP384R_PA:
-			sprintf(result, "epl_ec_add( %s, NID_secp384r1, 49, 97, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_add( %s, NID_secp384r1, 49, 97, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP384R_PS:
-			sprintf(result, "epl_ec_sub( %s, NID_secp384r1, 49, 97, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_sub( %s, NID_secp384r1, 49, 97, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP384R_PSM:
-			sprintf(result, "epl_ec_mul( %s, NID_secp384r1, 49, 97, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_mul( %s, NID_secp384r1, 49, 97, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_SECP384R_PN:
-			sprintf(result, "epl_ec_neg( %s, NID_secp384r1, 49, 97, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_neg( %s, NID_secp384r1, 49, 97, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V1_PTP:
-			sprintf(result, "epl_ec_priv_to_pub( %s, NID_X9_62_prime192v1, 24, 48, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_priv_to_pub( %s, NID_X9_62_prime192v1, 24, 48, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V1_PA:
-			sprintf(result, "epl_ec_add( %s, NID_X9_62_prime192v1, 25, 49, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_add( %s, NID_X9_62_prime192v1, 25, 49, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V1_PS:
-			sprintf(result, "epl_ec_sub( %s, NID_X9_62_prime192v1, 25, 49, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_sub( %s, NID_X9_62_prime192v1, 25, 49, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V1_PSM:
-			sprintf(result, "epl_ec_mul( %s, NID_X9_62_prime192v1, 25, 49, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_mul( %s, NID_X9_62_prime192v1, 25, 49, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V1_PN:
-			sprintf(result, "epl_ec_neg( %s, NID_X9_62_prime192v1, 25, 49, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_neg( %s, NID_X9_62_prime192v1, 25, 49, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V2_PTP:
-			sprintf(result, "epl_ec_priv_to_pub( %s, NID_X9_62_prime192v2, 24, 48, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_priv_to_pub( %s, NID_X9_62_prime192v2, 24, 48, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V2_PA:
-			sprintf(result, "epl_ec_add( %s, NID_X9_62_prime192v2, 25, 49, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_add( %s, NID_X9_62_prime192v2, 25, 49, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V2_PS:
-			sprintf(result, "epl_ec_sub( %s, NID_X9_62_prime192v2, 25, 49, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_sub( %s, NID_X9_62_prime192v2, 25, 49, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V2_PSM:
-			sprintf(result, "epl_ec_mul( %s, NID_X9_62_prime192v2, 25, 49, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_mul( %s, NID_X9_62_prime192v2, 25, 49, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V2_PN:
-			sprintf(result, "epl_ec_neg( %s, NID_X9_62_prime192v2, 25, 49, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_neg( %s, NID_X9_62_prime192v2, 25, 49, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V3_PTP:
-			sprintf(result, "epl_ec_priv_to_pub( %s, NID_X9_62_prime192v3, 24, 48, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_priv_to_pub( %s, NID_X9_62_prime192v3, 24, 48, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V3_PA:
-			sprintf(result, "epl_ec_add( %s, NID_X9_62_prime192v3, 25, 49, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_add( %s, NID_X9_62_prime192v3, 25, 49, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V3_PS:
-			sprintf(result, "epl_ec_sub( %s, NID_X9_62_prime192v3, 25, 49, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_sub( %s, NID_X9_62_prime192v3, 25, 49, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V3_PSM:
-			sprintf(result, "epl_ec_mul( %s, NID_X9_62_prime192v3, 25, 49, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_mul( %s, NID_X9_62_prime192v3, 25, 49, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM192V3_PN:
-			sprintf(result, "epl_ec_neg( %s, NID_X9_62_prime192v3, 25, 49, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_neg( %s, NID_X9_62_prime192v3, 25, 49, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM256V1_PTP:
-			sprintf(result, "epl_ec_priv_to_pub( %s, NID_X9_62_prime256v1, 32, 64, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_priv_to_pub( %s, NID_X9_62_prime256v1, 32, 64, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM256V1_PA:
-			sprintf(result, "epl_ec_add( %s, NID_X9_62_prime256v1, 33, 65, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_add( %s, NID_X9_62_prime256v1, 33, 65, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM256V1_PS:
-			sprintf(result, "epl_ec_sub( %s, NID_X9_62_prime256v1, 33, 65, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_sub( %s, NID_X9_62_prime256v1, 33, 65, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM256V1_PSM:
-			sprintf(result, "epl_ec_mul( %s, NID_X9_62_prime256v1, 33, 65, b, &bi_size )", rval);
+			sprintf(result, "mangle_state( epl_ec_mul( %s, NID_X9_62_prime256v1, 33, 65, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_PRM256V1_PN:
-			sprintf(result, "epl_ec_neg( %s, NID_X9_62_prime256v1, 33, 65, b, &bi_size )", rval);
-			use_elasticpl_crypto = true;
-			break;
-		case NODE_TIGER:
-			//Missing
-			sprintf(result, "Tiger( %s , b, &bi_size)", rval);
-			//Missing
+			sprintf(result, "mangle_state( epl_ec_neg( %s, NID_X9_62_prime256v1, 33, 65, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		case NODE_RIPEMD160:
-			sprintf(result, "epl_ripemd160( %s, b, &bi_size )", rval);
-			use_elasticpl_crypto = true;
-			break;
-		case NODE_RIPEMD128:
-			//Missing
-			sprintf(result, "RIPEMD128( %s )", rval);
-			//Missing
+			sprintf(result, "mangle_state( epl_ripemd160( %s, b, &bi_size ) )", rval);
 			use_elasticpl_crypto = true;
 			break;
 		default:
