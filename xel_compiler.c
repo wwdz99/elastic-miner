@@ -86,10 +86,11 @@ bool create_c_source() {
 
 	fprintf(f, "static void mangle(int index, bool is_float) {\n");
 	fprintf(f, "\tif (is_float) {\n");
-	fprintf(f, "\t\tuint32_t *f_val = (uint32_t *)(&f[index]);\n");
-	fprintf(f, "\t\tuint32_t val = f_val[0] ^ f_val[1];\n");
+//	fprintf(f, "\t\tuint32_t *f_val = (uint32_t *)(&f[index]);\n");
+//	fprintf(f, "\t\tuint32_t val = f_val[0] ^ f_val[1];\n");
 	fprintf(f, "\t\tmangle_state(index);\n");
-	fprintf(f, "\t\tmangle_state(val);\n");
+	fprintf(f, "\t\tmangle_state((uint32_t)f[index]);\n");
+//	fprintf(f, "\t\tmangle_state(val);\n");
 	fprintf(f, "\t}\n");
 	fprintf(f, "\telse {\n");
 	fprintf(f, "\t\tmangle_state(index);\n");
@@ -126,6 +127,7 @@ bool create_c_source() {
 
 	fprintf(f, "\n\t// The following code created by ElasticPL to C converter\n\n");
 	fprintf(f, "%s", &code[0]);
+
 	fprintf(f, "\n\treturn bounty_found;\n");
 	fprintf(f, "}\n");
 
