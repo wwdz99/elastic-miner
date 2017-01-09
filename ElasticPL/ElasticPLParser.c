@@ -67,39 +67,7 @@ static ast* pop_exp() {
 	return exp;
 }
 
-
-//int i, idx, inputs, num_exps = 0;
-//
-//if (token->inputs == 0)
-//return true;
-//
-//// For If/Repeat Only Check The Left Expression (Right Side Will Be Statements)
-//if ((node_type == NODE_IF) || (node_type == NODE_REPEAT)) {
-//	idx = stack_exp_idx - 1;
-//	inputs = token->inputs - 1;
-//}
-//else {
-//	idx = stack_exp_idx;
-//	inputs = token->inputs;
-//}
-//
-//// Count The Number Of Expressions On The Stack
-//for (i = idx; i >= 0; i--) {
-//	//	for (i = stack_exp_idx; i >= 0; i--) {
-//	if (stack_exp[i]->end_stmnt)
-//		break;
-//	num_exps++;
-//}
-//
-//// Validate That There Are Enough Expressions On The Stack
-//if (num_exps < inputs) {
-//	applog(LOG_ERR, "Syntax Error (Invalid Inputs) - Line: %d' ", token->line_num);
-//	return false;
-//}
-
-
-
-static bool validate_input_num(SOURCE_TOKEN *token, NODE_TYPE node_type) {
+static bool validate_inputs(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 	int i, num_exps = 0;
 
 	if ((token->inputs == 0) || (node_type == NODE_BLOCK))
@@ -127,7 +95,7 @@ static bool validate_input_num(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 
 	// Validate That There Are Enough Expressions On The Stack
 	if (num_exps < token->inputs) {
-		applog(LOG_ERR, "Syntax Error (Invalid Inputs) - Line: %d' ", token->line_num);
+		applog(LOG_ERR, "Syntax Error - Line: %d  Invalid number of inputs ", token->line_num);
 		return false;
 	}
 
@@ -379,26 +347,26 @@ static bool validate_input_num(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 }
 
 
-static bool validate_unary_stmnt(SOURCE_TOKEN *token, NODE_TYPE node_type) {
-	EXP_TYPE l_exp;
+//static bool validate_unary_stmnt(SOURCE_TOKEN *token, NODE_TYPE node_type) {
+//	EXP_TYPE l_exp;
+//
+//	if (node_type == NODE_BREAK)
+//		return true;
+//
+//	l_exp = stack_exp[stack_exp_idx]->exp;
+//
+//	// Validate Left Item Is Not A Statement
+//	if ((l_exp == EXP_STATEMENT) || (l_exp == EXP_FUNCTION)) {
+//		printf("Syntax Error - Line: %d  Invalid Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
+//		return false;
+//	}
+//
+//	return true;
+//}
 
-	if (node_type == NODE_BREAK)
-		return true;
-
-	l_exp = stack_exp[stack_exp_idx]->exp;
-
-	// Validate Left Item Is Not A Statement
-	if ((l_exp == EXP_STATEMENT) || (l_exp == EXP_FUNCTION)) {
-		printf("Syntax Error - Line: %d  Invalid Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
-		return false;
-	}
-
-	return true;
-}
-
-static bool validate_binary_stmnt(SOURCE_TOKEN *token, NODE_TYPE node_type) {
-	return true;
-}
+//static bool validate_binary_stmnt(SOURCE_TOKEN *token, NODE_TYPE node_type) {
+//	return true;
+//}
 
 // Validate Unary Operations Have 1 Valid Expression
 static bool validate_unary_exp(SOURCE_TOKEN *token, int token_num, NODE_TYPE node_type) {
@@ -409,7 +377,7 @@ static bool validate_unary_exp(SOURCE_TOKEN *token, int token_num, NODE_TYPE nod
 	// Validate Increment / Decrement Have Variable For Operand
 	if (token->type == TOKEN_INCREMENT || token->type == TOKEN_DECREMENT) {
 		if (stack_exp[stack_exp_idx]->type != NODE_VAR_CONST && stack_exp[stack_exp_idx]->type != NODE_VAR_EXP) {
-			printf("Syntax Error - Line: %d  Invalid Operand For: \"%s\"\n", token->line_num, get_node_str(node_type));
+			applog(LOG_ERR, "Syntax Error - Line: %d  Invalid Operand For: \"%s\"\n", token->line_num, get_node_str(node_type));
 			return false;
 		}
 		return true;
@@ -421,14 +389,14 @@ static bool validate_unary_exp(SOURCE_TOKEN *token, int token_num, NODE_TYPE nod
 		// Check Left Expression For Variables & Increment / Decrement
 		if ((node_type == NODE_VAR_CONST) || (node_type == NODE_VAR_EXP)) {
 				if (stack_exp[stack_exp_idx]->token_num >= token_num) {
-				printf("Syntax Error - Line: %d  Invalid Operand For: \"%s\"\n", token->line_num, get_node_str(node_type));
+				applog(LOG_ERR, "Syntax Error - Line: %d  Invalid Operand For: \"%s\"\n", token->line_num, get_node_str(node_type));
 				return false;
 			}
 		}
 		// Check Right Expression For Other Unary Operators
 		else {
 			if (stack_exp[stack_exp_idx]->token_num <= token_num) {
-				printf("Syntax Error - Line: %d  Invalid Operand For: \"%s\"\n", token->line_num, get_node_str(node_type));
+				applog(LOG_ERR, "Syntax Error - Line: %d  Invalid Operand For: \"%s\"\n", token->line_num, get_node_str(node_type));
 				return false;
 			}
 		}
@@ -437,26 +405,26 @@ static bool validate_unary_exp(SOURCE_TOKEN *token, int token_num, NODE_TYPE nod
 	return true;
 }
 
-static bool validate_binary_exp(SOURCE_TOKEN *token, NODE_TYPE node_type) {
-	DATA_TYPE l_data_type, r_data_type;
-
-	l_data_type = stack_exp[stack_exp_idx - 1]->data_type;
-	r_data_type = stack_exp[stack_exp_idx]->data_type;
-
-	// Validate Left Item Is Not A Statement (Does Not Include Increment / Decrement)
-	if (l_data_type == DT_NONE) {
-		printf("Syntax Error - Line: %d  Invalid Left Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
-		return false;
-	}
-
-	// Validate Right Item Is Not A Statement (Does Not Include Increment / Decrement)
-	if (r_data_type == DT_NONE) {
-		printf("Syntax Error - Line: %d  Invalid Right Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
-		return false;
-	}
-
-	return true;
-}
+//static bool validate_binary_exp(SOURCE_TOKEN *token, NODE_TYPE node_type) {
+//	DATA_TYPE l_data_type, r_data_type;
+//
+//	l_data_type = stack_exp[stack_exp_idx - 1]->data_type;
+//	r_data_type = stack_exp[stack_exp_idx]->data_type;
+//
+//	// Validate Left Item Is Not A Statement (Does Not Include Increment / Decrement)
+//	if (l_data_type == DT_NONE) {
+//		printf("Syntax Error - Line: %d  Invalid Left Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
+//		return false;
+//	}
+//
+//	// Validate Right Item Is Not A Statement (Does Not Include Increment / Decrement)
+//	if (r_data_type == DT_NONE) {
+//		printf("Syntax Error - Line: %d  Invalid Right Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
+//		return false;
+//	}
+//
+//	return true;
+//}
 
 static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
 	NODE_TYPE node_type;
@@ -637,6 +605,7 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
 
 static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 	int i;
+	uint32_t val[2];
 	long long value = 0;
 	double fvalue = 0.0;
 	unsigned char *svalue = NULL;
@@ -651,8 +620,8 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 		return false;
 	}
 
-	// Confirm Required Number Of Expressions Are On Stack
-	if (!validate_input_num(token, node_type))
+	// Confirm Required Number / Types Of Expressions Are On Stack
+	if (!validate_inputs(token, node_type))
 		return false;
 
 	switch (token->exp) {
@@ -670,28 +639,28 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 
 				if (token->data_type == DT_INT) {
 
-					//// Check For Hex - If Found, Convert To Int
-					//if (token->literal[0] == '0' && token->literal[1] == 'x' && strlen(token->literal) > 2 && strlen(token->literal) <= 34) {
-					//	hex2ints(bvalue, 4, token->literal + 2, strlen(token->literal) - 2);
-					//	sprintf(token->literal, "%d", bvalue[3]);
-					//}
+					// Check For Hex - If Found, Convert To Int
+					if (token->literal[0] == '0' && token->literal[1] == 'x' && strlen(token->literal) > 2 && strlen(token->literal) <= 10) {
+						hex2ints(val, 1, token->literal + 2, strlen(token->literal) - 2);
+						sprintf(token->literal, "%d", val[0]);
+					}
 
-					//// Check For Binary - If Found, Convert To Decimal String
-					//if (token->literal[0] == '0' && token->literal[1] == 'b' && strlen(token->literal) > 2 && strlen(token->literal) <= 34) {
-					//	bvalue[0] = bin2int(token->literal + 2);
-					//	sprintf(token->literal, "%d", bvalue[0]);
-					//}
+					// Check For Binary - If Found, Convert To Decimal String
+					if (token->literal[0] == '0' && token->literal[1] == 'b' && strlen(token->literal) > 2 && strlen(token->literal) <= 34) {
+						val[0] = bin2int(token->literal + 2);
+						sprintf(token->literal, "%d", val[0]);
+					}
 
-					//if (strlen(token->literal) <= 10) {
+					if (strlen(token->literal) <= 10) {
 						value = (long long)strtod(token->literal, NULL);
 						fvalue = (double)strtod(token->literal, NULL);
-//					}
+					}
 				}
 				else if (token->data_type == DT_FLOAT) {
-//					if (strlen(token->literal) <= 10) {
+					if (strlen(token->literal) <= 10) {
 						value = (long long)strtod(token->literal, NULL);
 						fvalue = (double)strtod(token->literal, NULL);
-//					}
+					}
 				}
 				else {
 					svalue = calloc(1, strlen(token->literal) + 1);
@@ -704,6 +673,7 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 		// Unary Expressions
 		else if (token->inputs == 1) {
 
+			// Additional Validations For Unary Expressions
 			if (!validate_unary_exp(token, token_num, node_type))
 				return false;
 
@@ -718,10 +688,6 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 		}
 		// Binary Expressions
 		else if (token->inputs == 2) {
-
-			if (!validate_binary_exp(token, node_type))
-				return false;
-
 			right = pop_exp();
 			left = pop_exp();
 		}
@@ -732,18 +698,10 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 
 		// Unary Statements
 		if (token->inputs == 1) {
-
-			if (!validate_unary_stmnt(token, node_type))
-				return false;
-
 			left = pop_exp();
 		}
 		// Binary Statements
 		else if (token->inputs == 2) {
-
-			if (!validate_binary_stmnt(token, node_type))
-				return false;
-
 			if (node_type == NODE_BLOCK && stack_exp[stack_exp_idx]->type != NODE_BLOCK)
 				right = NULL;
 			else
@@ -763,10 +721,6 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 
 			// Remaining Paramaters
 			for (i = 1; i < token->inputs; i++) {
-
-				if ((stack_exp_idx <= 0) || (stack_exp[stack_exp_idx - 1]->end_stmnt == true) || (stack_exp[stack_exp_idx - 1]->type == NODE_IF) || (stack_exp[stack_exp_idx - 1]->type == NODE_REPEAT))
-					break;
-
 				right = pop_exp();
 				left = pop_exp();
 				exp = add_exp(NODE_PARAM, EXP_EXPRESSION, 0, 0.0, NULL, 0, 0, DT_NONE, left, right);
@@ -813,7 +767,7 @@ static bool validate_exp_list() {
 
 	for (i = 0; i < stack_exp_idx; i++) {
 		if (stack_exp[i]->exp != EXP_STATEMENT && stack_exp[i]->exp != EXP_FUNCTION && stack_exp[i]->end_stmnt == false) {
-				applog(LOG_ERR, "Syntax Error - Line: %d  Invalid Statement", stack_exp[i]->line_num);
+			applog(LOG_ERR, "Syntax Error - Line: %d  Invalid Statement", stack_exp[i]->line_num);
 			return false;
 		}
 	}
@@ -835,7 +789,7 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 
 		// Validate That No Verify Statements Are Embeded In Blocks
 		if ((stack_exp_idx >= 0) && (stack_exp[stack_exp_idx]->type == NODE_VERIFY)) {
-			printf("Syntax Error - Line: %d  Invalid Verify Statement\n", stack_exp[stack_exp_idx]->line_num);
+			applog(LOG_ERR, "Syntax Error - Line: %d  Invalid Verify Statement\n", stack_exp[stack_exp_idx]->line_num);
 			return false;
 		}
 
@@ -877,7 +831,7 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 			}
 
 			if ((stack_exp_idx < 0) || stack_exp[stack_exp_idx]->token_num < top_op) {
-				printf("Syntax Error - Line: %d  Missing variable index\n", token_list->token[i].line_num);
+				applog(LOG_ERR, "Syntax Error - Line: %d  Missing variable index\n", token_list->token[i].line_num);
 				return false;
 			}
 
@@ -914,8 +868,10 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 
 		case TOKEN_BLOCK_END:
 			// Validate That The Top Operator Is The Block Begin
-			if (token_list->token[top_op].type != TOKEN_BLOCK_BEGIN)
+			if (token_list->token[top_op].type != TOKEN_BLOCK_BEGIN) {
+				applog(LOG_ERR, "Syntax Error - Line: %d  Missing '{'\n", token_list->token[i].line_num);
 				return false;
+			}
 
 			// Create A Linked List Of All Statements In The Block
 			while (stack_exp_idx > 0 && stack_exp[stack_exp_idx - 1]->token_num > top_op && stack_exp[stack_exp_idx]->token_num < i) {
@@ -949,14 +905,13 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 				push_exp(right);
 			}
 			else if (stack_op_idx < 0 || token_list->token[stack_op[stack_op_idx]].type != TOKEN_IF) {
-				printf("Syntax Error - Line: %d  Invalid 'Else' Statement\n", token_list->token[token_id].line_num);
+				applog(LOG_ERR, "Syntax Error - Line: %d  Invalid 'Else' Statement\n", token_list->token[token_id].line_num);
 				return false;
 			}
 			push_op(i);
 			break;
 
 		case TOKEN_COND_ELSE:
-
 			// Process Expressions Within The Conditional Statement
 			while ((top_op >= 0) && (token_list->token[top_op].type != TOKEN_CONDITIONAL)) {
 				token_id = pop_op();
@@ -980,13 +935,13 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 
 			// Don't Push <EOF> Onto Stack
 			if (token_list->token[i].type != TOKEN_EOF)
-					push_op(i);
+				push_op(i);
 
 			break;
 		}
 	}
 
-	if (stack_exp_idx < 0 || !validate_exp_list())
+	if (!validate_exp_list())
 		return false;
 
 	return true;

@@ -971,7 +971,7 @@ static char* convert(ast* exp) {
 		if (tmp) free(tmp);
 
 		// Terminate Statements
-		if (exp->end_stmnt) {
+		if (exp->end_stmnt && (exp->type != NODE_BLOCK)) {
 			tmp = malloc(strlen(result) + 20);
 			sprintf(tmp, "%s%s;\n", tab[tabs], result);
 			free(result);
