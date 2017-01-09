@@ -226,7 +226,7 @@ extern int32_t bin2int(unsigned char *str) {
 
 	len = strlen(str);
 
-	if (len < 1 || len > 31) {
+	if (len < 1 || len > 32) {
 		applog(LOG_ERR, "ERROR: Can't convert '%s' bin string to int", bin);
 		return 0;
 	}
