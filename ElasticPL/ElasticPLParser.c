@@ -67,14 +67,59 @@ static ast* pop_exp() {
 	return exp;
 }
 
+
+//int i, idx, inputs, num_exps = 0;
+//
+//if (token->inputs == 0)
+//return true;
+//
+//// For If/Repeat Only Check The Left Expression (Right Side Will Be Statements)
+//if ((node_type == NODE_IF) || (node_type == NODE_REPEAT)) {
+//	idx = stack_exp_idx - 1;
+//	inputs = token->inputs - 1;
+//}
+//else {
+//	idx = stack_exp_idx;
+//	inputs = token->inputs;
+//}
+//
+//// Count The Number Of Expressions On The Stack
+//for (i = idx; i >= 0; i--) {
+//	//	for (i = stack_exp_idx; i >= 0; i--) {
+//	if (stack_exp[i]->end_stmnt)
+//		break;
+//	num_exps++;
+//}
+//
+//// Validate That There Are Enough Expressions On The Stack
+//if (num_exps < inputs) {
+//	applog(LOG_ERR, "Syntax Error (Invalid Inputs) - Line: %d' ", token->line_num);
+//	return false;
+//}
+
+
+
 static bool validate_input_num(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 	int i, num_exps = 0;
 
-	if (token->inputs == 0)
+	if ((token->inputs == 0) || (node_type == NODE_BLOCK))
 		return true;
 
 	// Count The Number Of Expressions On The Stack
 	for (i = stack_exp_idx; i >= 0; i--) {
+
+		// First Item For IF / ELSE / REPEAT Is A Statement
+		if ((i == stack_exp_idx) && ((node_type == NODE_IF) || (node_type == NODE_ELSE) || (node_type == NODE_REPEAT))) {
+			num_exps++;
+			continue;
+		}
+			
+		// Second Item For ELSE Is Also A Statement
+		if ((i == (stack_exp_idx - 1)) && (node_type == NODE_ELSE)) {
+			num_exps++;
+			continue;
+		}
+
 		if (stack_exp[i]->end_stmnt)
 			break;
 		num_exps++;
@@ -82,11 +127,255 @@ static bool validate_input_num(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 
 	// Validate That There Are Enough Expressions On The Stack
 	if (num_exps < token->inputs) {
-		applog(LOG_ERR, "Syntax Error - Line: %d  Invalid parameters for '%s'", token->line_num, get_node_str(node_type));
+		applog(LOG_ERR, "Syntax Error (Invalid Inputs) - Line: %d' ", token->line_num);
 		return false;
 	}
 
-	return true;
+	// Validate The Inputs Are The Correct Type
+	switch (node_type) {
+
+	// Expressions w/ 1 Statement & 1 Int / Float (Ignore Right Side)
+	case NODE_IF:
+	case NODE_REPEAT:
+		if ((stack_exp[stack_exp_idx - 1]->data_type == DT_INT) || (stack_exp[stack_exp_idx - 1]->data_type == DT_FLOAT) &&
+				(stack_exp[stack_exp_idx]->end_stmnt == true))
+				return true;
+		break;
+
+	case NODE_ELSE:
+		if ((stack_exp[stack_exp_idx - 1]->end_stmnt == true) && (stack_exp[stack_exp_idx]->end_stmnt == true))
+			return true;
+		break;
+
+	// Expressions w/ 1 Int
+	case NODE_ABS:
+	case NODE_VERIFY:
+		if (stack_exp[stack_exp_idx]->data_type == DT_INT)
+			return true;
+		break;
+
+	// Expressions w/ 1 Int or Float
+	case NODE_CONSTANT:
+	case NODE_VAR_CONST:
+	case NODE_VAR_EXP:
+	case NODE_INCREMENT_R:
+	case NODE_INCREMENT_L:
+	case NODE_DECREMENT_R:
+	case NODE_DECREMENT_L:
+	case NODE_COMPL:
+	case NODE_NOT:
+	case NODE_NEG:
+	case NODE_SIN:
+	case NODE_COS:
+	case NODE_TAN:
+	case NODE_SINH:
+	case NODE_COSH:
+	case NODE_TANH:
+	case NODE_ASIN:
+	case NODE_ACOS:
+	case NODE_ATAN:
+	case NODE_EXPNT:
+	case NODE_LOG:
+	case NODE_LOG10:
+	case NODE_SQRT:
+	case NODE_CEIL:
+	case NODE_FLOOR:
+	case NODE_FABS:
+		if ((stack_exp[stack_exp_idx]->data_type == DT_INT) || (stack_exp[stack_exp_idx]->data_type == DT_FLOAT))
+			return true;
+		break;
+
+	// Expressions w/ 2 Ints or Floats
+	case NODE_MUL:
+	case NODE_DIV:
+	case NODE_MOD:
+	case NODE_ADD_ASSIGN:
+	case NODE_SUB_ASSIGN:
+	case NODE_MUL_ASSIGN:
+	case NODE_DIV_ASSIGN:
+	case NODE_MOD_ASSIGN:
+	case NODE_LSHFT_ASSIGN:
+	case NODE_RSHFT_ASSIGN:
+	case NODE_AND_ASSIGN:
+	case NODE_XOR_ASSIGN:
+	case NODE_OR_ASSIGN:
+	case NODE_ADD:
+	case NODE_SUB:
+	case NODE_LROT:
+	case NODE_LSHIFT:
+	case NODE_RROT:
+	case NODE_RSHIFT:
+	case NODE_LE:
+	case NODE_GE:
+	case NODE_LT:
+	case NODE_GT:
+	case NODE_EQ:
+	case NODE_NE:
+	case NODE_BITWISE_AND:
+	case NODE_BITWISE_XOR:
+	case NODE_BITWISE_OR:
+	case NODE_AND:
+	case NODE_OR:
+	case NODE_ASSIGN:
+	case NODE_CONDITIONAL:
+	case NODE_COND_ELSE:
+	case NODE_ATAN2:
+	case NODE_POW:
+	case NODE_FMOD:
+	case NODE_GCD:
+		if ((stack_exp[stack_exp_idx - 1]->data_type == DT_INT) || (stack_exp[stack_exp_idx - 1]->data_type == DT_FLOAT) &&
+			(stack_exp[stack_exp_idx]->data_type == DT_INT) || (stack_exp[stack_exp_idx]->data_type == DT_FLOAT))
+			return true;
+		break;
+
+	// Expressions w/ 1 Big Int
+	case NODE_BI_SIGN:
+	case NODE_BI_LEAST_32:
+		if (stack_exp[stack_exp_idx]->data_type == DT_BIGINT)
+			return true;
+		break;
+
+	// Expressions w/ 1 Big Int & String
+	case NODE_BI_CONST:
+		if (stack_exp[stack_exp_idx - 1]->data_type == DT_BIGINT && stack_exp[stack_exp_idx]->data_type == DT_STRING)
+			return true;
+		break;
+
+	// Expressions w/ 1 Big Int & 32bit Int
+	case NODE_BI_EXPR:
+	case NODE_BI_POW2:
+		if (stack_exp[stack_exp_idx - 1]->data_type == DT_BIGINT && stack_exp[stack_exp_idx]->data_type == DT_INT)
+			return true;
+		break;
+
+	// Expressions w/ 1 Big Int & 2 - 32bit Ints
+	case NODE_BI_OR_INT:
+	case NODE_BI_AND_INT:
+	case NODE_BI_XOR_INT:
+		if (stack_exp[stack_exp_idx - 2]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 1]->data_type == DT_INT && stack_exp[stack_exp_idx]->data_type == DT_INT)
+			return true;
+		break;
+
+	// Expressions w/ 2 Big Ints
+	case NODE_BI_COPY:
+	case NODE_BI_DIVISIBLE:
+	case NODE_BI_COMP:
+	case NODE_BI_COMP_ABS:
+	case NODE_BI_NEG:
+	case NODE_MD5:
+	case NODE_SHA256:
+	case NODE_SHA512:
+	case NODE_RIPEMD160:
+	case NODE_WHIRLPOOL:
+		if (stack_exp[stack_exp_idx - 1]->data_type == DT_BIGINT && stack_exp[stack_exp_idx]->data_type == DT_BIGINT)
+			return true;
+		break;
+
+	// Expressions w/ 2 Big Ints & 32 Bit Int
+	case NODE_BI_POW:
+	case NODE_BI_LSHIFT:
+	case NODE_BI_RSHIFT:
+		if (stack_exp[stack_exp_idx - 2]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 1]->data_type == DT_BIGINT && stack_exp[stack_exp_idx]->data_type == DT_INT)
+			return true;
+		break;
+
+	// Expressions w/ 2 Big Ints & Bool
+	case NODE_SECP192K_PTP:
+	case NODE_SECP224K_PTP:
+	case NODE_SECP224R_PTP:
+	case NODE_SECP256K_PTP:
+	case NODE_SECP384R_PTP:
+	case NODE_PRM192V1_PTP:
+	case NODE_PRM192V2_PTP:
+	case NODE_PRM192V3_PTP:
+	case NODE_PRM256V1_PTP:
+		if (stack_exp[stack_exp_idx - 2]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 1]->data_type == DT_BIGINT && stack_exp[stack_exp_idx]->data_type == DT_INT )
+			return true;
+		break;
+
+	// Expressions w/ Big Int - Bool - Big Int - Bool
+	case NODE_SECP192K_PN:
+	case NODE_SECP224K_PN:
+	case NODE_SECP224R_PN:
+	case NODE_SECP256K_PN:
+	case NODE_SECP384R_PN:
+	case NODE_PRM192V1_PN:
+	case NODE_PRM192V2_PN:
+	case NODE_PRM192V3_PN:
+	case NODE_PRM256V1_PN:
+		if (stack_exp[stack_exp_idx - 3]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 2]->data_type == DT_INT && stack_exp[stack_exp_idx - 1]->data_type == DT_BIGINT && stack_exp[stack_exp_idx]->data_type == DT_INT)
+			return true;
+		break;
+
+	// Expressions w/ Big Int - Bool - Big Int - Bool - Big Int - Bool
+	case NODE_SECP192K_PA:
+	case NODE_SECP192K_PS:
+	case NODE_SECP224K_PA:
+	case NODE_SECP224K_PS:
+	case NODE_SECP224R_PA:
+	case NODE_SECP224R_PS:
+	case NODE_SECP256K_PA:
+	case NODE_SECP256K_PS:
+	case NODE_SECP384R_PA:
+	case NODE_SECP384R_PS:
+	case NODE_PRM192V1_PA:
+	case NODE_PRM192V1_PS:
+	case NODE_PRM192V2_PA:
+	case NODE_PRM192V2_PS:
+	case NODE_PRM192V3_PA:
+	case NODE_PRM192V3_PS:
+	case NODE_PRM256V1_PA:
+	case NODE_PRM256V1_PS:
+		if (stack_exp[stack_exp_idx - 5]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 4]->data_type == DT_INT && stack_exp[stack_exp_idx - 3]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 2]->data_type == DT_INT && stack_exp[stack_exp_idx - 1]->data_type == DT_BIGINT && stack_exp[stack_exp_idx]->data_type == DT_INT)
+			return true;
+		break;
+
+	// Expressions w/ Big Int - Bool - Big Int - Bool - Big Int
+	case NODE_SECP192K_PSM:
+	case NODE_SECP224K_PSM:
+	case NODE_SECP224R_PSM:
+	case NODE_SECP256K_PSM:
+	case NODE_SECP384R_PSM:
+	case NODE_PRM192V1_PSM:
+	case NODE_PRM192V2_PSM:
+	case NODE_PRM192V3_PSM:
+	case NODE_PRM256V1_PSM:
+		if (stack_exp[stack_exp_idx - 4]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 3]->data_type == DT_INT && stack_exp[stack_exp_idx - 2]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 1]->data_type == DT_INT && stack_exp[stack_exp_idx]->data_type == DT_BIGINT)
+			return true;
+		break;
+
+	// Expressions w/ 3 Big Ints
+	case NODE_BI_ADD:
+	case NODE_BI_SUB:
+	case NODE_BI_MUL:
+	case NODE_BI_DIV:
+	case NODE_BI_CEIL_DIV:
+	case NODE_BI_FLOOR_DIV:
+	case NODE_BI_TRUNC_DIV:
+	case NODE_BI_DIV_EXACT:
+	case NODE_BI_MOD:
+	case NODE_BI_GCD:
+	case NODE_BI_POW2_MOD_P:
+	case NODE_BI_CNGR_MOD_P:
+	case NODE_BI_OR:
+	case NODE_BI_AND:
+	case NODE_BI_XOR:
+		if (stack_exp[stack_exp_idx - 2]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 1]->data_type == DT_BIGINT && stack_exp[stack_exp_idx]->data_type == DT_BIGINT)
+			return true;
+		break;
+
+	// Expressions w/ 4 Big Ints
+	case NODE_BI_POW_MOD_P:
+		if (stack_exp[stack_exp_idx - 3]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 2]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 1]->data_type == DT_BIGINT && stack_exp[stack_exp_idx]->data_type == DT_BIGINT)
+			return true;
+		break;
+
+	default:
+		break;
+	}
+
+	applog(LOG_ERR, "Syntax Error - Line: %d  Invalid inputs for '%s'", token->line_num, get_node_str(node_type));
+	return false;
 }
 
 
@@ -299,11 +588,6 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
 	case TOKEN_SECP192K_PS:	   	node_type = NODE_SECP192K_PS;	break;
 	case TOKEN_SECP192K_PSM:	node_type = NODE_SECP192K_PSM;	break;
 	case TOKEN_SECP192K_PN:	    node_type = NODE_SECP192K_PN;	break;
-//	case TOKEN_SECP192R_PTP:	node_type = NODE_SECP192R_PTP;	break;
-//	case TOKEN_SECP192R_PA:	    node_type = NODE_SECP192R_PA;	break;
-//	case TOKEN_SECP192R_PS:	    node_type = NODE_SECP192R_PS;	break;
-//	case TOKEN_SECP192R_PSM:	node_type = NODE_SECP192R_PSM;	break;
-//	case TOKEN_SECP192R_PN:	    node_type = NODE_SECP192R_PN;	break;
 	case TOKEN_SECP224K_PTP:	node_type = NODE_SECP224K_PTP;	break;
 	case TOKEN_SECP224K_PA:	    node_type = NODE_SECP224K_PA;	break;
 	case TOKEN_SECP224K_PS:	    node_type = NODE_SECP224K_PS;	break;
@@ -319,11 +603,6 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
 	case TOKEN_SECP256K_PS:	    node_type = NODE_SECP256K_PS;	break;
 	case TOKEN_SECP256K_PSM:	node_type = NODE_SECP256K_PSM;	break;
 	case TOKEN_SECP256K_PN:	    node_type = NODE_SECP256K_PN;	break;
-//	case TOKEN_SECP256R_PTP:	node_type = NODE_SECP256R_PTP;	break;
-//	case TOKEN_SECP256R_PA:	    node_type = NODE_SECP256R_PA;	break;
-//	case TOKEN_SECP256R_PS:	    node_type = NODE_SECP256R_PS;	break;
-//	case TOKEN_SECP256R_PSM:	node_type = NODE_SECP256R_PSM;	break;
-//	case TOKEN_SECP256R_PN:	    node_type = NODE_SECP256R_PN;	break;
 	case TOKEN_SECP384R_PTP:	node_type = NODE_SECP384R_PTP;	break;
 	case TOKEN_SECP384R_PA:	    node_type = NODE_SECP384R_PA;	break;
 	case TOKEN_SECP384R_PS:	    node_type = NODE_SECP384R_PS;	break;
@@ -349,9 +628,7 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
 	case TOKEN_PRM256V1_PS:	    node_type = NODE_PRM256V1_PS;	break;
 	case TOKEN_PRM256V1_PSM:	node_type = NODE_PRM256V1_PSM;	break;
 	case TOKEN_PRM256V1_PN:	    node_type = NODE_PRM256V1_PN;	break;
-//	case TOKEN_TIGER:	        node_type = NODE_TIGER;			break;
 	case TOKEN_RIPEMD160:	    node_type = NODE_RIPEMD160;		break;
-//	case TOKEN_RIPEMD128:      	node_type = NODE_RIPEMD128;		break;
 	default: return NODE_ERROR;
 	}
 
@@ -536,7 +813,7 @@ static bool validate_exp_list() {
 
 	for (i = 0; i < stack_exp_idx; i++) {
 		if (stack_exp[i]->exp != EXP_STATEMENT && stack_exp[i]->exp != EXP_FUNCTION && stack_exp[i]->end_stmnt == false) {
-			applog(LOG_ERR, "Syntax Error - Line: %d  Invalid Statement", stack_exp[i]->line_num);
+				applog(LOG_ERR, "Syntax Error - Line: %d  Invalid Statement", stack_exp[i]->line_num);
 			return false;
 		}
 	}
@@ -585,7 +862,7 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 		case TOKEN_END_STATEMENT:
 			// Process Expressions
 			while ((top_op >= 0) && (token_list->token[top_op].type != TOKEN_BLOCK_BEGIN) && (token_list->token[top_op].type != TOKEN_IF) && (token_list->token[top_op].type != TOKEN_ELSE) && (token_list->token[top_op].type != TOKEN_REPEAT)) {
-				token_id = pop_op();
+					token_id = pop_op();
 				if (!create_exp(&token_list->token[token_id], token_id))
 					return false;
 			}
@@ -636,9 +913,14 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 			break;
 
 		case TOKEN_BLOCK_END:
+			// Validate That The Top Operator Is The Block Begin
+			if (token_list->token[top_op].type != TOKEN_BLOCK_BEGIN)
+				return false;
+
 			// Create A Linked List Of All Statements In The Block
-			while (stack_exp_idx > 0 && stack_exp[stack_exp_idx - 1]->token_num >= top_op && stack_exp[stack_exp_idx]->token_num < i) {
-				if (!create_exp(&token_list->token[i], top_op)) return false;
+			while (stack_exp_idx > 0 && stack_exp[stack_exp_idx - 1]->token_num > top_op && stack_exp[stack_exp_idx]->token_num < i) {
+					if (!create_exp(&token_list->token[i], top_op)) return false;
+					stack_exp[stack_exp_idx]->end_stmnt = true;
 			}
 			pop_op();
 
