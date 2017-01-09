@@ -420,6 +420,17 @@ extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 			if (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f') {
 
 				if (literal_idx > 0) {
+
+					// Check If '-' Token Needs To Be Moved To Literal
+					if (token_list->token[token_list->num - 1].type == TOKEN_NEG) {
+						for (i = MAX_LITERAL_SIZE - 2; i > 0; i--)
+							literal[i] = literal[i - 1];
+						literal[0] = '-';
+
+						// Remove '-' From Token List
+						token_list->num--;
+					}
+
 					if (!validate_literal(literal)) {
 						applog(LOG_ERR, "Syntax Error - Invalid Literal: '%s'  Line: %d", literal, line_num);
 						return false;
@@ -491,6 +502,17 @@ extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 
 			// Add Literals To Token List
 			if (literal_idx > 0) {
+
+				// Check If '-' Token Needs To Be Moved To Literal
+				if (token_list->token[token_list->num - 1].type == TOKEN_NEG) {
+					for (i = MAX_LITERAL_SIZE - 2; i > 0; i--)
+						literal[i] = literal[i - 1];
+					literal[0] = '-';
+
+					// Remove '-' From Token List
+					token_list->num--;
+				}
+
 				if (!validate_literal(literal)) {
 					applog(LOG_ERR, "Syntax Error - Invalid Literal: '%s'  Line: %d", literal, line_num);
 					return false;
