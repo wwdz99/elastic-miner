@@ -313,30 +313,83 @@ extern void delete_token_list(SOURCE_TOKEN_LIST *token_list) {
 	token_list->size = 0;
 }
 
-static int validate_token_list(SOURCE_TOKEN_LIST *token_list) {
-	int i, j, len;
-	char c;
+static bool validate_literal(char *str) {
+	int i, len;
+	char *ptr;
 
-	for (i = 0; i < token_list->num; i++) {
+	if (!str)
+		return false;
 
-		// Validate That All Non-Quoted Literals Are Numeric
-		if (token_list->token[i].type == TOKEN_LITERAL) {
+	len = strlen(str);
 
-			len = strlen(token_list->token[i].literal);
-
-			// Check For Quote At Start Of Literal
-			if ((len > 0) && (token_list->token[i].literal[0] == '\"'))
-				continue;
-
-			for (j = 0; j < len; j++) {
-				c = token_list->token[i].literal[j];
-				if (!(c >= '0' && c <= '9') && c != '-' && c != '.' && c != 'x' && c != 'a' && c != 'b' && c != 'c' && c != 'd' && c != 'e' && c != 'f')
-					return i;
-			}
-		}
+	// Validate Strings
+	if (str[0] == '\"') {
+		if (str[len - 1] == '\"')
+			return true;
+		else
+			return false;
 	}
 
-	return -1;
+	// Validate Hex Numbers
+	if (strstr(str, "0x") == str) {
+		if ((len <= 2) || (len > 10))
+			return false;
+
+		for (i = 2; i < len; i++) {
+			if (!(str[i] >= '0' && str[i] <= '9') && !(str[i] >= 'a' && str[i] <= 'f'))
+				return false;
+		}
+		return true;
+	}
+
+	// Validate Binary Numbers
+	if (strstr(str, "0b") == str) {
+		if ((len <= 2) || (len > 34))
+			return false;
+
+		for (i = 2; i < len; i++) {
+			if ((str[i] != '0') && (str[i] != '1'))
+				return false;
+		}
+		return true;
+	}
+
+	// Validate Doubles
+	ptr = strstr(str, ".");
+	if (ptr) {
+		if ((len <= 1) || (len > 18))
+			return false;
+
+		len = ptr - str;
+		for (i = 0; i < len; i++) {
+			if ((i == 0) && (str[0] == '-'))
+				continue;
+
+			if (!(str[i] >= '0' && str[i] <= '9'))
+				return false;
+		}
+
+		len = strlen(ptr) - 1;
+		for (i = 1; i < len; i++) {
+			if (!(ptr[i] >= '0' && ptr[i] <= '9'))
+				return false;
+		}
+		return true;
+	}
+
+	// Validate Ints
+	if (((str[0] == '-') && (len > 11)) || (len > 10))
+		return false;
+
+	for (i = 0; i < len; i++) {
+		if ((i == 0) && (str[0] == '-'))
+			continue;
+
+		if (!(str[i] >= '0' && str[i] <= '9'))
+			return false;
+	}
+
+	return true;
 }
 
 extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
@@ -367,6 +420,10 @@ extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 			if (c == ' ' || c == '\t' || c == '\n' || c == '\r' || c == '\f') {
 
 				if (literal_idx > 0) {
+					if (!validate_literal(literal)) {
+						applog(LOG_ERR, "Syntax Error - Invalid Literal: '%s'  Line: %d", literal, line_num);
+						return false;
+					}
 					add_token(token_list, -1, literal, line_num);
 					literal_idx = 0;
 					memset(literal, 0, MAX_LITERAL_SIZE);
@@ -406,9 +463,20 @@ extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 			// Remove Block Comments
 			if (epl_token[token_id].type == TOKEN_BLOCK_COMMENT) {
 				cmnt = strstr(&str[idx], "*/");
-				if (cmnt)
-					idx += &cmnt[0] - &str[idx] + 2;
-				line_num++;
+				if (!cmnt) {
+					applog(LOG_ERR, "Syntax Error - Missing '*/'  Line: %d", line_num);
+					return false;
+				}
+
+				// Count The Number Of Lines Skipped
+				i = &cmnt[0] - &str[idx];
+				while (i >= 0) {
+					if (str[idx + i] == '\n')
+						line_num++;
+					i--;
+				}
+
+				idx += &cmnt[0] - &str[idx] + 2;
 				continue;
 			}
 
@@ -423,6 +491,10 @@ extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 
 			// Add Literals To Token List
 			if (literal_idx > 0) {
+				if (!validate_literal(literal)) {
+					applog(LOG_ERR, "Syntax Error - Invalid Literal: '%s'  Line: %d", literal, line_num);
+					return false;
+				}
 				add_token(token_list, -1, literal, line_num);
 				literal_idx = 0;
 				memset(literal, 0, 100);
@@ -437,20 +509,13 @@ extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 			idx++;
 
 			if (literal_idx > MAX_LITERAL_SIZE) {
-				applog(LOG_ERR, "Syntax Error - Invalid Literal: %s", literal);
+				applog(LOG_ERR, "Syntax Error - Invalid Literal: '%s'  Line: %d", literal, line_num);
 				return false;
 			}
 		}
 	}
 
 	dump_token_list(token_list);
-
-	idx = validate_token_list(token_list);
-
-	if (idx >= 0) {
-		applog(LOG_ERR, "Syntax Error - Line: %d  Invalid Operator \"%s\"", token_list->token[idx].line_num, token_list->token[idx].literal);
-		return false;
-	}
 
 	return true;
 }

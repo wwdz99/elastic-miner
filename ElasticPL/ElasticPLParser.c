@@ -346,28 +346,6 @@ static bool validate_inputs(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 	return false;
 }
 
-
-//static bool validate_unary_stmnt(SOURCE_TOKEN *token, NODE_TYPE node_type) {
-//	EXP_TYPE l_exp;
-//
-//	if (node_type == NODE_BREAK)
-//		return true;
-//
-//	l_exp = stack_exp[stack_exp_idx]->exp;
-//
-//	// Validate Left Item Is Not A Statement
-//	if ((l_exp == EXP_STATEMENT) || (l_exp == EXP_FUNCTION)) {
-//		printf("Syntax Error - Line: %d  Invalid Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
-//		return false;
-//	}
-//
-//	return true;
-//}
-
-//static bool validate_binary_stmnt(SOURCE_TOKEN *token, NODE_TYPE node_type) {
-//	return true;
-//}
-
 // Validate Unary Operations Have 1 Valid Expression
 static bool validate_unary_exp(SOURCE_TOKEN *token, int token_num, NODE_TYPE node_type) {
 
@@ -404,27 +382,6 @@ static bool validate_unary_exp(SOURCE_TOKEN *token, int token_num, NODE_TYPE nod
 
 	return true;
 }
-
-//static bool validate_binary_exp(SOURCE_TOKEN *token, NODE_TYPE node_type) {
-//	DATA_TYPE l_data_type, r_data_type;
-//
-//	l_data_type = stack_exp[stack_exp_idx - 1]->data_type;
-//	r_data_type = stack_exp[stack_exp_idx]->data_type;
-//
-//	// Validate Left Item Is Not A Statement (Does Not Include Increment / Decrement)
-//	if (l_data_type == DT_NONE) {
-//		printf("Syntax Error - Line: %d  Invalid Left Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
-//		return false;
-//	}
-//
-//	// Validate Right Item Is Not A Statement (Does Not Include Increment / Decrement)
-//	if (r_data_type == DT_NONE) {
-//		printf("Syntax Error - Line: %d  Invalid Right Operand: \"%s\"\n", token->line_num, get_node_str(node_type));
-//		return false;
-//	}
-//
-//	return true;
-//}
 
 static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
 	NODE_TYPE node_type;
@@ -651,13 +608,13 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 						sprintf(token->literal, "%d", val[0]);
 					}
 
-					if (strlen(token->literal) <= 10) {
+					if (strlen(token->literal) <= 11) {
 						value = (long long)strtod(token->literal, NULL);
 						fvalue = (double)strtod(token->literal, NULL);
 					}
 				}
 				else if (token->data_type == DT_FLOAT) {
-					if (strlen(token->literal) <= 10) {
+					if (strlen(token->literal) <= 18) {
 						value = (long long)strtod(token->literal, NULL);
 						fvalue = (double)strtod(token->literal, NULL);
 					}
