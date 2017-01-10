@@ -89,7 +89,7 @@ bool create_c_source() {
 //	fprintf(f, "\t\tuint32_t *f_val = (uint32_t *)(&f[index]);\n");
 //	fprintf(f, "\t\tuint32_t val = f_val[0] ^ f_val[1];\n");
 	fprintf(f, "\t\tmangle_state(index);\n");
-	fprintf(f, "\t\tmangle_state((uint32_t)f[index]);\n");
+	fprintf(f, "\t\tmangle_state((int32_t)f[index]);\n");
 //	fprintf(f, "\t\tmangle_state(val);\n");
 	fprintf(f, "\t}\n");
 	fprintf(f, "\telse {\n");
