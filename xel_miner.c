@@ -536,17 +536,6 @@ static void *test_vm_thread(void *userdata) {
 		exit(EXIT_FAILURE);
 	}
 
-	uint32_t bi_size = 0;
-	//big_init_const(vm_b[1], "0x0123456789abcdef", &bi_size);
-	//big_init_const(vm_b[2], "0xfedcba9876543210", &bi_size);
-	//big_add(vm_b[0], vm_b[1], vm_b[2], &bi_size);
-	//big_init_const(vm_b[1], "0x16260783e40b16731673622ac8a5b045fc3ea4af70f727f3f9e92bdd3a1ddc42", vm_b, &bi_size);
-	//epl_ec_priv_to_pub2(vm_b[0], vm_b[1], true, NID_secp256k1, 32, vm_b, &bi_size);
-	//gmp_printf("vm_b[%d] (alloc: %d, size: %d) = %ZX\n", 1, vm_b[1]->_mp_alloc, vm_b[1]->_mp_size, vm_b[1]);
-	//gmp_printf("vm_b[%d] (alloc: %d, size: %d) = %ZX\n", 0, vm_b[0]->_mp_alloc, vm_b[0]->_mp_size, vm_b[0]);
-
-
-
 	applog(LOG_DEBUG, "DEBUG: Loading Test File");
 	if (!load_test_file(test_code))
 		exit(EXIT_FAILURE);
@@ -603,7 +592,7 @@ static void *test_vm_thread(void *userdata) {
 	}
 	printf("\n\t   VM Floats:\n");
 	for (i = 0; i < VM_FLOAT_SIZE; i++) {
-		if (vm_f[i])
+		if (vm_f[i] != 0.0)
 			printf("\t\t  vm_f[%d] = %f\n", i, vm_f[i]);
 	}
 	printf("\n\t  VM Big Ints:\n");
@@ -616,13 +605,18 @@ static void *test_vm_thread(void *userdata) {
 	applog(LOG_NOTICE, "DEBUG: Compiler Test Complete");
 	applog(LOG_WARNING, "Exiting " PACKAGE_NAME);
 
+	for (i = 0; i < VM_BI_SIZE; i++)
+		mpz_clear(vm_b[i]);
+
 	free(vm_m);
 	free(vm_f);
 	free(vm_b);
 	free(vm_state);
 	free(vm_stack);
 
-	exit(EXIT_SUCCESS);
+	tq_freeze(mythr->q);
+
+	return NULL;
 }
 
 static bool get_vm_input(struct work *work) {
@@ -1426,11 +1420,15 @@ static void *cpu_miner_thread(void *userdata) {
 	}
 
 out:
+	for (i = 0; i < VM_BI_SIZE; i++)
+		mpz_clear(vm_b[i]);
+
 	if (vm_m) free(vm_m);
 	if (vm_f) free(vm_f);
 	if (vm_b) free(vm_b);
 	if (vm_state) free(vm_state);
 	if (vm_stack) free(vm_stack);
+
 	tq_freeze(mythr->q);
 
 	return NULL;
@@ -2124,7 +2122,7 @@ int main(int argc, char **argv) {
 			return 1;
 		}
 
-		pthread_join(thr_info[work_thr_id].pth, NULL);
+		pthread_join(thr_info[0].pth, NULL);
 		free(test_filename);
 		return 0;
 	}
