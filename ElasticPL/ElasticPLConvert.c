@@ -17,7 +17,7 @@
 #include "ElasticPLFunctions.h"
 #include "../miner.h"
 
-char *tab[] = { "\t", "\t\t", "\t\t\t", "\t\t\t\t", "\t\t\t\t\t", "\t\t\t\t\t\t" };
+char *tab[] = { "\t", "\t\t", "\t\t\t", "\t\t\t\t", "\t\t\t\t\t", "\t\t\t\t\t\t", "\t\t\t\t\t\t\t", "\t\t\t\t\t\t\t" };
 int tabs;
 
 extern char* convert_ast_to_c() {
@@ -68,10 +68,10 @@ static char* convert(ast* exp) {
 
 		// Determine Tab Indentations
 		if (exp->type == NODE_REPEAT) {
-			if (tabs < 4) tabs += 2;
+			if (tabs < 6) tabs += 2;
 		}
 		else if (exp->type == NODE_IF) {
-			if (tabs < 5) tabs++;
+			if (tabs < 7) tabs++;
 		}
 
 		// Process Left Side Statements
@@ -163,6 +163,7 @@ static char* convert(ast* exp) {
 		case NODE_ELSE:
 			break;
 		case NODE_REPEAT:
+			if (tabs < 2) tabs = 2;
 			sprintf(result, "%sif ( %s > 0 ) {\n%sint loop%d;\n%sfor (loop%d = 0; loop%d < ( %s ); loop%d++) {\n%s%s%s}\n%s}\n", tab[tabs - 2], lval, tab[tabs - 1], exp->token_num, tab[tabs - 1], exp->token_num, exp->token_num, lval, exp->token_num, "", rval, tab[tabs - 1], tab[tabs - 2]);
 			if (tabs > 1) tabs -= 2;
 			break;
