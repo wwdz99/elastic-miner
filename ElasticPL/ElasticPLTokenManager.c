@@ -167,11 +167,6 @@ struct EXP_TOKEN_LIST epl_token[] = {
 	{ "secp192k1pointsub",			17,	TOKEN_SECP192K_PS,	EXP_FUNCTION,	6,	60,	DT_NONE },	// Built In functions
 	{ "secp192k1pointscalarmult",	24,	TOKEN_SECP192K_PSM,	EXP_FUNCTION,	5,	60,	DT_NONE },	// Built In functions
 	{ "secp192k1pointnegate",		20,	TOKEN_SECP192K_PN,	EXP_FUNCTION,	4,	60,	DT_NONE },	// Built In functions
-	{ "secp192r1privtopub",			18,	TOKEN_SECP192R_PTP,	EXP_FUNCTION,	3,	60,	DT_NONE },	// Built In functions
-	{ "secp192r1pointadd",			17,	TOKEN_SECP192R_PA,	EXP_FUNCTION,	6,	60,	DT_NONE },	// Built In functions
-	{ "secp192r1pointsub",			17,	TOKEN_SECP192R_PS,	EXP_FUNCTION,	6,	60,	DT_NONE },	// Built In functions
-	{ "secp192r1pointscalarmult",	24,	TOKEN_SECP192R_PSM,	EXP_FUNCTION,	5,	60,	DT_NONE },	// Built In functions
-	{ "secp192r1pointnegate",		20,	TOKEN_SECP192R_PN,	EXP_FUNCTION,	4,	60,	DT_NONE },	// Built In functions
 	{ "secp224k1privtopub",			18,	TOKEN_SECP224K_PTP,	EXP_FUNCTION,	3,	60,	DT_NONE },	// Built In functions
 	{ "secp224k1pointadd",			17,	TOKEN_SECP224K_PA,	EXP_FUNCTION,	6,	60,	DT_NONE },	// Built In functions
 	{ "secp224k1pointsub",			17,	TOKEN_SECP224K_PS,	EXP_FUNCTION,	6,	60,	DT_NONE },	// Built In functions
@@ -187,11 +182,6 @@ struct EXP_TOKEN_LIST epl_token[] = {
 	{ "secp256k1pointsub",			17,	TOKEN_SECP256K_PS,	EXP_FUNCTION,	6,	60,	DT_NONE },	// Built In functions
 	{ "secp256k1pointscalarmult",	24,	TOKEN_SECP256K_PSM,	EXP_FUNCTION,	5,	60,	DT_NONE },	// Built In functions
 	{ "secp256k1pointnegate",		20,	TOKEN_SECP256K_PN,	EXP_FUNCTION,	4,	60,	DT_NONE },	// Built In functions
-	{ "secp256r1privtopub",			18,	TOKEN_SECP256R_PTP,	EXP_FUNCTION,	3,	60,	DT_NONE },	// Built In functions
-	{ "secp256r1pointadd",			17,	TOKEN_SECP256R_PA,	EXP_FUNCTION,	6,	60,	DT_NONE },	// Built In functions
-	{ "secp256r1pointsub",			17,	TOKEN_SECP256R_PS,	EXP_FUNCTION,	6,	60,	DT_NONE },	// Built In functions
-	{ "secp256r1pointscalarmult",	24,	TOKEN_SECP256R_PSM,	EXP_FUNCTION,	5,	60,	DT_NONE },	// Built In functions
-	{ "secp256r1pointnegate",		20,	TOKEN_SECP256R_PN,	EXP_FUNCTION,	4,	60,	DT_NONE },	// Built In functions
 	{ "secp384r1privtopub",			18,	TOKEN_SECP384R_PTP,	EXP_FUNCTION,	3,	60,	DT_NONE },	// Built In functions
 	{ "secp384r1pointadd",			17,	TOKEN_SECP384R_PA,	EXP_FUNCTION,	6,	60,	DT_NONE },	// Built In functions
 	{ "secp384r1pointsub",			17,	TOKEN_SECP384R_PS,	EXP_FUNCTION,	6,	60,	DT_NONE },	// Built In functions
@@ -217,9 +207,7 @@ struct EXP_TOKEN_LIST epl_token[] = {
 	{ "prime256v1pointsub",			17,	TOKEN_PRM256V1_PS,	EXP_FUNCTION,	6,	60,	DT_NONE },	// Built In functions
 	{ "prime256v1pointscalarmult",	24,	TOKEN_PRM256V1_PSM,	EXP_FUNCTION,	5,	60,	DT_NONE },	// Built In functions
 	{ "prime256v1pointnegate",		20,	TOKEN_PRM256V1_PN,	EXP_FUNCTION,	4,	60,	DT_NONE },	// Built In functions
-	{ "tiger",						5,	TOKEN_TIGER,		EXP_FUNCTION,	2,	60,	DT_NONE },	// Built In functions
 	{ "ripemd160",					9,	TOKEN_RIPEMD160,	EXP_FUNCTION,	2,	60,	DT_NONE },	// Built In functions
-	{ "ripemd128",					9,	TOKEN_RIPEMD128,	EXP_FUNCTION,	2,	60,	DT_NONE }	// Built In functions
 };
 
 extern bool init_token_list(SOURCE_TOKEN_LIST *token_list, size_t size) {

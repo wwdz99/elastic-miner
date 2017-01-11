@@ -150,11 +150,9 @@ static uint32_t get_wcet(ast* exp) {
 			wcet = (wcet < (0xFFFFFFFF - (80 + rval)) ? (80 + rval) : 0);
 			break;
 		case NODE_SECP192K_PTP:
-		case NODE_SECP192R_PTP:
 		case NODE_SECP224K_PTP:
 		case NODE_SECP224R_PTP:
 		case NODE_SECP256K_PTP:
-		case NODE_SECP256R_PTP:
 		case NODE_SECP384R_PTP:
 		case NODE_PRM192V2_PTP:
 		case NODE_PRM192V3_PTP:
@@ -165,10 +163,6 @@ static uint32_t get_wcet(ast* exp) {
 		case NODE_SECP192K_PS:
 		case NODE_SECP192K_PSM:
 		case NODE_SECP192K_PN:
-		case NODE_SECP192R_PA:
-		case NODE_SECP192R_PS:
-		case NODE_SECP192R_PSM:
-		case NODE_SECP192R_PN:
 		case NODE_SECP224K_PA:
 		case NODE_SECP224K_PS:
 		case NODE_SECP224K_PSM:
@@ -181,10 +175,6 @@ static uint32_t get_wcet(ast* exp) {
 		case NODE_SECP256K_PS:
 		case NODE_SECP256K_PSM:
 		case NODE_SECP256K_PN:
-		case NODE_SECP256R_PA:
-		case NODE_SECP256R_PS:
-		case NODE_SECP256R_PSM:
-		case NODE_SECP256R_PN:
 		case NODE_SECP384R_PA:
 		case NODE_SECP384R_PS:
 		case NODE_SECP384R_PSM:
@@ -208,14 +198,8 @@ static uint32_t get_wcet(ast* exp) {
 		case NODE_PRM256V1_PN:
 			wcet = (wcet < (0xFFFFFFFF - (1000 + rval)) ? (1000 + rval) : 0);
 			break;
-		case NODE_TIGER:
-			wcet = (wcet < (0xFFFFFFFF - (100 + rval)) ? (100 + rval) : 0);
-			break;
 		case NODE_RIPEMD160:
 			wcet = (wcet < (0xFFFFFFFF - (120 + rval)) ? (120 + rval) : 0);
-			break;
-		case NODE_RIPEMD128:
-			wcet = (wcet < (0xFFFFFFFF - (100 + rval)) ? (100 + rval) : 0);
 			break;
 		default:
 			break;
