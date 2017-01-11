@@ -138,6 +138,7 @@ static char* convert(ast* exp) {
 				sprintf(result, "index = %s;\n%s%s[index] = %s;\n%smangle(index, %s)", tmp, tab[tabs], (l_is_float ? "f" : "m"), rval, tab[tabs], (l_is_float ? "true" : "false"));
 			break;
 		case NODE_IF:
+			if (tabs < 1) tabs = 1;
 			if (exp->right->type != NODE_ELSE) {
 				rval = convert(exp->right);				// If Body (No Else Condition)
 				result = realloc(result, (lval ? strlen(lval) : 0) + (rval ? strlen(rval) : 0) + 256);
