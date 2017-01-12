@@ -454,7 +454,7 @@ static void dump_token_list(SOURCE_TOKEN_LIST *token_list);
 extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list);
 static bool create_exp(SOURCE_TOKEN *token, int token_num);
 static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num);
-static bool validate_inputs(SOURCE_TOKEN *token, NODE_TYPE node_type);
+static bool validate_inputs(SOURCE_TOKEN *token, NODE_TYPE node_type, bool log_err);
 static bool validate_unary_exp(SOURCE_TOKEN *token, int token_num, NODE_TYPE node_type);
 static ast* pop_exp();
 static void push_exp(ast* exp);
