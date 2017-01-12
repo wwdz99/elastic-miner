@@ -637,7 +637,10 @@ static char* convert(ast* exp) {
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_CONST:
-			sprintf(result, "mangle_state( big_init_const( %s, b, &bi_size ) )", rval);
+			tmp = strstr(rval, ",");
+			tmp[1] = '\"';
+			tmp = NULL;
+			sprintf(result, "mangle_state( big_init_const( %s\", b, &bi_size ) )", rval);
 			use_elasticpl_bigint = true;
 			break;
 		case NODE_BI_EXPR:

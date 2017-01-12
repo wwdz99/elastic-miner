@@ -212,6 +212,10 @@ static uint32_t get_wcet(ast* exp) {
 	return wcet;
 }
 
+static double expnt(double X) {
+	return exp(X);
+}
+
 extern int interpret_ast() {
 	int i;
 
@@ -370,19 +374,15 @@ static double interpret(ast* exp) {
 
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
-			else
-				mangle_state(lval);
 
-			if (exp->left->is_float) {
-				rfval = (double)interpret(exp->right);
+			rfval = interpret(exp->right);
+
+			if (exp->left->is_float)
 				vm_f[lval] += rfval;
-				mangle_state((int32_t)rfval);
-			}
-			else {
-				rval = (int32_t)interpret(exp->right);
-				vm_m[lval] += rval;
-				mangle_state(rval);
-			}
+			else 
+				vm_m[lval] += (int32_t)rfval;
+			mangle_state(lval);
+			mangle_state((int32_t)rfval);
 			return 1;
 		case NODE_SUB_ASSIGN:
 			if (exp->left->type == NODE_VAR_CONST)
@@ -392,19 +392,15 @@ static double interpret(ast* exp) {
 
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
-			else
-				mangle_state(lval);
 
-			if (exp->left->is_float) {
-				rfval = (double)interpret(exp->right);
+			rfval = interpret(exp->right);
+
+			if (exp->left->is_float)
 				vm_f[lval] -= rfval;
-				mangle_state((int32_t)rfval);
-			}
-			else {
-				rval = (int32_t)interpret(exp->right);
-				vm_m[lval] -= rval;
-				mangle_state(rval);
-			}
+			else
+				vm_m[lval] -= (int32_t)rfval;
+			mangle_state(lval);
+			mangle_state((int32_t)rfval);
 			return 1;
 		case NODE_MUL_ASSIGN:
 			if (exp->left->type == NODE_VAR_CONST)
@@ -414,19 +410,15 @@ static double interpret(ast* exp) {
 
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
-			else
-				mangle_state(lval);
 
-			if (exp->left->is_float) {
-				rfval = (double)interpret(exp->right);
+			rfval = interpret(exp->right);
+
+			if (exp->left->is_float)
 				vm_f[lval] *= rfval;
-				mangle_state((int32_t)rfval);
-			}
-			else {
-				rval = (int32_t)interpret(exp->right);
-				vm_m[lval] *= rval;
-				mangle_state(rval);
-			}
+			else
+				vm_m[lval] *= (int32_t)rfval;
+			mangle_state(lval);
+			mangle_state((int32_t)rfval);
 			return 1;
 		case NODE_DIV_ASSIGN:
 			if (exp->left->type == NODE_VAR_CONST)
@@ -752,11 +744,11 @@ static double interpret(ast* exp) {
 				return 0;
 			return atan2(vm_param_val[0], vm_param_val[1]);
 		case NODE_EXPNT:
-			//vm_param_num = 0;
-			//interpret(exp->right);
-			//if ((vm_param_val[0] < -708.0) || (vm_param_val[0] > 709.0))
+			vm_param_num = 0;
+			interpret(exp->right);
+			if ((vm_param_val[0] < -708.0) || (vm_param_val[0] > 709.0))
 				return 0;
-			//return exp(vm_param_val[0]);
+			return expnt(vm_param_val[0]);
 		case NODE_LOG:
 			vm_param_num = 0;
 			interpret(exp->right);
@@ -809,13 +801,10 @@ static double interpret(ast* exp) {
 			vm_param_num = 0;
 			interpret(exp->right);
 
-			// Strip Quotes From String
-			if (exp->right->right->left->svalue && strlen(exp->right->right->left->svalue) > 1) {
-				sprintf(param_str, exp->right->right->left->svalue + 1);
-				param_str[strlen(param_str) - 1] = 0;
-			}
+			if (!exp->right->right->left->svalue)
+				return 0;
 
-			mangle_state(big_init_const(vm_b[vm_param_idx[0]], param_str, vm_b, &vm_bi_size));
+			mangle_state(big_init_const(vm_b[vm_param_idx[0]], exp->right->right->left->svalue, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_BI_EXPR:
 			vm_param_num = 0;

@@ -445,8 +445,8 @@ extern bool create_epl_vm(char *source);
 static bool delete_epl_vm();
 
 extern bool init_token_list(SOURCE_TOKEN_LIST *token_list, size_t size);
-static bool validate_literal(char *str);
-static bool add_token(SOURCE_TOKEN_LIST *token_list, int token_id, char *literal, int line_num);
+static DATA_TYPE validate_literal(char *str);
+static bool add_token(SOURCE_TOKEN_LIST *token_list, int token_id, char *literal, DATA_TYPE data_type, int line_num);
 extern void delete_token_list(SOURCE_TOKEN_LIST *token_list);
 extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list);
 static void dump_token_list(SOURCE_TOKEN_LIST *token_list);

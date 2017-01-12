@@ -221,7 +221,7 @@ extern bool init_token_list(SOURCE_TOKEN_LIST *token_list, size_t size) {
 		return true;
 }
 
-static bool add_token(SOURCE_TOKEN_LIST *token_list, int token_id, char *literal, int line_num) {
+static bool add_token(SOURCE_TOKEN_LIST *token_list, int token_id, char *literal, DATA_TYPE data_type, int line_num) {
 	char *str;
 
 	// Increase Token List Size If Needed
@@ -261,15 +261,8 @@ static bool add_token(SOURCE_TOKEN_LIST *token_list, int token_id, char *literal
 
 		strcpy(str, literal);
 
-		// Determine If Literal Is A String, Float, Int
-		if (strstr(str, "\""))
-			token_list->token[token_list->num].data_type = DT_STRING;
-		else if (strstr(str, "."))
-			token_list->token[token_list->num].data_type = DT_FLOAT;
-		else
-			token_list->token[token_list->num].data_type = DT_INT;
-
 		token_list->token[token_list->num].literal = str;
+		token_list->token[token_list->num].data_type = data_type;
 		token_list->token[token_list->num].type = TOKEN_LITERAL;
 		token_list->token[token_list->num].exp = EXP_EXPRESSION;
 		token_list->token[token_list->num].inputs = 0;
@@ -301,9 +294,14 @@ extern void delete_token_list(SOURCE_TOKEN_LIST *token_list) {
 	token_list->size = 0;
 }
 
-static bool validate_literal(char *str) {
+static DATA_TYPE validate_literal(char *str) {
 	int i, len;
+	int max_hex_len = 10;
+	int max_bin_len = 34;
+	int max_int_len = 10;
+	int max_dbl_len = 18;
 	char *ptr;
+	bool string = false;
 
 	if (!str)
 		return false;
@@ -312,41 +310,51 @@ static bool validate_literal(char *str) {
 
 	// Validate Strings
 	if (str[0] == '\"') {
-		if (str[len - 1] == '\"')
-			return true;
-		else
+		if (str[len - 1] != '\"')
 			return false;
+
+		// Remove Quotes
+		str[len - 1] = 0;
+		for (i = 0; i < len; i++)
+			str[i] = str[i + 1];
+
+		len -= 2;
+		max_hex_len = MAX_LITERAL_SIZE;
+		max_bin_len = MAX_LITERAL_SIZE;
+		max_int_len = MAX_LITERAL_SIZE;
+		max_dbl_len = MAX_LITERAL_SIZE;
+		string = true;
 	}
 
 	// Validate Hex Numbers
 	if (strstr(str, "0x") == str) {
-		if ((len <= 2) || (len > 10))
-			return false;
+		if ((len <= 2) || (len > max_hex_len))
+			return DT_NONE;
 
 		for (i = 2; i < len; i++) {
 			if (!(str[i] >= '0' && str[i] <= '9') && !(str[i] >= 'a' && str[i] <= 'f'))
-				return false;
+				return DT_NONE;
 		}
-		return true;
+		return (string ? DT_STRING : DT_INT);
 	}
 
 	// Validate Binary Numbers
 	if (strstr(str, "0b") == str) {
-		if ((len <= 2) || (len > 34))
-			return false;
+		if ((len <= 2) || (len > max_bin_len))
+			return DT_NONE;
 
 		for (i = 2; i < len; i++) {
 			if ((str[i] != '0') && (str[i] != '1'))
-				return false;
+				return DT_NONE;
 		}
-		return true;
+		return (string ? DT_STRING : DT_INT);
 	}
 
 	// Validate Doubles
 	ptr = strstr(str, ".");
 	if (ptr) {
-		if ((len <= 1) || (len > 18))
-			return false;
+		if ((len <= 1) || (len > max_dbl_len))
+			return DT_NONE;
 
 		len = ptr - str;
 		for (i = 0; i < len; i++) {
@@ -354,35 +362,36 @@ static bool validate_literal(char *str) {
 				continue;
 
 			if (!(str[i] >= '0' && str[i] <= '9'))
-				return false;
+				return DT_NONE;
 		}
 
 		len = strlen(ptr) - 1;
 		for (i = 1; i < len; i++) {
 			if (!(ptr[i] >= '0' && ptr[i] <= '9'))
-				return false;
+				return DT_NONE;
 		}
-		return true;
+		return (string ? DT_STRING : DT_FLOAT);
 	}
 
 	// Validate Ints
-	if (((str[0] == '-') && (len > 11)) || (len > 10))
-		return false;
+	if (((str[0] == '-') && (len > (max_int_len + 1))) || (len > max_int_len))
+		return DT_NONE;
 
 	for (i = 0; i < len; i++) {
 		if ((i == 0) && (str[0] == '-'))
 			continue;
 
 		if (!(str[i] >= '0' && str[i] <= '9'))
-			return false;
+			return DT_NONE;
 	}
 
-	return true;
+	return (string ? DT_STRING : DT_INT);
 }
 
 extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 	char c, *cmnt, literal[MAX_LITERAL_SIZE];
 	int i, idx, len, token_id, line_num, token_list_sz, literal_idx;
+	DATA_TYPE data_type;
 	bool quote = false;
 
 	token_list_sz = sizeof(epl_token) / sizeof(epl_token[0]);
@@ -419,11 +428,12 @@ extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 						token_list->num--;
 					}
 
-					if (!validate_literal(literal)) {
+					data_type = validate_literal(literal);
+					if (data_type == DT_NONE) {
 						applog(LOG_ERR, "Syntax Error - Invalid Literal: '%s'  Line: %d", literal, line_num);
 						return false;
 					}
-					add_token(token_list, -1, literal, line_num);
+					add_token(token_list, -1, literal, data_type, line_num);
 					literal_idx = 0;
 					memset(literal, 0, MAX_LITERAL_SIZE);
 				}
@@ -501,16 +511,17 @@ extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 					token_list->num--;
 				}
 
-				if (!validate_literal(literal)) {
+				data_type = validate_literal(literal);
+				if (data_type == DT_NONE) {
 					applog(LOG_ERR, "Syntax Error - Invalid Literal: '%s'  Line: %d", literal, line_num);
 					return false;
 				}
-				add_token(token_list, -1, literal, line_num);
+				add_token(token_list, -1, literal, data_type, line_num);
 				literal_idx = 0;
 				memset(literal, 0, 100);
 			}
 
-			add_token(token_list, token_id, NULL, line_num);
+			add_token(token_list, token_id, NULL, DT_NONE, line_num);
 			idx += epl_token[token_id].len;
 		}
 		else {
