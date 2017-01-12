@@ -87,6 +87,12 @@ __thread mpz_t *vm_b = NULL;
 __thread uint32_t *vm_state = NULL;
 __thread vm_stack_item *vm_stack = NULL;
 __thread int vm_stack_idx;
+__thread uint32_t vm_bi_size;
+__thread double vm_param_val[6];
+__thread uint32_t vm_param_idx[6];
+__thread uint32_t vm_param_num;
+__thread bool vm_break;
+__thread bool vm_continue;
 __thread bool vm_bounty;
 
 bool use_elasticpl_math;

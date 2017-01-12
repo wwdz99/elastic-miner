@@ -55,6 +55,12 @@ extern __thread mpz_t *vm_b;
 extern __thread vm_stack_item *vm_stack;
 extern __thread int vm_stack_idx;
 extern __thread uint32_t *vm_state;
+extern __thread uint32_t vm_bi_size;
+extern __thread double vm_param_val[6];
+extern __thread uint32_t vm_param_idx[6];
+extern __thread uint32_t vm_param_num;
+extern __thread bool vm_break;
+extern __thread bool vm_continue;
 extern __thread bool vm_bounty;
 
 extern bool use_elasticpl_math;
