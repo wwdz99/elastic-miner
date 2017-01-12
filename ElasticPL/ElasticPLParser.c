@@ -13,6 +13,7 @@
 #include "ElasticPL.h"
 #include "../miner.h"
 
+
 static ast* add_exp(NODE_TYPE node_type, EXP_TYPE exp_type, int32_t value, double fvalue, unsigned char *svalue, int token_num, int line_num, DATA_TYPE data_type, ast* left, ast* right) {
 	ast* e = calloc(1, sizeof(ast));
 	if (e) {
@@ -702,6 +703,10 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 	else
 		return false;
 
+	// Update The "End Statement" Indicator For If/Repeat/Block
+	if ((stack_exp[stack_exp_idx]->type == NODE_IF) || (stack_exp[stack_exp_idx]->type == NODE_REPEAT) || (stack_exp[stack_exp_idx]->type == NODE_BLOCK))
+		stack_exp[stack_exp_idx]->end_stmnt = true;
+
 	return true;
 }
 
@@ -749,7 +754,7 @@ static bool validate_exp_list() {
 
 extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 
-	int i, j, token_id;
+	int i, j, token_id, tmp;
 	ast *left, *right;
 	bool found;
 
@@ -759,6 +764,30 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 		if ((stack_exp_idx >= 0) && (stack_exp[stack_exp_idx]->type == NODE_VERIFY)) {
 			applog(LOG_ERR, "Syntax Error - Line: %d  Invalid Verify Statement\n", stack_exp[stack_exp_idx]->line_num);
 			return false;
+		}
+
+		// Check For If/Else Statements That Need To Be Added
+		if ((stack_op_idx > 1) && (token_list->token[stack_op[stack_op_idx - 2]].type == TOKEN_IF) && (token_list->token[stack_op[stack_op_idx - 1]].type == TOKEN_ELSE) &&
+			(stack_exp_idx > 1) && (stack_exp[stack_exp_idx]->end_stmnt)) {
+
+			// Make Sure Statements Don't Belong To An If/Repeat Under The Else
+			if (((token_list->token[stack_op[stack_op_idx]].type != TOKEN_IF) && (token_list->token[stack_op[stack_op_idx]].type != TOKEN_REPEAT) && (token_list->token[stack_op[stack_op_idx]].type != TOKEN_BLOCK_BEGIN)) ||
+				(top_op > (stack_op[stack_op_idx - 1] + 1))) {
+				tmp = pop_op();
+
+				// Create Else Statement
+				token_id = pop_op();
+				if (!create_exp(&token_list->token[token_id], token_id))
+					return false;
+
+				// Create If Statement
+				token_id = pop_op();
+				if (!create_exp(&token_list->token[token_id], token_id))
+					return false;
+
+				// Put Top Operator Back On Stack
+				push_op(tmp);
+			}
 		}
 
 		switch (token_list->token[i].type) {
@@ -874,7 +903,7 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 			break;
 
 		case TOKEN_ELSE:
-			// Swap The Else Expression For The If Statement Right Expression
+			// Put "If" Statement Back On The Stack For Later Processing
 			if (stack_exp_idx >= 0 && stack_exp[stack_exp_idx]->type == NODE_IF) {
 				// Put If Back On Stack & Add Else
 				push_op(stack_exp[stack_exp_idx]->token_num);
@@ -888,10 +917,6 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 				// Return Left & Right Expressions Back To Stack
 				push_exp(left);
 				push_exp(right);
-			}
-			else if (stack_op_idx < 0 || token_list->token[stack_op[stack_op_idx]].type != TOKEN_IF) {
-				applog(LOG_ERR, "Syntax Error - Line: %d  Invalid 'Else' Statement\n", token_list->token[token_id].line_num);
-				return false;
 			}
 			push_op(i);
 			break;
@@ -931,6 +956,10 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 		default:
 			// Process Expressions Already In Stack Based On Precedence
 			while ((top_op >= 0) && (token_list->token[top_op].prec >= token_list->token[i].prec)) {
+
+				// Don't Process Else Statements Here
+				if (token_list->token[top_op].type == TOKEN_ELSE)
+					break;
 
 				// Check If "IF" Statement Is Ready To Be Processed
 				if (token_list->token[top_op].type == TOKEN_IF) {
