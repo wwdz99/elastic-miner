@@ -27,8 +27,8 @@ uint32_t param_idx[6];
 uint32_t param_num;
 char param_str[256];
 
-bool break_flg;
-bool continue_flg;
+bool vm_break;
+bool vm_continue;
 
 uint32_t wcet_block;
 
@@ -219,26 +219,12 @@ static uint32_t get_wcet(ast* exp) {
 	return wcet;
 }
 
-static void push(long l, bool memory) {
-	vm_stack[++vm_stack_idx].value = l;
-	vm_stack[vm_stack_idx].memory = memory;
-}
-
-static vm_stack_item pop_item() {
-	return vm_stack[vm_stack_idx--];
-}
-
-static long pop() {
-	if (vm_stack[vm_stack_idx].memory)
-		return vm_m[vm_stack[vm_stack_idx--].value];
-	else
-		return vm_stack[vm_stack_idx--].value;
-}
-
 extern int interpret_ast() {
 	int i;
 
 	vm_bounty = false;
+	vm_break = false;
+	vm_continue = false;
 
 	for (i = 0; i < vm_ast_cnt; i++) {
 		if (!interpret(vm_ast[i]))
@@ -300,7 +286,7 @@ static double interpret(ast* exp) {
 	if (exp == NULL)
 		return 0;
 
-	if (break_flg || continue_flg)
+	if (vm_break || vm_continue)
 		return 1;
 
 	switch (exp->type) {
@@ -325,35 +311,19 @@ static double interpret(ast* exp) {
 				lval = exp->left->value;
 			else
 				lval = (int32_t)interpret(exp->left);
-			
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
-			else
-				mangle_state(lval);
 
-			if (exp->left->is_float) {
-				rfval = (double)interpret(exp->right);
+			rfval = interpret(exp->right);
+			if (exp->left->is_float)
 				vm_f[lval] = rfval;
-				mangle_state((int32_t)rfval);
-			}
-			else {
-				rval = (int32_t)interpret(exp->right);
-				vm_m[lval] = rval;
-				mangle_state(rval);
-			}
+			else
+				vm_m[lval] = (int32_t)rfval;
+
+			mangle_state(lval);
+			mangle_state((int32_t)rfval);
 			return 1;
 		case NODE_IF:
-			//if (exp->right->type != NODE_ELSE) {
-			//	if ((int32_t)interpret(exp->left))
-			//		return interpret(exp->right);			// If Body (No Else Condition)
-			//}
-			//else {
-			//	if ((int32_t)interpret(exp->left))
-			//		return interpret(exp->right->left);		// If Body
-			//	else
-			//		return interpret(exp->right->right);	// Else Body
-			//}
-			//break;
 			if (exp->right->type != NODE_ELSE) {
 				if (interpret(exp->left))
 					interpret(exp->right);					// If Body (No Else Condition)
@@ -366,30 +336,27 @@ static double interpret(ast* exp) {
 			}
 			return 1;
 		case NODE_CONDITIONAL:
-			//tmp = lval;
-			//lval = convert(exp->right->left);		// If Body
-			//rval = convert(exp->right->right);		// Else Body
-			//result = realloc(result, (lval ? strlen(lval) : 0) + (rval ? strlen(rval) : 0) + 256);
-			//sprintf(result, "(( %s ) ? %s : %s)", tmp, lval, rval);
-			break;
-
+			if (interpret(exp->left))
+				return interpret(exp->right->left);
+			else
+				return interpret(exp->right->right);
 		case NODE_REPEAT:
-			break_flg = false;
+			vm_break = false;
 			lval = (int32_t)interpret(exp->left);
 			if (lval > 0) {
 				int i;
 				for (i = 0; i < lval; i++) {
-					continue_flg = false;
-					if (break_flg)
+					vm_continue = false;
+					if (vm_break)
 						break;
-					else if (continue_flg)
+					else if (vm_continue)
 						continue;
 					else
 						interpret(exp->right);					// Repeat Body
 				}
 			}
-			break_flg = false;
-			continue_flg = false;
+			vm_break = false;
+			vm_continue = false;
 			return 1;
 		case NODE_BLOCK:
 			interpret(exp->left);
@@ -397,10 +364,10 @@ static double interpret(ast* exp) {
 				interpret(exp->right);
 			return 1;
 		case NODE_BREAK:
-			break_flg = true;
+			vm_break = true;
 			break;
 		case NODE_CONTINUE:
-			continue_flg = true;
+			vm_continue = true;
 			break;
 		case NODE_ADD_ASSIGN:
 			if (exp->left->type == NODE_VAR_CONST)
@@ -657,7 +624,6 @@ static double interpret(ast* exp) {
 			lfval = interpret(exp->left);
 			rfval = interpret(exp->right);
 			return (lfval - rfval);
-			return val;
 		case NODE_MUL:
 			lfval = interpret(exp->left);
 			rfval = interpret(exp->right);
@@ -749,8 +715,7 @@ static double interpret(ast* exp) {
 			param_val[param_num] = interpret(exp->left);
 			param_idx[param_num++] = exp->left->value;
 			rval = (int32_t)interpret(exp->right);
-			break;
-
+			return 1;
 		case NODE_SIN:
 			param_num = 0;
 			interpret(exp->right);
@@ -1267,6 +1232,7 @@ static double interpret(ast* exp) {
 
 		default:
 			applog(LOG_ERR, "ERROR: VM Runtime - Unsupported Operation (%d)", exp->type);
+			return 0;
 	}
 
 	if (vm_stack_idx >= VM_STACK_SIZE) {
