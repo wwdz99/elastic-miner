@@ -388,6 +388,26 @@ static DATA_TYPE validate_literal(char *str) {
 	return (string ? DT_STRING : DT_INT);
 }
 
+static bool validate_tokens(SOURCE_TOKEN_LIST *token_list) {
+	int i;
+
+	for (i = 0; i < token_list->num; i++) {
+
+		// Validate That If/Repeat/Functions Have '('
+		if ((token_list->token[i].type == TOKEN_IF) ||
+			(token_list->token[i].type == TOKEN_REPEAT) ||
+			(token_list->token[i].exp == EXP_FUNCTION) ) {
+
+			if ((i == (token_list->num - 1)) || (token_list->token[i + 1].type != TOKEN_OPEN_PAREN)) {
+				applog(LOG_ERR, "Syntax Error - Missing '('  Line: %d", token_list->token[i].line_num);
+				return false;
+			}
+		}
+	}
+
+	return true;
+}
+
 extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 	char c, *cmnt, literal[MAX_LITERAL_SIZE];
 	int i, idx, len, token_id, line_num, token_list_sz, literal_idx;
@@ -535,6 +555,9 @@ extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 			}
 		}
 	}
+
+	if (!validate_tokens(token_list))
+		return false;
 
 	dump_token_list(token_list);
 

@@ -23,8 +23,6 @@
 #define VM_FLOAT_SIZE	1000	// Number Of Doubles Supported By ElasticPL
 #define VM_BI_SIZE		100		// Number Of Big Integers Supported By ElasticPL
 
-#define VM_STACK_SIZE 1024
-
 typedef enum {
 	NODE_ERROR,
 	NODE_END_STATEMENT,
@@ -425,11 +423,6 @@ typedef struct AST {
 	struct AST*	right;
 } ast;
 
-typedef struct VM_STACK_ITEM {
-	long value;
-	bool memory;
-} vm_stack_item;
-
 int stack_op_idx;
 int stack_exp_idx;
 int top_op;
@@ -446,6 +439,7 @@ static bool delete_epl_vm();
 
 extern bool init_token_list(SOURCE_TOKEN_LIST *token_list, size_t size);
 static DATA_TYPE validate_literal(char *str);
+static bool validate_tokens(SOURCE_TOKEN_LIST *token_list);
 static bool add_token(SOURCE_TOKEN_LIST *token_list, int token_id, char *literal, DATA_TYPE data_type, int line_num);
 extern void delete_token_list(SOURCE_TOKEN_LIST *token_list);
 extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list);
@@ -470,9 +464,6 @@ static char* append_strings(char * old, char * new);
 static char *replace(char* old, char* a, char* b);
 extern uint32_t calc_wcet();
 static uint32_t get_wcet(ast* exp);
-static void push(long l, bool memory);
-static vm_stack_item pop_item();
-static long pop();
 extern int interpret_ast();
 static double interpret(ast* exp);
 static int mangle_state(int x);

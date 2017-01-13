@@ -822,13 +822,6 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 			stack_exp[stack_exp_idx]->data_type = token_list->token[i].data_type;
 			break;
 
-		case TOKEN_VAR_BEGIN:
-		case TOKEN_OPEN_PAREN:
-		case TOKEN_BLOCK_BEGIN:
-		case TOKEN_CONDITIONAL:
-			push_op(i);
-			break;
-
 		case TOKEN_END_STATEMENT:
 			// Flag Last Item On Stack As A Statement
 			stack_exp[stack_exp_idx]->end_stmnt = true;
