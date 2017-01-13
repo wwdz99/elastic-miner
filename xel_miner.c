@@ -85,8 +85,6 @@ __thread _ALIGN(64) int32_t *vm_m = NULL;
 __thread _ALIGN(64) double *vm_f = NULL;
 __thread mpz_t *vm_b = NULL;
 __thread uint32_t *vm_state = NULL;
-__thread vm_stack_item *vm_stack = NULL;
-__thread int vm_stack_idx;
 __thread uint32_t vm_bi_size;
 __thread double vm_param_val[6];
 __thread uint32_t vm_param_idx[6];
@@ -527,8 +525,6 @@ static void *test_vm_thread(void *userdata) {
 
 	// Initialize Global Variables
 	vm_state = calloc(4, sizeof(uint32_t));
-	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
-	vm_stack_idx = -1;
 	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
 	vm_f = calloc(VM_FLOAT_SIZE, sizeof(double));
 	vm_b = (mpz_t *)malloc(VM_BI_SIZE * sizeof(mpz_t));
@@ -537,7 +533,7 @@ static void *test_vm_thread(void *userdata) {
 		mpz_set_ui(vm_b[i], 0);
 	}
 
-	if (!vm_m || !vm_f || !vm_b || !vm_stack) {
+	if (!vm_m || !vm_f || !vm_b || !vm_state) {
 		applog(LOG_ERR, "%s: Unable to allocate VM memory", mythr->name);
 		exit(EXIT_FAILURE);
 	}
@@ -614,11 +610,11 @@ static void *test_vm_thread(void *userdata) {
 	for (i = 0; i < VM_BI_SIZE; i++)
 		mpz_clear(vm_b[i]);
 
-	free(vm_m);
-	free(vm_f);
-	free(vm_b);
-	free(vm_state);
-	free(vm_stack);
+	if (inst) free(inst);
+	if (vm_m) free(vm_m);
+	if (vm_f) free(vm_f);
+	if (vm_b) free(vm_b);
+	if (vm_state) free(vm_state);
 
 	tq_freeze(mythr->q);
 
@@ -1299,8 +1295,6 @@ static void *cpu_miner_thread(void *userdata) {
 
 	// Initialize Global Variables
 	vm_state = calloc(4, sizeof(uint32_t));
-	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
-	vm_stack_idx = -1;
 	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
 	vm_f = calloc(VM_FLOAT_SIZE, sizeof(double));
 	vm_b = (mpz_t *)malloc(VM_BI_SIZE * sizeof(mpz_t));
@@ -1309,7 +1303,7 @@ static void *cpu_miner_thread(void *userdata) {
 		mpz_set_ui(vm_b[i], 0);
 	}
 
-	if (!vm_m || !vm_f || !vm_b || !vm_state || !vm_stack) {
+	if (!vm_m || !vm_f || !vm_b || !vm_state) {
 		applog(LOG_ERR, "CPU%d: Unable to allocate VM memory", thr_id);
 		goto out;
 	}
@@ -1429,11 +1423,11 @@ out:
 	for (i = 0; i < VM_BI_SIZE; i++)
 		mpz_clear(vm_b[i]);
 
+	if (inst) free(inst);
 	if (vm_m) free(vm_m);
 	if (vm_f) free(vm_f);
 	if (vm_b) free(vm_b);
 	if (vm_state) free(vm_state);
-	if (vm_stack) free(vm_stack);
 
 	tq_freeze(mythr->q);
 

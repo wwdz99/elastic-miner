@@ -52,8 +52,6 @@
 extern __thread _ALIGN(64) int32_t *vm_m;
 extern __thread _ALIGN(64) double *vm_f;
 extern __thread mpz_t *vm_b;
-extern __thread vm_stack_item *vm_stack;
-extern __thread int vm_stack_idx;
 extern __thread uint32_t *vm_state;
 extern __thread uint32_t vm_bi_size;
 extern __thread double vm_param_val[6];
