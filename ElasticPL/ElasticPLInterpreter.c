@@ -21,8 +21,6 @@
 char blk_new[4096];
 char blk_old[4096];
 
-char param_str[256];
-
 uint32_t wcet_block;
 
 extern uint32_t calc_wcet() {
@@ -227,9 +225,6 @@ extern int interpret_ast() {
 		if (!interpret(vm_ast[i]))
 			return 0;
 	}
-
-	if (vm_stack_idx != -1)
-		applog(LOG_WARNING, "WARNING: Possible VM Memory Leak");
 
 	return vm_bounty;
 }
@@ -554,11 +549,14 @@ static double interpret(ast* exp) {
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
 
-			if (exp->left->is_float)
+			if (exp->left->is_float) {
 				++vm_f[lval];
-			else
+				return ((exp->end_stmnt) ? 1 : vm_f[lval]);
+			}
+			else {
 				++vm_m[lval];
-			return 1;
+				return ((exp->end_stmnt) ? 1 : vm_m[lval]);
+			}
 		case NODE_INCREMENT_L:
 			if (exp->left->type == NODE_VAR_CONST)
 				lval = exp->left->value;
@@ -568,11 +566,14 @@ static double interpret(ast* exp) {
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
 
-			if (exp->left->is_float)
-				vm_f[lval]++;
-			else
-				vm_m[lval]++;
-			return 1;
+			if (exp->left->is_float) {
+				rfval = vm_f[lval]++;
+				return ((exp->end_stmnt) ? 1 : rfval);
+			}
+			else {
+				rval = vm_m[lval]++;
+				return ((exp->end_stmnt) ? 1 : rval);
+			}
 		case NODE_DECREMENT_R:
 			if (exp->left->type == NODE_VAR_CONST)
 				lval = exp->left->value;
@@ -582,11 +583,14 @@ static double interpret(ast* exp) {
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
 
-			if (exp->left->is_float)
+			if (exp->left->is_float) {
 				--vm_f[lval];
-			else
+				return ((exp->end_stmnt) ? 1 : vm_f[lval]);
+			}
+			else {
 				--vm_m[lval];
-			return 1;
+				return ((exp->end_stmnt) ? 1 : vm_m[lval]);
+			}
 		case NODE_DECREMENT_L:
 			if (exp->left->type == NODE_VAR_CONST)
 				lval = exp->left->value;
@@ -596,11 +600,14 @@ static double interpret(ast* exp) {
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
 
-			if (exp->left->is_float)
-				vm_f[lval]--;
-			else
-				vm_m[lval]--;
-			return 1;
+			if (exp->left->is_float) {
+				rfval = vm_f[lval]--;
+				return ((exp->end_stmnt) ? 1 : rfval);
+			}
+			else {
+				rval = vm_m[lval]--;
+				return ((exp->end_stmnt) ? 1 : rval);
+			}
 		case NODE_ADD:
 			lfval = interpret(exp->left);
 			rfval = interpret(exp->right);
@@ -1215,11 +1222,6 @@ static double interpret(ast* exp) {
 		default:
 			applog(LOG_ERR, "ERROR: VM Runtime - Unsupported Operation (%d)", exp->type);
 			return 0;
-	}
-
-	if (vm_stack_idx >= VM_STACK_SIZE) {
-		applog(LOG_ERR, "ERROR: VM Runtime - Stack Overflow!");
-		return 0;
 	}
 
 	return 1;

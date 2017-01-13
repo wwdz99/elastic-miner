@@ -68,7 +68,7 @@ static ast* pop_exp() {
 	return exp;
 }
 
-static bool validate_inputs(SOURCE_TOKEN *token, NODE_TYPE node_type, bool log_err) {
+static bool validate_inputs(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 	int i, num_exps = 0;
 
 	if ((token->inputs == 0) || (node_type == NODE_BLOCK))
@@ -96,8 +96,7 @@ static bool validate_inputs(SOURCE_TOKEN *token, NODE_TYPE node_type, bool log_e
 
 	// Validate That There Are Enough Expressions On The Stack
 	if (num_exps < token->inputs) {
-		if (log_err)
-			applog(LOG_ERR, "Syntax Error - Line: %d  Invalid number of inputs ", token->line_num);
+		applog(LOG_ERR, "Syntax Error - Line: %d  Invalid number of inputs ", token->line_num);
 		return false;
 	}
 
@@ -344,9 +343,7 @@ static bool validate_inputs(SOURCE_TOKEN *token, NODE_TYPE node_type, bool log_e
 		break;
 	}
 
-	if (log_err)
-		applog(LOG_ERR, "Syntax Error - Line: %d  Invalid inputs for '%s'", token->line_num, get_node_str(node_type));
-
+	applog(LOG_ERR, "Syntax Error - Line: %d  Invalid inputs for '%s'", token->line_num, get_node_str(node_type));
 	return false;
 }
 
@@ -582,7 +579,7 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 	}
 
 	// Confirm Required Number / Types Of Expressions Are On Stack
-	if (!validate_inputs(token, node_type, true))
+	if (!validate_inputs(token, node_type))
 		return false;
 
 	switch (token->exp) {
@@ -703,8 +700,8 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 	else
 		return false;
 
-	// Update The "End Statement" Indicator For If/Repeat/Block
-	if ((stack_exp[stack_exp_idx]->type == NODE_IF) || (stack_exp[stack_exp_idx]->type == NODE_REPEAT) || (stack_exp[stack_exp_idx]->type == NODE_BLOCK))
+	// Update The "End Statement" Indicator For If/Else/Repeat/Block
+	if ((stack_exp[stack_exp_idx]->type == NODE_IF) || (stack_exp[stack_exp_idx]->type == NODE_ELSE) || (stack_exp[stack_exp_idx]->type == NODE_REPEAT) || (stack_exp[stack_exp_idx]->type == NODE_BLOCK))
 		stack_exp[stack_exp_idx]->end_stmnt = true;
 
 	return true;
@@ -754,42 +751,64 @@ static bool validate_exp_list() {
 
 extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 
-	int i, j, token_id, tmp;
+	int i, j, token_id;
 	ast *left, *right;
 	bool found;
 
 	for (i = 0; i < token_list->num; i++) {
 
-		// Validate That No Verify Statements Are Embeded In Blocks
-		if ((stack_exp_idx >= 0) && (stack_exp[stack_exp_idx]->type == NODE_VERIFY)) {
-			applog(LOG_ERR, "Syntax Error - Line: %d  Invalid Verify Statement\n", stack_exp[stack_exp_idx]->line_num);
-			return false;
-		}
+		// Process Existing Items On The Stack
+		if ((token_list->token[i].type == TOKEN_END_STATEMENT) ||
+			(token_list->token[i].type == TOKEN_BLOCK_END) ||
+			(token_list->token[i].type == TOKEN_VAR_END) ||
+			(token_list->token[i].type == TOKEN_CLOSE_PAREN) ||
+			(token_list->token[i].type == TOKEN_COND_ELSE) ) {
 
-		// Check For If/Else Statements That Need To Be Added
-		if ((stack_op_idx > 1) && (token_list->token[stack_op[stack_op_idx - 2]].type == TOKEN_IF) && (token_list->token[stack_op[stack_op_idx - 1]].type == TOKEN_ELSE) &&
-			(stack_exp_idx > 1) && (stack_exp[stack_exp_idx]->end_stmnt)) {
+			while ((top_op >= 0) && (token_list->token[top_op].prec >= token_list->token[i].prec)) {
 
-			// Make Sure Statements Don't Belong To An If/Repeat Under The Else
-			if (((token_list->token[stack_op[stack_op_idx]].type != TOKEN_IF) && (token_list->token[stack_op[stack_op_idx]].type != TOKEN_REPEAT) && (token_list->token[stack_op[stack_op_idx]].type != TOKEN_BLOCK_BEGIN)) ||
-				(top_op > (stack_op[stack_op_idx - 1] + 1))) {
-				tmp = pop_op();
+				// The Following Operators Require Special Handling
+				if ((token_list->token[top_op].type == TOKEN_OPEN_PAREN) ||
+					(token_list->token[top_op].type == TOKEN_BLOCK_BEGIN) ||
+					(token_list->token[top_op].type == TOKEN_VAR_BEGIN) ||
+					(token_list->token[top_op].type == TOKEN_IF) ||
+					(token_list->token[top_op].type == TOKEN_ELSE) ||
+					(token_list->token[top_op].type == TOKEN_REPEAT) ) {
+					break;
+				}
 
-				// Create Else Statement
+				// Add Expression To Stack
 				token_id = pop_op();
-				if (!create_exp(&token_list->token[token_id], token_id))
-					return false;
-
-				// Create If Statement
-				token_id = pop_op();
-				if (!create_exp(&token_list->token[token_id], token_id))
-					return false;
-
-				// Put Top Operator Back On Stack
-				push_op(tmp);
+				if (!create_exp(&token_list->token[token_id], token_id)) return false;
 			}
 		}
 
+		// Process If/Else/Repeat Operators On Stack
+		while ((top_op >= 0) && (stack_exp_idx >= 1) &&
+			((token_list->token[top_op].type == TOKEN_IF) || (token_list->token[top_op].type == TOKEN_ELSE) || (token_list->token[top_op].type == TOKEN_REPEAT))) {
+
+			// Validate That If/Repeat Condition Is On The Stack
+			if (((token_list->token[top_op].type == TOKEN_IF) || (token_list->token[top_op].type == TOKEN_REPEAT)) &&
+				((stack_exp[stack_exp_idx - 1]->token_num < top_op) || (stack_exp[stack_exp_idx - 1]->end_stmnt)))
+				break;
+
+			// Validate That Else Left Statement Is On The Stack
+			if ((token_list->token[top_op].type == TOKEN_ELSE) && (!stack_exp[stack_exp_idx - 1]->end_stmnt))
+				break;
+
+			// Validate That If/Else/Repeat Statement Is On The Stack
+			if ((stack_exp[stack_exp_idx]->token_num < top_op) || (!stack_exp[stack_exp_idx]->end_stmnt))
+				break;
+
+			// Add If/Else/Repeat Expression To Stack
+			token_id = pop_op();
+			if (!create_exp(&token_list->token[token_id], token_id)) return false;
+
+			// Only Process A Single Statement When "Else" Token Arrives.  Still Need To Process Rest Of Else
+			if (token_list->token[i].type == TOKEN_ELSE)
+				break;
+		}
+
+		// Process Token
 		switch (token_list->token[i].type) {
 
 		case TOKEN_COMMA:
@@ -811,22 +830,16 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 			break;
 
 		case TOKEN_END_STATEMENT:
-			// Process Expressions
-			while ((top_op >= 0) && (token_list->token[top_op].type != TOKEN_BLOCK_BEGIN) && (token_list->token[top_op].type != TOKEN_IF) && (token_list->token[top_op].type != TOKEN_ELSE) && (token_list->token[top_op].type != TOKEN_REPEAT)) {
-				token_id = pop_op();
-				if (!create_exp(&token_list->token[token_id], token_id))
-					return false;
-			}
+			// Flag Last Item On Stack As A Statement
 			stack_exp[stack_exp_idx]->end_stmnt = true;
 			break;
 
 		case TOKEN_VAR_END:
-			// Process Expressions Within The Variable Brackets
-			while ((top_op >= 0) && (token_list->token[top_op].type != TOKEN_VAR_BEGIN)) {
-				token_id = pop_op();
-				if (!create_exp(&token_list->token[token_id], token_id)) return false;
+			// Validate That The Top Operator Is The Var Begin
+			if (token_list->token[top_op].type != TOKEN_VAR_BEGIN) {
+				applog(LOG_ERR, "Syntax Error - Line: %d  Missing '['\n", token_list->token[i].line_num);
+				return false;
 			}
-
 			if ((stack_exp_idx < 0) || stack_exp[stack_exp_idx]->token_num < top_op) {
 				applog(LOG_ERR, "Syntax Error - Line: %d  Missing variable index\n", token_list->token[i].line_num);
 				return false;
@@ -847,10 +860,10 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 			break;
 
 		case TOKEN_CLOSE_PAREN:
-			// Process Expressions Within The Paranthesis
-			while ((top_op >= 0) && (token_list->token[top_op].type != TOKEN_OPEN_PAREN)) {
-				token_id = pop_op();
-				if (!create_exp(&token_list->token[token_id], token_id)) return false;
+			// Validate That The Top Operator Is The Open Paren
+			if (token_list->token[top_op].type != TOKEN_OPEN_PAREN) {
+				applog(LOG_ERR, "Syntax Error - Line: %d  Missing '('\n", token_list->token[i].line_num);
+				return false;
 			}
 			pop_op();
 
@@ -860,17 +873,9 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 				if (!create_exp(&token_list->token[token_id], token_id))
 					return false;
 			}
-
 			break;
 
 		case TOKEN_BLOCK_END:
-			// Ensure All Statements Within Block Have Been Processed
-			while ((top_op >= 0) && (token_list->token[top_op].type != TOKEN_BLOCK_BEGIN) && (token_list->token[top_op].prec >= token_list->token[i].prec)) {
-				token_id = pop_op();
-				if (!create_exp(&token_list->token[token_id], token_id))
-					return false;
-			}
-
 			// Validate That The Top Operator Is The Block Begin
 			if (token_list->token[top_op].type != TOKEN_BLOCK_BEGIN) {
 				applog(LOG_ERR, "Syntax Error - Line: %d  Missing '{'\n", token_list->token[i].line_num);
@@ -903,31 +908,29 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 			break;
 
 		case TOKEN_ELSE:
-			// Put "If" Statement Back On The Stack For Later Processing
-			if (stack_exp_idx >= 0 && stack_exp[stack_exp_idx]->type == NODE_IF) {
-				// Put If Back On Stack & Add Else
-				push_op(stack_exp[stack_exp_idx]->token_num);
-
-				left = stack_exp[stack_exp_idx]->left;
-				right = stack_exp[stack_exp_idx]->right;
-
-				// Remove If Expression
-				pop_exp();
-
-				// Return Left & Right Expressions Back To Stack
-				push_exp(left);
-				push_exp(right);
+			// Validate That "Else" Has A Corresponding "If"
+			if ((stack_exp_idx < 0) || stack_exp[stack_exp_idx]->type != NODE_IF) {
+				applog(LOG_ERR, "Syntax Error - Line: %d  Missing 'If'\n", token_list->token[i].line_num);
+				return false;
 			}
+
+			// Put If Operator Back On Stack For Later Processing
+			push_op(stack_exp[stack_exp_idx]->token_num);
+
+			left = stack_exp[stack_exp_idx]->left;
+			right = stack_exp[stack_exp_idx]->right;
+
+			// Remove If Expression From Stack
+			pop_exp();
+
+			// Return Left & Right Expressions Back To Stack
+			push_exp(left);
+			push_exp(right);
 			push_op(i);
 			break;
 
 		case TOKEN_COND_ELSE:
-			// Process Expressions Within The Conditional Statement
-			while ((top_op >= 0) && (token_list->token[top_op].type != TOKEN_CONDITIONAL)) {
-				token_id = pop_op();
-				if (!create_exp(&token_list->token[token_id], token_id)) return false;
-			}
-
+			// Validate That The Top Operator Is The Conditional
 			if (stack_op_idx < 0 || token_list->token[stack_op[stack_op_idx]].type != TOKEN_CONDITIONAL) {
 				applog(LOG_ERR, "Syntax Error - Line: %d  Invalid 'Conditional' Statement\n", token_list->token[token_id].line_num);
 				return false;
@@ -937,7 +940,7 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 
 		case TOKEN_BREAK:
 		case TOKEN_CONTINUE:
-			// Ensure "Break" & "Continue" Are Tied To "Repeat"
+			// Validate That "Break" & "Continue" Are Tied To "Repeat"
 			found = false;
 			for (j = 0; j < stack_op_idx; j++) {
 				if (token_list->token[stack_op[j]].type == TOKEN_REPEAT) {
@@ -953,34 +956,18 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 			}
 			break;
 
-		default:
-			// Process Expressions Already In Stack Based On Precedence
-			while ((top_op >= 0) && (token_list->token[top_op].prec >= token_list->token[i].prec)) {
-
-				// Don't Process Else Statements Here
-				if (token_list->token[top_op].type == TOKEN_ELSE)
-					break;
-
-				// Check If "IF" Statement Is Ready To Be Processed
-				if (token_list->token[top_op].type == TOKEN_IF) {
-					if (!validate_inputs(&token_list->token[top_op], NODE_IF, false))
-						break;
-				}
-				// Check If "REPEAT" Statement Is Ready To Be Processed
-				if (token_list->token[top_op].type == TOKEN_REPEAT) {
-					if (!validate_inputs(&token_list->token[top_op], NODE_REPEAT, false))
-						break;
-				}
-
-				token_id = pop_op();
-				if (!create_exp(&token_list->token[token_id], token_id))
-					return false;
+		case TOKEN_VERIFY:
+			// Validate That "Verify" Is Not Embeded In A Block
+			if (stack_op_idx >= 0) {
+				applog(LOG_ERR, "Syntax Error - Line: %d  Invalid Verify Statement\n", stack_exp[stack_exp_idx]->line_num);
+				return false;
 			}
 
-			// Don't Push <EOF> Onto Stack
-			if (token_list->token[i].type != TOKEN_EOF)
-				push_op(i);
+			push_op(i);
+			break;
 
+		default:
+			push_op(i);
 			break;
 		}
 	}
