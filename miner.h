@@ -2,7 +2,7 @@
 #define __MINER_H__
 
 #define PACKAGE_NAME "xel_miner"
-#define PACKAGE_VERSION "0.8"
+#define PACKAGE_VERSION "0.9"
 
 #define USER_AGENT PACKAGE_NAME "/" PACKAGE_VERSION
 #define MAX_CPUS 16
@@ -50,11 +50,15 @@
 #define VM_INPUTS 12
 
 extern __thread _ALIGN(64) int32_t *vm_m;
-extern __thread _ALIGN(64) float *vm_f;
-extern __thread unsigned char **vm_b;
-extern __thread vm_stack_item *vm_stack;
-extern __thread int vm_stack_idx;
+extern __thread _ALIGN(64) double *vm_f;
+extern __thread mpz_t *vm_b;
 extern __thread uint32_t *vm_state;
+extern __thread uint32_t vm_bi_size;
+extern __thread double vm_param_val[6];
+extern __thread uint32_t vm_param_idx[6];
+extern __thread uint32_t vm_param_num;
+extern __thread bool vm_break;
+extern __thread bool vm_continue;
 extern __thread bool vm_bounty;
 
 extern bool use_elasticpl_math;
@@ -183,11 +187,11 @@ struct instance {
 
 #ifdef WIN32
 	HINSTANCE hndl;
-	int(__cdecl* initialize)(int32_t *, float *, unsigned char **, uint32_t *);
+	int(__cdecl* initialize)(int32_t *, double *, mpz_t *, uint32_t *);
 	int(__cdecl* execute)();
 #else
 	void *hndl;
-	int(*initialize)(int32_t *, float *, unsigned char **, uint32_t *);
+	int(*initialize)(int32_t *, double *, mpz_t *, uint32_t *);
 	int(*execute)();
 #endif
 
@@ -261,7 +265,8 @@ struct opencl_device {
 	size_t global_size[2];
 	size_t local_size[2];
 	cl_mem vm_input;
-	cl_mem vm_mem;
+	cl_mem vm_m;
+	cl_mem vm_f;
 	cl_mem vm_out;
 };
 
@@ -274,7 +279,7 @@ extern bool create_opencl_buffers(struct opencl_device *gpu);
 extern bool calc_opencl_worksize(struct opencl_device *gpu);
 extern bool execute_kernel(struct opencl_device *gpu, const uint32_t *vm_input, uint32_t *vm_out);
 extern bool dump_opencl_kernel_data(struct opencl_device *gpu, int32_t *data, int idx, int offset, int len);
-static void *opencl_miner_thread(void *userdata);
+static void *gpu_miner_thread(void *userdata);
 #endif
 
 struct thread_q;
@@ -292,6 +297,7 @@ static void *longpoll_thread(void *userdata);
 static void *test_vm_thread(void *userdata);
 static void *workio_thread(void *userdata);
 static void restart_threads(void);
+static void *cpu_miner_thread(void *userdata);
 
 extern uint32_t swap32(uint32_t a);
 static void parse_cmdline(int argc, char *argv[]);
