@@ -12,427 +12,16 @@
 #include <stdint.h>
 #include <string.h>
 #include <limits.h>
+#include <math.h>
 
 #include "ElasticPL.h"
-#include "../crypto/elasticpl_crypto.h"
+#include "ElasticPLFunctions.h"
 #include "../miner.h"
 
 char blk_new[4096];
 char blk_old[4096];
 
 uint32_t wcet_block;
-
-extern char* convert_ast_to_c() {
-	blk_new[0] = 0;
-	blk_old[0] = 0;
-
-	char* ret = NULL;
-	int i;
-	for (i = 0; i < vm_ast_cnt; i++) {
-		ret = append_strings(ret, convert(vm_ast[i]));
-	}
-	return ret;
-}
-
-// Use Post Order Traversal To Translate The Expressions In The AST to C
-static char* convert(ast* exp) {
-	char* lval = 0;
-	char* rval = 0;
-	char* tmp = 0;
-	char *result = malloc(sizeof(char) * 256);
-	result[0] = 0;
-
-	if (exp != NULL) {
-
-		// Reset Temp Block Strings
-		if (exp->type != NODE_BLOCK) {
-			blk_new[0] = 0;
-			blk_old[0] = 0;
-		}
-
-		if (exp->left != NULL) {
-			lval = convert(exp->left);
-		}
-
-		// Check For If Statement As Right Side Is Conditional
-		if (exp->type != NODE_IF)
-			rval = convert(exp->right);
-
-		switch (exp->type) {
-		case NODE_CONSTANT:
-			if (exp->value < 0 || exp->value > VM_MEMORY_SIZE)
-				sprintf(result, "0");
-			else
-				sprintf(result, "%d", exp->value);
-			break;
-		case NODE_VAR_CONST:
-			if (exp->value < 0 || exp->value > VM_MEMORY_SIZE)
-				sprintf(result, "mem[0]");
-			else
-				sprintf(result, "mem[%d]", exp->value);
-			break;
-		case NODE_VAR_EXP:
-			sprintf(result, "mem[%s]", lval);
-			break;
-		case NODE_ASSIGN:
-			tmp = replace(lval, "mem[", "mem[m(");
-			free(lval);
-			lval = replace(tmp, "]", ")]");
-			free(tmp);
-			sprintf(result, "%s = m(%s);\n", lval, rval);
-			break;
-		case NODE_IF:
-			if (exp->right->type != NODE_ELSE) {
-				rval = convert(exp->right);				// If Body (No Else Condition)
-				result = realloc(result, strlen(lval) + strlen(rval) + 256);
-				sprintf(result, "if( %s ) {\n\t%s}\n", lval, rval);
-			}
-			else {
-				tmp = lval;
-				lval = convert(exp->right->left);		// If Body
-				rval = convert(exp->right->right);		// Else Body
-				result = realloc(result, strlen(lval) + strlen(rval) + 256);
-				sprintf(result, "if( %s ) {\n\t%s}\nelse {\n\t%s}\n", tmp, lval, rval);
-			}
-			break;
-		case NODE_ELSE:
-			break;
-		case NODE_REPEAT:
-			result = realloc(result, (2 * strlen(lval)) + strlen(rval) + 256);
-			sprintf(result, "if ( %s > 0 ) {\n\tint loop%d;\n\tfor (loop%d = 0; loop%d < ( %s ); loop%d++) {\n\t%s\t}\n}\n", lval, exp->token_num, exp->token_num, exp->token_num, lval, exp->token_num, rval);
-			break;
-		case NODE_BLOCK:
-			if (!blk_old[0])
-				sprintf(blk_new, "%s", lval);
-			else
-				sprintf(blk_new, "%s\t%s", lval, blk_old);
-			result = realloc(result, strlen(blk_new) + 1);
-			sprintf(result, "%s", blk_new);
-			strcpy(blk_old, blk_new);
-			break;
-		case NODE_ADD:
-			sprintf(result, "m(%s + %s)", lval, rval);
-			break;
-		case NODE_SUB:
-			sprintf(result, "m(%s - %s)", lval, rval);
-			break;
-		case NODE_MUL:
-			sprintf(result, "m(%s * %s)", lval, rval);
-			break;
-		case NODE_DIV:
-			sprintf(result, "((%s != 0) ? m(%s / %s) : m(0))", rval, lval, rval);
-			break;
-		case NODE_MOD:
-			sprintf(result, "((%s > 0) ? m(%s %%%% %s) : m(0))", rval, lval, rval);
-			break;
-		case NODE_LSHIFT:
-			sprintf(result, "m(%s << %s)", lval, rval);
-			break;
-		case NODE_LROT:
-			sprintf(result, "m(rotl32( %s, %s %%%% 32))", lval, rval);
-			break;
-		case NODE_RSHIFT:
-			sprintf(result, "m(%s >> %s)", lval, rval);
-			break;
-		case NODE_RROT:
-			sprintf(result, "m(rotr32( %s, %s %%%% 32))", lval, rval);
-			break;
-		case NODE_NOT:
-			sprintf(result, "m(!%s)", lval);
-			break;
-		case NODE_COMPL:
-			sprintf(result, "m(~%s)", lval);
-			break;
-		case NODE_AND:
-			sprintf(result, "m(%s >! %s)", lval, rval);		// Required To Match Java Results
-//			sprintf(result, "m(%s && %s)", lval, rval);
-			break;
-		case NODE_OR:
-			sprintf(result, "m(%s || %s)", lval, rval);
-			break;
-		case NODE_BITWISE_AND:
-			sprintf(result, "m(%s & %s)", lval, rval);
-			break;
-		case NODE_BITWISE_XOR:
-			sprintf(result, "m(%s ^ %s)", lval, rval);
-			break;
-		case NODE_BITWISE_OR:
-			sprintf(result, "m(%s | %s)", lval, rval);
-			break;
-		case NODE_EQ:
-			sprintf(result, "m(%s == %s)", lval, rval);
-			break;
-		case NODE_NE:
-			sprintf(result, "m(%s != %s)", lval, rval);
-			break;
-		case NODE_GT:
-			sprintf(result, "m(%s > %s)", lval, rval);
-			break;
-		case NODE_LT:
-			sprintf(result, "m(%s < %s)", lval, rval);
-			break;
-		case NODE_GE:
-			sprintf(result, "m(%s >= %s)", lval, rval);
-			break;
-		case NODE_LE:
-			sprintf(result, "m(%s <= %s)", lval, rval);
-			break;
-		case NODE_NEG:
-			sprintf(result, "m(-%s)", lval);
-			break;
-		case NODE_VERIFY:
-			sprintf(result, "\n\trc = m(%s != 0 ? 1 : 0);\n\n", lval);
-			break;
-		case NODE_PARAM:
-			if (!blk_old[0])
-				sprintf(blk_new, "%s", lval);
-			else
-				sprintf(blk_new, "%s, %s", lval, blk_old);
-			result = realloc(result, strlen(blk_new) + 1);
-			sprintf(result, "%s", blk_new);
-			strcpy(blk_old, blk_new);
-			break;
-		case NODE_SHA256:
-			sprintf(result, "\tm(epl_sha256( %s, mem ));\n", rval);
-			break;
-		case NODE_SHA512:
-			sprintf(result, "\tm(epl_sha512( %s, mem ));\n", rval);
-			break;
-		case NODE_WHIRLPOOL:
-			sprintf(result, "\tm(epl_whirlpool( %s, mem ));\n", rval);
-			break;
-		case NODE_MD5:
-			sprintf(result, "\tm(epl_md5( %s, mem ));\n", rval);
-			break;
-		case NODE_SECP192K_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp192k1, 24 ));\n", rval);
-			break;
-		case NODE_SECP192K_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp192k1, 25, 49 ));\n", rval);
-			break;
-		case NODE_SECP192K_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp192k1, 25, 49 ));\n", rval);
-			break;
-		case NODE_SECP192K_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp192k1, 25, 49 ));\n", rval);
-			break;
-		case NODE_SECP192K_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp192k1, 25, 49 ));\n", rval);
-			break;
-		case NODE_SECP192R_PTP:
-			sprintf(result, "SECP192R1PrivToPub( %s );\n", rval);
-			break;
-		case NODE_SECP192R_PA:
-			sprintf(result, "SECP192R1PointAdd( %s );\n", rval);
-			break;
-		case NODE_SECP192R_PS:
-			sprintf(result, "SECP192R1PointSub( %s );\n", rval);
-			break;
-		case NODE_SECP192R_PSM:
-			sprintf(result, "SECP192R1PointScalarMult( %s );\n", rval);
-			break;
-		case NODE_SECP192R_PN:
-			sprintf(result, "SECP192R1PointNegate( %s );\n", rval);
-			break;
-		case NODE_SECP224K_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp224k1, 28 ));\n", rval);
-			break;
-		case NODE_SECP224K_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp224k1, 29, 57 ));\n", rval);
-			break;
-		case NODE_SECP224K_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp224k1, 29, 57 ));\n", rval);
-			break;
-		case NODE_SECP224K_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp224k1, 29, 57 ));\n", rval);
-			break;
-		case NODE_SECP224K_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp224k1, 29, 57 ));\n", rval);
-			break;
-		case NODE_SECP224R_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp224r1, 28 ));\n", rval);
-			break;
-		case NODE_SECP224R_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp224r1, 29, 57 ));\n", rval);
-			break;
-		case NODE_SECP224R_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp224r1, 29, 57 ));\n", rval);
-			break;
-		case NODE_SECP224R_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp224r1, 29, 57 ));\n", rval);
-			break;
-		case NODE_SECP224R_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp224r1, 29, 57 ));\n", rval);
-			break;
-		case NODE_SECP256K_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp256k1, 32 ));\n", rval);
-			break;
-		case NODE_SECP256K_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp256k1, 33, 65 ));\n", rval);
-			break;
-		case NODE_SECP256K_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp256k1, 33, 65 ));\n", rval);
-			break;
-		case NODE_SECP256K_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp256k1, 33, 65 ));\n", rval);
-			break;
-		case NODE_SECP256K_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp256k1, 33, 65 ));\n", rval);
-			break;
-		case NODE_SECP256R_PTP:
-//Missing
-			sprintf(result, "SECP256R1PrivToPub( %s );\n", rval);
-//Missing
-			break;
-		case NODE_SECP256R_PA:
-			sprintf(result, "SECP256R1PointAdd( %s );\n", rval);
-			break;
-		case NODE_SECP256R_PS:
-			sprintf(result, "SECP256R1PointSub( %s );\n", rval);
-			break;
-		case NODE_SECP256R_PSM:
-			sprintf(result, "SECP256R1PointScalarMult( %s );\n", rval);
-			break;
-		case NODE_SECP256R_PN:
-			sprintf(result, "SECP256R1PointNegate( %s );\n", rval);
-			break;
-		case NODE_SECP384R_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_secp384r1, 48 ));\n", rval);
-			break;
-		case NODE_SECP384R_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_secp384r1, 49, 97 ));\n", rval);
-			break;
-		case NODE_SECP384R_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_secp384r1, 49, 97 ));\n", rval);
-			break;
-		case NODE_SECP384R_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_secp384r1, 49, 97 ));\n", rval);
-			break;
-		case NODE_SECP384R_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_secp384r1, 49, 97 ));\n", rval);
-			break;
-		case NODE_PRM192V1_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v1, 24 ));\n", rval);
-			break;
-		case NODE_PRM192V1_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime192v1, 25, 49 ));\n", rval);
-			break;
-		case NODE_PRM192V1_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime192v1, 25, 49 ));\n", rval);
-			break;
-		case NODE_PRM192V1_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime192v1, 25, 49 ));\n", rval);
-			break;
-		case NODE_PRM192V1_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime192v1, 25, 49 ));\n", rval);
-			break;
-		case NODE_PRM192V2_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v2, 24 ));\n", rval);
-			break;
-		case NODE_PRM192V2_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime192v2, 25, 49 ));\n", rval);
-			break;
-		case NODE_PRM192V2_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime192v2, 25, 49 ));\n", rval);
-			break;
-		case NODE_PRM192V2_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime192v2, 25, 49 ));\n", rval);
-			break;
-		case NODE_PRM192V2_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime192v2, 25, 49 ));\n", rval);
-			break;
-		case NODE_PRM192V3_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime192v3, 24 ));\n", rval);
-			break;
-		case NODE_PRM192V3_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime192v3, 25, 49 ));\n", rval);
-			break;
-		case NODE_PRM192V3_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime192v3, 25, 49 ));\n", rval);
-			break;
-		case NODE_PRM192V3_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime192v3, 25, 49 ));\n", rval);
-			break;
-		case NODE_PRM192V3_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime192v3, 25, 49 ));\n", rval);
-			break;
-		case NODE_PRM256V1_PTP:
-			sprintf(result, "\tm(epl_ec_priv_to_pub( %s, mem, NID_X9_62_prime256v1, 32 ));\n", rval);
-			break;
-		case NODE_PRM256V1_PA:
-			sprintf(result, "\tm(epl_ec_add( %s, mem, NID_X9_62_prime256v1, 33, 65 ));\n", rval);
-			break;
-		case NODE_PRM256V1_PS:
-			sprintf(result, "\tm(epl_ec_sub( %s, mem, NID_X9_62_prime256v1, 33, 65 ));\n", rval);
-			break;
-		case NODE_PRM256V1_PSM:
-			sprintf(result, "\tm(epl_ec_mult( %s, mem, NID_X9_62_prime256v1, 33, 65 ));\n", rval);
-			break;
-		case NODE_PRM256V1_PN:
-			sprintf(result, "\tm(epl_ec_neg( %s, mem, NID_X9_62_prime256v1, 33, 65 ));\n", rval);
-			break;
-		case NODE_TIGER:
-			sprintf(result, "Tiger( %s );\n", rval);
-			break;
-		case NODE_RIPEMD160:
-			sprintf(result, "\tm(epl_ripemd160( %s, mem ));\n", rval);
-			break;
-		case NODE_RIPEMD128:
-			sprintf(result, "RIPEMD128( %s );\n", rval);
-			break;
-		default:
-			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - Unsupported Operation (%d)\n\");\n", exp->type);
-		}
-	}
-
-	return result;
-}
-
-static char* append_strings(char * old, char * new) {
-	if (new == NULL && old != NULL) return old;
-	if (old == NULL && new != NULL) return new;
-	if (new == NULL && old == NULL) return NULL;
-
-	// find the size of the string to allocate
-	const size_t old_len = strlen(old), new_len = strlen(new);
-	const size_t out_len = old_len + new_len + 1;
-
-	// allocate a pointer to the new string
-	char *out = malloc(out_len);
-
-	// concat both strings and return
-	memcpy(out, old, old_len);
-	memcpy(out + old_len, new, new_len + 1);
-
-	// Free here
-	free(old);
-	free(new);
-
-	return out;
-}
-
-static char *replace(char* old, char* a, char* b) {
-	int idx = 0;
-	char *str = calloc(2, strlen(old));
-	char *ptr1, *ptr2;
-
-	ptr1 = old;
-	ptr2 = old;
-
-	while (ptr2) {
-		ptr2 = strstr(ptr1, a);
-		if (ptr2) {
-			strncpy(str + idx, ptr1, ptr2 - ptr1);
-			strcat(str, b);
-			ptr1 = ptr2 + strlen(a);
-			idx += strlen(str + idx);
-		}
-	}
-
-	strcat(str, ptr1);
-
-	return str;
-}
 
 extern uint32_t calc_wcet() {
 	int i;
@@ -511,7 +100,11 @@ static uint32_t get_wcet(ast* exp) {
 			wcet_block += lval;
 			wcet = wcet_block;
 			break;
+		case NODE_INCREMENT_R:
+		case NODE_INCREMENT_L:
 		case NODE_ADD:
+		case NODE_DECREMENT_R:
+		case NODE_DECREMENT_L:
 		case NODE_SUB:
 		case NODE_MUL:
 		case NODE_DIV:
@@ -558,11 +151,9 @@ static uint32_t get_wcet(ast* exp) {
 			wcet = (wcet < (0xFFFFFFFF - (80 + rval)) ? (80 + rval) : 0);
 			break;
 		case NODE_SECP192K_PTP:
-		case NODE_SECP192R_PTP:
 		case NODE_SECP224K_PTP:
 		case NODE_SECP224R_PTP:
 		case NODE_SECP256K_PTP:
-		case NODE_SECP256R_PTP:
 		case NODE_SECP384R_PTP:
 		case NODE_PRM192V2_PTP:
 		case NODE_PRM192V3_PTP:
@@ -573,10 +164,6 @@ static uint32_t get_wcet(ast* exp) {
 		case NODE_SECP192K_PS:
 		case NODE_SECP192K_PSM:
 		case NODE_SECP192K_PN:
-		case NODE_SECP192R_PA:
-		case NODE_SECP192R_PS:
-		case NODE_SECP192R_PSM:
-		case NODE_SECP192R_PN:
 		case NODE_SECP224K_PA:
 		case NODE_SECP224K_PS:
 		case NODE_SECP224K_PSM:
@@ -589,10 +176,6 @@ static uint32_t get_wcet(ast* exp) {
 		case NODE_SECP256K_PS:
 		case NODE_SECP256K_PSM:
 		case NODE_SECP256K_PN:
-		case NODE_SECP256R_PA:
-		case NODE_SECP256R_PS:
-		case NODE_SECP256R_PSM:
-		case NODE_SECP256R_PN:
 		case NODE_SECP384R_PA:
 		case NODE_SECP384R_PS:
 		case NODE_SECP384R_PSM:
@@ -616,14 +199,8 @@ static uint32_t get_wcet(ast* exp) {
 		case NODE_PRM256V1_PN:
 			wcet = (wcet < (0xFFFFFFFF - (1000 + rval)) ? (1000 + rval) : 0);
 			break;
-		case NODE_TIGER:
-			wcet = (wcet < (0xFFFFFFFF - (100 + rval)) ? (100 + rval) : 0);
-			break;
 		case NODE_RIPEMD160:
 			wcet = (wcet < (0xFFFFFFFF - (120 + rval)) ? (120 + rval) : 0);
-			break;
-		case NODE_RIPEMD128:
-			wcet = (wcet < (0xFFFFFFFF - (100 + rval)) ? (100 + rval) : 0);
 			break;
 		default:
 			break;
@@ -633,34 +210,21 @@ static uint32_t get_wcet(ast* exp) {
 	return wcet;
 }
 
-static void push(long l, bool memory) {
-	vm_stack[++vm_stack_idx].value = l;
-	vm_stack[vm_stack_idx].memory = memory;
-}
-
-static vm_stack_item pop_item() {
-	return vm_stack[vm_stack_idx--];
-}
-
-static long pop() {
-	if (vm_stack[vm_stack_idx].memory)
-		return vm_mem[vm_stack[vm_stack_idx--].value];
-	else
-		return vm_stack[vm_stack_idx--].value;
+static double expnt(double X) {
+	return exp(X);
 }
 
 extern int interpret_ast() {
 	int i;
 
 	vm_bounty = false;
+	vm_break = false;
+	vm_continue = false;
 
 	for (i = 0; i < vm_ast_cnt; i++) {
-		if (!interpret(vm_ast[i], false))
+		if (!interpret(vm_ast[i]))
 			return 0;
 	}
-
-	if (vm_stack_idx != -1)
-		applog(LOG_WARNING, "WARNING: Possible VM Memory Leak");
 
 	return vm_bounty;
 }
@@ -707,605 +271,957 @@ static int mangle_state(int x) {
 	return x;
 }
 
-static bool get_param(ast *exp, int *param, size_t num) {
-	if (num > 0) {
-		if (!exp->right->left)
-			return false;
-		else
-			param[0] = exp->right->left->value;
-	}
-	if (num > 1) {
-		if (!exp->right->right->left)
-			return false;
-		else
-			param[1] = exp->right->right->left->value;
-	}
-	if (num > 2) {
-		if (!exp->right->right->right->left)
-			return false;
-		else
-			param[2] = exp->right->right->right->left->value;
-	}
-	if (num > 3) {
-		if (!exp->right->right->right->right->left)
-			return false;
-		else
-			param[3] = exp->right->right->right->right->left->value;
-	}
-	if (num > 4) {
-		if (!exp->right->right->right->right->right->left)
-			return false;
-		else
-			param[4] = exp->right->right->right->right->right->left->value;
-	}
-	if (num > 5 || num <= 0)
-		return false;
-
-	return true;
-}
-
-static int32_t interpret(ast* exp, bool mangle) {
-	long lval, rval, val;
-	int param[5];
+static double interpret(ast* exp) {
+	double lfval, rfval;
+	int32_t lval, rval;
 
 	if (exp == NULL)
 		return 0;
 
+	if (vm_break || vm_continue)
+		return 1;
+
 	switch (exp->type) {
 		case NODE_CONSTANT:
-			return exp->value;
+			if (exp->data_type == DT_FLOAT)
+				return exp->fvalue;
+			else
+				return exp->value;
 		case NODE_VAR_CONST:
 			if (exp->value < 0 || exp->value > VM_MEMORY_SIZE)
-				val = 0;
-			else
-				val = exp->value;
-			if (mangle)					// This Allows Us To Mangle All Memory Locations On Left Side Of Assign Operator
-				mangle_state(val);
-			return vm_mem[val];
+				return 0;
+			if (exp->data_type == DT_FLOAT)
+				return vm_f[exp->value];
+			return vm_m[exp->value];
 		case NODE_VAR_EXP:
-			lval = interpret(exp->left, mangle);
+			lval = (int32_t)interpret(exp->left);
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
-			if (mangle)					// This Allows Us To Mangle All Memory Locations On Left Side Of Assign Operator
-				mangle_state(lval);
-			return vm_mem[lval];
+			return lval;
 		case NODE_ASSIGN:
-			rval = interpret(exp->right, false);
-			mangle_state(rval);
-			if (exp->left->type == NODE_VAR_CONST) {
+			if (exp->left->type == NODE_VAR_CONST)
 				lval = exp->left->value;
-				mangle_state(lval);
-			}
 			else
-				lval = interpret(exp->left, true);
+				lval = (int32_t)interpret(exp->left);
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
-			vm_mem[lval] = rval;
-//			mangle_state(lval);
+
+			rfval = interpret(exp->right);
+			if (exp->left->is_float)
+				vm_f[lval] = rfval;
+			else
+				vm_m[lval] = (int32_t)rfval;
+
+			mangle_state(lval);
+			mangle_state((int32_t)rfval);
 			return 1;
 		case NODE_IF:
 			if (exp->right->type != NODE_ELSE) {
-				if (interpret(exp->left, false))
-					return interpret(exp->right, false);			// If Body (No Else Condition)
+				if (interpret(exp->left))
+					interpret(exp->right);					// If Body (No Else Condition)
 			}
 			else {
-				if (interpret(exp->left, false))
-					return interpret(exp->right->left, false);		// If Body
+				if (interpret(exp->left))
+					interpret(exp->right->left);			// If Body
 				else
-					return interpret(exp->right->right, false);		// Else Body
+					interpret(exp->right->right);			// Else Body
 			}
-			break;
+			return 1;
+		case NODE_CONDITIONAL:
+			if (interpret(exp->left))
+				return interpret(exp->right->left);
+			else
+				return interpret(exp->right->right);
 		case NODE_REPEAT:
-			lval = interpret(exp->left, false);
+			vm_break = false;
+			lval = (int32_t)interpret(exp->left);
 			if (lval > 0) {
 				int i;
-				for (i = 0; i < lval; i++)
-					interpret(exp->right, false);					// Repeat Body
+				for (i = 0; i < lval; i++) {
+					vm_continue = false;
+					if (vm_break)
+						break;
+					else if (vm_continue)
+						continue;
+					else
+						interpret(exp->right);					// Repeat Body
+				}
 			}
+			vm_break = false;
+			vm_continue = false;
 			return 1;
 		case NODE_BLOCK:
-			interpret(exp->left, false);
+			interpret(exp->left);
 			if (exp->right)
-				interpret(exp->right, false);
+				interpret(exp->right);
 			return 1;
+		case NODE_BREAK:
+			vm_break = true;
+			break;
+		case NODE_CONTINUE:
+			vm_continue = true;
+			break;
+		case NODE_ADD_ASSIGN:
+			if (exp->left->type == NODE_VAR_CONST)
+				lval = exp->left->value;
+			else
+				lval = (int32_t)interpret(exp->left);
+
+			if (lval < 0 || lval > VM_MEMORY_SIZE)
+				return 0;
+
+			rfval = interpret(exp->right);
+
+			if (exp->left->is_float)
+				vm_f[lval] += rfval;
+			else 
+				vm_m[lval] += (int32_t)rfval;
+			mangle_state(lval);
+			mangle_state((int32_t)rfval);
+			return 1;
+		case NODE_SUB_ASSIGN:
+			if (exp->left->type == NODE_VAR_CONST)
+				lval = exp->left->value;
+			else
+				lval = (int32_t)interpret(exp->left);
+
+			if (lval < 0 || lval > VM_MEMORY_SIZE)
+				return 0;
+
+			rfval = interpret(exp->right);
+
+			if (exp->left->is_float)
+				vm_f[lval] -= rfval;
+			else
+				vm_m[lval] -= (int32_t)rfval;
+			mangle_state(lval);
+			mangle_state((int32_t)rfval);
+			return 1;
+		case NODE_MUL_ASSIGN:
+			if (exp->left->type == NODE_VAR_CONST)
+				lval = exp->left->value;
+			else
+				lval = (int32_t)interpret(exp->left);
+
+			if (lval < 0 || lval > VM_MEMORY_SIZE)
+				return 0;
+
+			rfval = interpret(exp->right);
+
+			if (exp->left->is_float)
+				vm_f[lval] *= rfval;
+			else
+				vm_m[lval] *= (int32_t)rfval;
+			mangle_state(lval);
+			mangle_state((int32_t)rfval);
+			return 1;
+		case NODE_DIV_ASSIGN:
+			if (exp->left->type == NODE_VAR_CONST)
+				lval = exp->left->value;
+			else
+				lval = (int32_t)interpret(exp->left);
+
+			if (lval < 0 || lval > VM_MEMORY_SIZE)
+				return 0;
+
+			rfval = interpret(exp->right);
+			if (rfval == 0.0)
+				return 0;
+
+			if (exp->left->is_float)
+				vm_f[lval] /= rfval;
+			else
+				vm_m[lval] = (int32_t)(vm_m[lval] / rfval);
+			mangle_state(lval);
+			mangle_state((int32_t)rfval);
+			return 1;
+		case NODE_MOD_ASSIGN:
+			if (exp->left->type == NODE_VAR_CONST)
+				lval = exp->left->value;
+			else
+				lval = (int32_t)interpret(exp->left);
+
+			if (lval < 0 || lval > VM_MEMORY_SIZE)
+				return 0;
+
+			rval = (int32_t)interpret(exp->right);
+			if (rval == 0)
+				return 0;
+
+			if (exp->left->is_float)
+				vm_f[lval] = (double)((int32_t)vm_f[lval] % rval);
+			else
+				vm_m[lval] %= rval;
+			mangle_state(lval);
+			mangle_state((int32_t)rval);
+			return 1;
+		case NODE_LSHFT_ASSIGN:
+			if (exp->left->type == NODE_VAR_CONST)
+				lval = exp->left->value;
+			else
+				lval = (int32_t)interpret(exp->left);
+
+			if (lval < 0 || lval > VM_MEMORY_SIZE)
+				return 0;
+
+			rval = (int32_t)interpret(exp->right);
+			if (exp->left->is_float)
+				vm_f[lval] = (double)((int32_t)vm_f[lval] << rval);
+			else
+				vm_m[lval] <<= rval;
+			mangle_state(lval);
+			mangle_state((int32_t)rval);
+			return 1;
+		case NODE_RSHFT_ASSIGN:
+			if (exp->left->type == NODE_VAR_CONST)
+				lval = exp->left->value;
+			else
+				lval = (int32_t)interpret(exp->left);
+
+			if (lval < 0 || lval > VM_MEMORY_SIZE)
+				return 0;
+
+			rval = (int32_t)interpret(exp->right);
+			if (exp->left->is_float)
+				vm_f[lval] = (double)((int32_t)vm_f[lval] >> rval);
+			else
+				vm_m[lval] >>= rval;
+			mangle_state(lval);
+			mangle_state((int32_t)rval);
+			return 1;
+		case NODE_AND_ASSIGN:
+			if (exp->left->type == NODE_VAR_CONST)
+				lval = exp->left->value;
+			else
+				lval = (int32_t)interpret(exp->left);
+
+			if (lval < 0 || lval > VM_MEMORY_SIZE)
+				return 0;
+
+			rval = (int32_t)interpret(exp->right);
+			if (exp->left->is_float)
+				vm_f[lval] = (double)((int32_t)vm_f[lval] & rval);
+			else
+				vm_m[lval] &= rval;
+			mangle_state(lval);
+			mangle_state((int32_t)rval);
+			return 1;
+		case NODE_XOR_ASSIGN:
+			if (exp->left->type == NODE_VAR_CONST)
+				lval = exp->left->value;
+			else
+				lval = (int32_t)interpret(exp->left);
+
+			if (lval < 0 || lval > VM_MEMORY_SIZE)
+				return 0;
+
+			rval = (int32_t)interpret(exp->right);
+			if (exp->left->is_float)
+				vm_f[lval] = (double)((int32_t)vm_f[lval] ^ rval);
+			else
+				vm_m[lval] ^= rval;
+			mangle_state(lval);
+			mangle_state((int32_t)rval);
+			return 1;
+		case NODE_OR_ASSIGN:
+			if (exp->left->type == NODE_VAR_CONST)
+				lval = exp->left->value;
+			else
+				lval = (int32_t)interpret(exp->left);
+
+			if (lval < 0 || lval > VM_MEMORY_SIZE)
+				return 0;
+
+			rval = (int32_t)interpret(exp->right);
+			if (exp->left->is_float)
+				vm_f[lval] = (double)((int32_t)vm_f[lval] | rval);
+			else
+				vm_m[lval] |= rval;
+			mangle_state(lval);
+			mangle_state((int32_t)rval);
+			return 1;
+		case NODE_INCREMENT_R:
+			if (exp->left->type == NODE_VAR_CONST)
+				lval = exp->left->value;
+			else
+				lval = (int32_t)interpret(exp->left);
+
+			if (lval < 0 || lval > VM_MEMORY_SIZE)
+				return 0;
+
+			if (exp->left->is_float) {
+				++vm_f[lval];
+				return ((exp->end_stmnt) ? 1 : vm_f[lval]);
+			}
+			else {
+				++vm_m[lval];
+				return ((exp->end_stmnt) ? 1 : vm_m[lval]);
+			}
+		case NODE_INCREMENT_L:
+			if (exp->left->type == NODE_VAR_CONST)
+				lval = exp->left->value;
+			else
+				lval = (int32_t)interpret(exp->left);
+
+			if (lval < 0 || lval > VM_MEMORY_SIZE)
+				return 0;
+
+			if (exp->left->is_float) {
+				rfval = vm_f[lval]++;
+				return ((exp->end_stmnt) ? 1 : rfval);
+			}
+			else {
+				rval = vm_m[lval]++;
+				return ((exp->end_stmnt) ? 1 : rval);
+			}
+		case NODE_DECREMENT_R:
+			if (exp->left->type == NODE_VAR_CONST)
+				lval = exp->left->value;
+			else
+				lval = (int32_t)interpret(exp->left);
+
+			if (lval < 0 || lval > VM_MEMORY_SIZE)
+				return 0;
+
+			if (exp->left->is_float) {
+				--vm_f[lval];
+				return ((exp->end_stmnt) ? 1 : vm_f[lval]);
+			}
+			else {
+				--vm_m[lval];
+				return ((exp->end_stmnt) ? 1 : vm_m[lval]);
+			}
+		case NODE_DECREMENT_L:
+			if (exp->left->type == NODE_VAR_CONST)
+				lval = exp->left->value;
+			else
+				lval = (int32_t)interpret(exp->left);
+
+			if (lval < 0 || lval > VM_MEMORY_SIZE)
+				return 0;
+
+			if (exp->left->is_float) {
+				rfval = vm_f[lval]--;
+				return ((exp->end_stmnt) ? 1 : rfval);
+			}
+			else {
+				rval = vm_m[lval]--;
+				return ((exp->end_stmnt) ? 1 : rval);
+			}
 		case NODE_ADD:
-			lval = interpret(exp->left, mangle);
-			rval = interpret(exp->right, mangle);
-			val = (lval + rval);
-			mangle_state(val);
-			return val;
+			lfval = interpret(exp->left);
+			rfval = interpret(exp->right);
+			return (lfval + rfval);
 		case NODE_SUB:
-			lval = interpret(exp->left, mangle);
-			rval = interpret(exp->right, mangle);
-			val = (lval - rval);
-			mangle_state(val);
-			return val;
+			lfval = interpret(exp->left);
+			rfval = interpret(exp->right);
+			return (lfval - rfval);
 		case NODE_MUL:
-			lval = interpret(exp->left, mangle);
-			rval = interpret(exp->right, mangle);
-			val = (lval * rval);
-			mangle_state(val);
-			return val;
+			lfval = interpret(exp->left);
+			rfval = interpret(exp->right);
+			return (lfval * rfval);
 		case NODE_DIV:
-			lval = interpret(exp->left, mangle);
-			rval = interpret(exp->right, mangle);
-			if (rval != 0)
-				val = lval / rval;
+			lfval = interpret(exp->left);
+			rfval = interpret(exp->right);
+			if (rfval != 0.0)
+				return (lfval / rfval);
 			else
-				val = 0;
-			mangle_state(val);
-			return val;
+				return 0;
 		case NODE_MOD:
-			lval = interpret(exp->left, mangle);
-			rval = interpret(exp->right, mangle);
+			lval = (int32_t)interpret(exp->left);
+			rval = (int32_t)interpret(exp->right);
 			if (rval > 0)
-				val = lval % rval;
+				return (lval % rval);
 			else
-				val = 0;
-			mangle_state(val);
-			return val;
+				return 0;
 		case NODE_LSHIFT:
-			lval = interpret(exp->left, mangle);
-			rval = interpret(exp->right, mangle);
-			val = (lval << rval);
-			mangle_state(val);
-			return val;
+			lval = (int32_t)interpret(exp->left);
+			rval = (int32_t)interpret(exp->right);
+			return (lval << rval);
 		case NODE_LROT:
-			lval = interpret(exp->left, mangle);
-			rval = interpret(exp->right, mangle);
-			val = rotl32(lval, rval % 32);
-			mangle_state(val);
-			return val;
+			lval = (int32_t)interpret(exp->left);
+			rval = (int32_t)interpret(exp->right);
+			return rotl32(lval, rval % 32);
 		case NODE_RSHIFT:
-			lval = interpret(exp->left, mangle);
-			rval = interpret(exp->right, mangle);
-			val = (lval >> rval);
-			mangle_state(val);
-			return val;
+			lval = (int32_t)interpret(exp->left);
+			rval = (int32_t)interpret(exp->right);
+			return (lval >> rval);
 		case NODE_RROT:
-			lval = interpret(exp->left, mangle);
-			rval = interpret(exp->right, mangle);
-			val = rotr32(lval, rval % 32);
-			mangle_state(val);
-			return val;
+			lval = (int32_t)interpret(exp->left);
+			rval = (int32_t)interpret(exp->right);
+			return rotr32(lval, rval % 32);
 		case NODE_NOT:
-			lval = interpret(exp->left, mangle);
-			mangle_state(!lval);
-			return !lval;
+			lfval = interpret(exp->left);
+			return !lfval;
 		case NODE_COMPL:
-			lval = interpret(exp->left, mangle);
-			mangle_state(~lval);
+			lval = (int32_t)interpret(exp->left);
 			return ~lval;
 		case NODE_AND:
-			lval = interpret(exp->left, mangle);
-			rval = interpret(exp->right, mangle);
-//			val = (lval && rval);
-			val = (lval >! rval);
-			mangle_state(val);
-			return val;
+			lfval = interpret(exp->left);
+			rfval = interpret(exp->right);
+			return (lfval && rfval);
 		case NODE_OR:
-			lval = interpret(exp->left, mangle);
-			rval = interpret(exp->right, mangle);
-			val = (lval || rval);
-			mangle_state(val);
-			return val;
+			lfval = interpret(exp->left);
+			rfval = interpret(exp->right);
+			return (lfval || rfval);
 		case NODE_BITWISE_AND:
-			lval = interpret(exp->left, mangle);
-			rval = interpret(exp->right, mangle);
-			val = (lval & rval);
-			mangle_state(val);
-			return val;
+			lval = (int32_t)interpret(exp->left);
+			rval = (int32_t)interpret(exp->right);
+			return (lval & rval);
 		case NODE_BITWISE_XOR:
-			lval = interpret(exp->left, mangle);
-			rval = interpret(exp->right, mangle);
-			val = (lval ^ rval);
-			mangle_state(val);
-			return val;
+			lval = (int32_t)interpret(exp->left);
+			rval = (int32_t)interpret(exp->right);
+			return (lval ^ rval);
 		case NODE_BITWISE_OR:
-			lval = interpret(exp->left, mangle);
-			rval = interpret(exp->right, mangle);
-			val = (lval | rval);
-			mangle_state(val);
-			return val;
+			lval = (int32_t)interpret(exp->left);
+			rval = (int32_t)interpret(exp->right);
+			return (lval | rval);
 		case NODE_EQ:
-			lval = interpret(exp->left, mangle);
-			rval = interpret(exp->right, mangle);
-			val = (lval == rval);
-			mangle_state(val);
-			return val;
+			lfval = interpret(exp->left);
+			rfval = interpret(exp->right);
+			return (lfval == rfval);
 		case NODE_NE:
-			lval = interpret(exp->left, mangle);
-			rval = interpret(exp->right, mangle);
-			val = (lval != rval);
-			mangle_state(val);
-			return val;
+			lfval = interpret(exp->left);
+			rfval = interpret(exp->right);
+			return (lfval != rfval);
 		case NODE_GT:
-			lval = interpret(exp->left, mangle);
-			rval = interpret(exp->right, mangle);
-			val = (lval > rval);
-			mangle_state(val);
-			return val;
+			lfval = interpret(exp->left);
+			rfval = interpret(exp->right);
+			return (lfval > rfval);
 		case NODE_LT:
-			lval = interpret(exp->left, mangle);
-			rval = interpret(exp->right, mangle);
-			val = (lval < rval);
-			mangle_state(val);
-			return val;
+			lfval = interpret(exp->left);
+			rfval = interpret(exp->right);
+			return (lfval < rfval);
 		case NODE_GE:
-			lval = interpret(exp->left, mangle);
-			rval = interpret(exp->right, mangle);
-			val = (lval >= rval);
-			mangle_state(val);
-			return val;
+			lfval = interpret(exp->left);
+			rfval = interpret(exp->right);
+			return (lfval >= rfval);
 		case NODE_LE:
-			lval = interpret(exp->left, mangle);
-			rval = interpret(exp->right, mangle);
-			val = (lval <= rval);
-			mangle_state(val);
-			return val;
+			lfval = interpret(exp->left);
+			rfval = interpret(exp->right);
+			return (lfval <= rfval);
 		case NODE_NEG:
-			lval = interpret(exp->left, mangle);
-			mangle_state(-lval);
-			return -lval;
-		case NODE_VERIFY:
-			lval = interpret(exp->left, mangle);
-			rval = interpret(exp->right, mangle);
-			vm_bounty = (lval != rval);
-			mangle_state(vm_bounty);
-			return vm_bounty;
+			lfval = interpret(exp->left);
+			return -lfval;
 		case NODE_PARAM:
-			break;
+			vm_param_val[vm_param_num] = interpret(exp->left);
+			vm_param_idx[vm_param_num++] = exp->left->value;
+			rval = (int32_t)interpret(exp->right);
+			return 1;
+		case NODE_SIN:
+			vm_param_num = 0;
+			interpret(exp->right);
+			return sin(vm_param_val[0]);
+		case NODE_COS:
+			vm_param_num = 0;
+			interpret(exp->right);
+			return cos(vm_param_val[0]);
+		case NODE_TAN:
+			vm_param_num = 0;
+			interpret(exp->right);
+			return tan(vm_param_val[0]);
+		case NODE_SINH:
+			vm_param_num = 0;
+			interpret(exp->right);
+			return sinh(vm_param_val[0]);
+		case NODE_COSH:
+			vm_param_num = 0;
+			interpret(exp->right);
+			return cosh(vm_param_val[0]);
+		case NODE_TANH:
+			vm_param_num = 0;
+			interpret(exp->right);
+			return tanh(vm_param_val[0]);
+		case NODE_ASIN:
+			vm_param_num = 0;
+			interpret(exp->right);
+			return asin(vm_param_val[0]);
+		case NODE_ACOS:
+			vm_param_num = 0;
+			interpret(exp->right);
+			return acos(vm_param_val[0]);
+		case NODE_ATAN:
+			vm_param_num = 0;
+			interpret(exp->right);
+			return atan(vm_param_val[0]);
+		case NODE_ATAN2:
+			vm_param_num = 0;
+			interpret(exp->right);
+			if (vm_param_val[1] == 0.0)
+				return 0;
+			return atan2(vm_param_val[0], vm_param_val[1]);
+		case NODE_EXPNT:
+			vm_param_num = 0;
+			interpret(exp->right);
+			if ((vm_param_val[0] < -708.0) || (vm_param_val[0] > 709.0))
+				return 0;
+			return expnt(vm_param_val[0]);
+		case NODE_LOG:
+			vm_param_num = 0;
+			interpret(exp->right);
+			if (vm_param_val[0] <= 0.0)
+				return 0;
+			return log(vm_param_val[0]);
+		case NODE_LOG10:
+			vm_param_num = 0;
+			interpret(exp->right);
+			if (vm_param_val[0] <= 0.0)
+				return 0;
+			return log10(vm_param_val[0]);
+		case NODE_POW:
+			vm_param_num = 0;
+			interpret(exp->right);
+			return pow(vm_param_val[0], vm_param_val[0]);
+		case NODE_SQRT:
+			vm_param_num = 0;
+			interpret(exp->right);
+			if (vm_param_val[0] <= 0.0)
+				return 0;
+			return sqrt(vm_param_val[0]);
+		case NODE_CEIL:
+			vm_param_num = 0;
+			interpret(exp->right);
+			return ceil(vm_param_val[0]);
+		case NODE_FLOOR:
+			vm_param_num = 0;
+			interpret(exp->right);
+			return floor(vm_param_val[0]);
+		case NODE_ABS:
+			vm_param_num = 0;
+			interpret(exp->right);
+			return abs((int32_t)vm_param_val[0]);
+		case NODE_FABS:
+			vm_param_num = 0;
+			interpret(exp->right);
+			return fabs(vm_param_val[0]);
+		case NODE_FMOD:
+			vm_param_num = 0;
+			interpret(exp->right);
+			if (vm_param_val[1] == 0.0)
+				return 0;
+			return fmod(vm_param_val[0], vm_param_val[1]);
+		case NODE_GCD:
+			vm_param_num = 0;
+			interpret(exp->right);
+			return gcd((int32_t)vm_param_val[0], (int32_t)vm_param_val[1]);
+		case NODE_BI_CONST:
+			vm_param_num = 0;
+			interpret(exp->right);
+
+			if (!exp->right->right->left->svalue)
+				return 0;
+
+			mangle_state(big_init_const(vm_b[vm_param_idx[0]], exp->right->right->left->svalue, vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_EXPR:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_init_expr(vm_b[vm_param_idx[0]], (int32_t)vm_param_val[1], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_COPY:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_copy(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_ADD:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_add(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_SUB:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_sub(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_MUL:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_mul(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_DIV:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_div(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_CEIL_DIV:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_ceil_div(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_FLOOR_DIV:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_floor_div(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_TRUNC_DIV:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_truncate_div(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_DIV_EXACT:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_div_exact(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_MOD:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_mod(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_NEG:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_neg(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_LSHIFT:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_lshift(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], (uint32_t)vm_param_val[2], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_RSHIFT:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_rshift(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], (uint32_t)vm_param_val[2], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_GCD:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_gcd(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_DIVISIBLE:
+			vm_param_num = 0;
+			interpret(exp->right);
+			return big_divisible(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b);
+		case NODE_BI_CNGR_MOD_P:
+			vm_param_num = 0;
+			interpret(exp->right);
+			return big_congruent_mod_p(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b);
+		case NODE_BI_POW:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_pow(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], (uint32_t)vm_param_val[2], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_POW2:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_pow2(vm_b[vm_param_idx[0]], (uint32_t)vm_param_val[1], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_POW_MOD_P:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_pow_mod_p(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b[vm_param_idx[3]], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_POW2_MOD_P:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_pow2_mod_p(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_COMP:
+			vm_param_num = 0;
+			interpret(exp->right);
+			return big_compare(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b);
+		case NODE_BI_COMP_ABS:
+			vm_param_num = 0;
+			interpret(exp->right);
+			return big_compare_abs(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b);
+		case NODE_BI_SIGN:
+			vm_param_num = 0;
+			interpret(exp->right);
+			return big_sign(vm_b[vm_param_idx[0]], vm_b);
+		case NODE_BI_OR:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_or(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_AND:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_and(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_XOR:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_xor(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_OR_INT:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_or_integer(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], (uint32_t)vm_param_val[2], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_AND_INT:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_and_integer(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], (uint32_t)vm_param_val[2], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_XOR_INT:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(big_xor_integer(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], (uint32_t)vm_param_val[2], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_BI_LEAST_32:
+			vm_param_num = 0;
+			interpret(exp->right);
+			return big_least_32bit(vm_b[vm_param_idx[0]], vm_b);
+
+		case NODE_VERIFY:
+			lval = (int32_t)interpret(exp->left);
+			vm_bounty = (lval != 0);
+			return vm_bounty;
+
 		case NODE_SHA256:
-			if (!get_param(exp, param, 2))
-				val = 0;
-			else
-				val = epl_sha256(param[0], param[1], vm_mem);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_sha256(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SHA512:
-			if (!get_param(exp, param, 2))
-				val = 0;
-			else
-				val = epl_sha512(param[0], param[1], vm_mem);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_sha512(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b, &vm_bi_size));
 			return 1;
 		case NODE_WHIRLPOOL:
-			if (!get_param(exp, param, 2))
-				val = 0;
-			else
-				val = epl_whirlpool(param[0], param[1], vm_mem);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_whirlpool(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b, &vm_bi_size));
 			return 1;
 		case NODE_MD5:
-			if (!get_param(exp, param, 2))
-				val = 0;
-			else
-				val = epl_md5(param[0], param[1], vm_mem);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_md5(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b, &vm_bi_size));
+			return 1;
+		case NODE_RIPEMD160:
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ripemd160(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP192K_PTP:
-			if (!get_param(exp, param, 2))
-				val = 0;
-			else
-				val = epl_ec_priv_to_pub(param[0], param[1], vm_mem, NID_secp192k1, 24);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_priv_to_pub(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], (bool)vm_param_val[2], NID_secp192k1, 24, 48, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP192K_PA:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp192k1, 25, 49);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_add(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], (bool)vm_param_val[5], NID_secp192k1, 25, 49, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP192K_PS:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp192k1, 25, 49);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_sub(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], (bool)vm_param_val[5], NID_secp192k1, 25, 49, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP192K_PSM:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp192k1, 25, 49);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_mul(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], NID_secp192k1, 25, 49, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP192K_PN:
-			if (!get_param(exp, param, 3))
-				val = 0;
-			else
-				val = epl_ec_neg(param[0], param[1], param[2], vm_mem, NID_secp192k1, 25, 49);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_neg(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], NID_secp192k1, 25, 49, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP224K_PTP:
-			if (!get_param(exp, param, 2))
-				val = 0;
-			else
-				val = epl_ec_priv_to_pub(param[0], param[1], vm_mem, NID_secp224k1, 28);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_priv_to_pub(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], (bool)vm_param_val[2], NID_secp224k1, 28, 56, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP224K_PA:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp224k1, 29, 57);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_add(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], (bool)vm_param_val[5], NID_secp224k1, 29, 57, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP224K_PS:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp224k1, 29, 57);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_sub(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], (bool)vm_param_val[5], NID_secp224k1, 29, 57, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP224K_PSM:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp224k1, 29, 57);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_mul(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], NID_secp224k1, 29, 57, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP224K_PN:
-			if (!get_param(exp, param, 3))
-				val = 0;
-			else
-				val = epl_ec_neg(param[0], param[1], param[2], vm_mem, NID_secp224k1, 29, 57);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_neg(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], NID_secp224k1, 29, 57, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP224R_PTP:
-			if (!get_param(exp, param, 2))
-				val = 0;
-			else
-				val = epl_ec_priv_to_pub(param[0], param[1], vm_mem, NID_secp224r1, 28);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_priv_to_pub(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], (bool)vm_param_val[2], NID_secp224r1, 28, 56, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP224R_PA:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp224r1, 29, 57);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_add(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], (bool)vm_param_val[5], NID_secp224r1, 29, 57, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP224R_PS:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp224r1, 29, 57);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_sub(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], (bool)vm_param_val[5], NID_secp224r1, 29, 57, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP224R_PSM:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp224r1, 29, 57);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_mul(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], NID_secp224r1, 29, 57, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP224R_PN:
-			if (!get_param(exp, param, 3))
-				val = 0;
-			else
-				val = epl_ec_neg(param[0], param[1], param[2], vm_mem, NID_secp224r1, 29, 57);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_neg(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], NID_secp224r1, 29, 57, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP256K_PTP:
-			if (!get_param(exp, param, 2))
-				val = 0;
-			else
-				val = epl_ec_priv_to_pub(param[0], param[1], vm_mem, NID_secp256k1, 32);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_priv_to_pub(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], (bool)vm_param_val[2], NID_secp256k1, 32, 64, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP256K_PA:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp256k1, 33, 65);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_add(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], (bool)vm_param_val[5], NID_secp256k1, 33, 65, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP256K_PS:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp256k1, 33, 65);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_add(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], (bool)vm_param_val[5], NID_secp256k1, 33, 65, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP256K_PSM:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp256k1, 33, 65);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_mul(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], NID_secp256k1, 33, 65, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP256K_PN:
-			if (!get_param(exp, param, 3))
-				val = 0;
-			else
-				val = epl_ec_neg(param[0], param[1], param[2], vm_mem, NID_secp256k1, 33, 65);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_neg(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], NID_secp256k1, 33, 65, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP384R_PTP:
-			if (!get_param(exp, param, 2))
-				val = 0;
-			else
-				val = epl_ec_priv_to_pub(param[0], param[1], vm_mem, NID_secp384r1, 48);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_priv_to_pub(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], (bool)vm_param_val[2], NID_secp384r1, 48, 96, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP384R_PA:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp384r1, 48, 97);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_add(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], (bool)vm_param_val[5], NID_secp384r1, 48, 97, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP384R_PS:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp384r1, 48, 97);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_sub(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], (bool)vm_param_val[5], NID_secp384r1, 48, 97, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP384R_PSM:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_secp384r1, 48, 97);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_mul(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], NID_secp384r1, 48, 97, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_SECP384R_PN:
-			if (!get_param(exp, param, 3))
-				val = 0;
-			else
-				val = epl_ec_neg(param[0], param[1], param[2], vm_mem, NID_secp384r1, 48, 97);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_neg(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], NID_secp384r1, 48, 97, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_PRM192V1_PTP:
-			if (!get_param(exp, param, 2))
-				val = 0;
-			else
-				val = epl_ec_priv_to_pub(param[0], param[1], vm_mem, NID_X9_62_prime192v1, 24);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_priv_to_pub(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], (bool)vm_param_val[2], NID_X9_62_prime192v1, 24, 48, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_PRM192V1_PA:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime192v1, 25, 49);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_add(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], (bool)vm_param_val[5], NID_X9_62_prime192v1, 25, 49, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_PRM192V1_PS:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime192v1, 25, 49);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_sub(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], (bool)vm_param_val[5], NID_X9_62_prime192v1, 25, 49, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_PRM192V1_PSM:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime192v1, 25, 49);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_mul(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], NID_X9_62_prime192v1, 25, 49, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_PRM192V1_PN:
-			if (!get_param(exp, param, 3))
-				val = 0;
-			else
-				val = epl_ec_neg(param[0], param[1], param[2], vm_mem, NID_X9_62_prime192v1, 25, 49);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_neg(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], NID_X9_62_prime192v1, 25, 49, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_PRM192V2_PTP:
-			if (!get_param(exp, param, 2))
-				val = 0;
-			else
-				val = epl_ec_priv_to_pub(param[0], param[1], vm_mem, NID_X9_62_prime192v2, 24);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_priv_to_pub(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], (bool)vm_param_val[2], NID_X9_62_prime192v2, 24, 48, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_PRM192V2_PA:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime192v2, 25, 49);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_add(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], (bool)vm_param_val[5], NID_X9_62_prime192v2, 25, 49, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_PRM192V2_PS:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime192v2, 25, 49);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_sub(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], (bool)vm_param_val[5], NID_X9_62_prime192v2, 25, 49, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_PRM192V2_PSM:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime192v2, 25, 49);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_mul(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], NID_X9_62_prime192v2, 25, 49, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_PRM192V2_PN:
-			if (!get_param(exp, param, 3))
-				val = 0;
-			else
-				val = epl_ec_neg(param[0], param[1], param[2], vm_mem, NID_X9_62_prime192v2, 25, 49);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_neg(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], NID_X9_62_prime192v2, 25, 49, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_PRM192V3_PTP:
-			if (!get_param(exp, param, 2))
-				val = 0;
-			else
-				val = epl_ec_priv_to_pub(param[0], param[1], vm_mem, NID_X9_62_prime192v3, 24);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_priv_to_pub(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], (bool)vm_param_val[2], NID_X9_62_prime192v3, 24, 48, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_PRM192V3_PA:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime192v3, 25, 49);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_add(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], (bool)vm_param_val[5], NID_X9_62_prime192v3, 25, 49, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_PRM192V3_PS:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime192v3, 25, 49);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_sub(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], (bool)vm_param_val[5], NID_X9_62_prime192v3, 25, 49, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_PRM192V3_PSM:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime192v3, 25, 49);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_mul(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], NID_X9_62_prime192v3, 25, 49, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_PRM192V3_PN:
-			if (!get_param(exp, param, 3))
-				val = 0;
-			else
-				val = epl_ec_neg(param[0], param[1], param[2], vm_mem, NID_X9_62_prime192v3, 25, 49);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_neg(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], NID_X9_62_prime192v3, 25, 49, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_PRM256V1_PTP:
-			if (!get_param(exp, param, 2))
-				val = 0;
-			else
-				val = epl_ec_priv_to_pub(param[0], param[1], vm_mem, NID_X9_62_prime256v1, 32);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_priv_to_pub(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], (bool)vm_param_val[2], NID_X9_62_prime256v1, 32, 64, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_PRM256V1_PA:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_add(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime256v1, 33, 65);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_add(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], (bool)vm_param_val[5], NID_X9_62_prime256v1, 33, 65, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_PRM256V1_PS:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_sub(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime256v1, 33, 65);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_sub(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], (bool)vm_param_val[5], NID_X9_62_prime256v1, 33, 65, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_PRM256V1_PSM:
-			if (!get_param(exp, param, 5))
-				val = 0;
-			else
-				val = epl_ec_mult(param[0], param[1], param[2], param[3], param[4], vm_mem, NID_X9_62_prime256v1, 33, 65);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_mul(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], vm_b[vm_param_idx[4]], NID_X9_62_prime256v1, 33, 65, vm_b, &vm_bi_size));
 			return 1;
 		case NODE_PRM256V1_PN:
-			if (!get_param(exp, param, 3))
-				val = 0;
-			else
-				val = epl_ec_neg(param[0], param[1], param[2], vm_mem, NID_X9_62_prime256v1, 33, 65);
-			mangle_state(val);
+			vm_param_num = 0;
+			interpret(exp->right);
+			mangle_state(epl_ec_neg(vm_b[vm_param_idx[0]], (bool)vm_param_val[1], vm_b[vm_param_idx[2]], (bool)vm_param_val[3], NID_X9_62_prime256v1, 33, 65, vm_b, &vm_bi_size));
 			return 1;
 
 		default:
 			applog(LOG_ERR, "ERROR: VM Runtime - Unsupported Operation (%d)", exp->type);
-	}
-
-	if (vm_stack_idx >= VM_STACK_SIZE) {
-		applog(LOG_ERR, "ERROR: VM Runtime - Stack Overflow!");
-		return 0;
+			return 0;
 	}
 
 	return 1;

@@ -1,4 +1,4 @@
-# xel_miner 0.8
+# xel_miner 0.9
 
 <a href="https://scan.coverity.com/projects/ordinarydude-xel_miner">
   <img alt="Coverity Scan Build Status"
@@ -6,25 +6,16 @@
 </a>  <img src="https://travis-ci.org/OrdinaryDude/xel_miner.svg?branch=master"/> [![contributions welcome](https://img.shields.io/badge/contributions-welcome-brightgreen.svg?style=flat)](https://github.com/OrdinaryDude/elastic-core/issues)
 
 
-This is a prototype of a miner for solving XEL work packages.  This was put together as a tool for me to learn more about AST parsing & interpreting. I ultimately decided to convert it into an XEL miner; however, it is not optimized at all...it is a prototype that attempts demonstrate all the functionality of an XEL miner.
+This is a prototype of a miner for solving XEL work packages.  The miner is still in the early stages of development...it is simply a prototype that attempts demonstrate all the functionality of an XEL miner.
 
-Please note, the following algos were not included in this miner as they aren't available directly in openssl:
+<b>*** The GPU miner is highly experimental.  If you choose to use it, monitor your cards closely to ensure they don't overheat. ***</b>
 
-<ul>
-<li>SEPC_192R1</li>
-<li>SEPC_256R1</li>
-<li>RIPEMD128</li>
-<li>TIGER</li>
-</ul>
-
-Also:  All crypto functions will need thorough testing.  Only minimal testing on them has been performed at this time.
-
-The miner build has been tested using GCC in Linux as well as MinGW32.  It can also be built using Visual Studio but numerous additional project files are required to do so.
+The miner build has been tested using GCC in Linux as well as MinGW32 (using GCC) on Windows.
 
 Below are the steps I used to get the miner running on my Raspberry Pi.
 <ul>
 <li>sudo apt-get update</li>
-<li>sudo apt-get install cmake libcurl4-openssl-dev libudev-dev screen libtool pkg-config libjansson-dev</li>
+<li>sudo apt-get install cmake libcurl4-openssl-dev libudev-dev screen libtool pkg-config libjansson-dev libgmp3-dev</li>
 <li>git clone https://github.com/sprocket-fpga/xel_miner.git</li>
 <li>cd xel_miner</li>
 <li>cd build</li>
@@ -34,13 +25,13 @@ Below are the steps I used to get the miner running on my Raspberry Pi.
 
 <b>*** Don't forget to use "make install" and not just "make" ***</b>
 
-To run the Miner
+To run the Miner using CPU
 
-    sudo ./xel_miner -t <num_threads> -P <secret_phrase> -D -o http://127.0.0.1:6876/nxt
+    sudo ./xel_miner -t <num_threads> -P <secret_phrase> -D
 
-To run the Miner w/o a compiler installed
+To run the Miner using GPU (Note: Crypto & Big Integer ElasticPL jobs are not supported for GPU mining)
 
-    sudo ./xel_miner -t <num_threads> -P <secret_phrase> -D -o http://127.0.0.1:6876/nxt --no-compile
+    sudo ./xel_miner -t <num_threads> -P <secret_phrase> -D --opencl
 
 Use "sudo ./xel_miner -h" to see a full list of options.
 

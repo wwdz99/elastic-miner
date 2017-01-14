@@ -48,14 +48,23 @@ extern bool create_epl_vm(char *source) {
 		return false;
 	}
 
+	// Free VM Memory
+	if (vm_ast)
+		delete_epl_vm();
+
 	// Copy Parsed Statements Into VM Array
 	vm_ast_cnt = stack_exp_idx + 1;
 
 	vm_ast = calloc(vm_ast_cnt, sizeof(ast*));
 	memcpy(vm_ast, stack_exp, vm_ast_cnt * sizeof(ast*));
 
-	free(stack_op);
+	// Cleanup Stack Memory
+	for (i = 0; i < vm_ast_cnt; i++) {
+		if (stack_exp[i]->svalue)
+			free(stack_exp[i]->svalue);
+	}
 	free(stack_exp);
+	free(stack_op);
 
 	if (!vm_ast) {
 		applog(LOG_ERR, "ERROR: ElasticPL Parser Failed!");
@@ -73,6 +82,21 @@ extern bool create_epl_vm(char *source) {
 	return true;
 }
 
+static bool delete_epl_vm() {
+	int i;
+
+	if (!vm_ast)
+		return true;
+
+	for (i = 0; i < vm_ast_cnt; i++) {
+		if (vm_ast[i]->svalue)
+			free(vm_ast[i]->svalue);
+	}
+	free(vm_ast);
+
+	return true;
+}
+
 // Temporary - For Debugging Only
 extern void dump_vm_ast(ast* root) {
 	char val[12];
@@ -82,7 +106,7 @@ extern void dump_vm_ast(ast* root) {
 		dump_vm_ast(root->right);
 
 		if (root->type == NODE_CONSTANT || root->type == NODE_VAR_CONST)
-			sprintf(val, "%d", root->value);
+			sprintf(val, "%ld", root->value);
 		else
 			strcpy(val, "");
 
@@ -93,8 +117,8 @@ extern void dump_vm_ast(ast* root) {
 extern char* get_node_str(NODE_TYPE node_type) {
 	switch (node_type) {
 	case NODE_CONSTANT:		return "";
-	case NODE_VAR_CONST:	return "m[]";
-	case NODE_VAR_EXP:		return "m[x]";
+	case NODE_VAR_CONST:	return "m/f[]";
+	case NODE_VAR_EXP:		return "m/f[x]";
 	case NODE_VERIFY:		return "verify";
 	case NODE_ASSIGN:		return "=";
 	case NODE_OR:			return "||";
@@ -108,7 +132,21 @@ extern char* get_node_str(NODE_TYPE node_type) {
 	case NODE_GT:			return ">";
 	case NODE_LE:			return "<=";
 	case NODE_GE:			return ">=";
+	case NODE_INCREMENT_R:	return "++";
+	case NODE_INCREMENT_L:	return "++";
+	case NODE_ADD_ASSIGN:	return "+=";
+	case NODE_SUB_ASSIGN:	return "-=";
+	case NODE_MUL_ASSIGN:	return "*=";
+	case NODE_DIV_ASSIGN:	return "/=";
+	case NODE_MOD_ASSIGN:	return "%=";
+	case NODE_LSHFT_ASSIGN:	return "<<=";
+	case NODE_RSHFT_ASSIGN:	return ">>=";
+	case NODE_AND_ASSIGN:	return "&=";
+	case NODE_XOR_ASSIGN:	return "^=";
+	case NODE_OR_ASSIGN:	return "|=";
 	case NODE_ADD:			return "+";
+	case NODE_DECREMENT_R:	return "--";
+	case NODE_DECREMENT_L:	return "--";
 	case NODE_SUB:			return "-";
 	case NODE_NEG:			return "'-'";
 	case NODE_MUL:			return "*";
@@ -126,7 +164,62 @@ extern char* get_node_str(NODE_TYPE node_type) {
 	case NODE_IF:			return "if";
 	case NODE_ELSE:			return "else";
 	case NODE_REPEAT:		return "repeat";
+	case NODE_BREAK:		return "break";
+	case NODE_CONTINUE:		return "continue";
 	case NODE_PARAM:		return "param";
+	case NODE_SIN:			return "sin";
+	case NODE_COS:			return "cos";
+	case NODE_TAN:			return "tan";
+	case NODE_SINH:			return "sinh";
+	case NODE_COSH:			return "cosh";
+	case NODE_TANH:			return "tanh";
+	case NODE_ASIN:			return "asin";
+	case NODE_ACOS:			return "acos";
+	case NODE_ATAN:			return "atan";
+	case NODE_ATAN2:		return "atan2";
+	case NODE_EXPNT:		return "exp";
+	case NODE_LOG:			return "log";
+	case NODE_LOG10:		return "log10";
+	case NODE_POW:			return "pow";
+	case NODE_SQRT:			return "sqrt";
+	case NODE_CEIL:			return "ceil";
+	case NODE_FLOOR:		return "floor";
+	case NODE_ABS:			return "abs";
+	case NODE_FABS:			return "fabs";
+	case NODE_FMOD:			return "fmod";
+	case NODE_GCD:			return "gcd";
+	case NODE_BI_CONST:		return "big_init_const";
+	case NODE_BI_EXPR:		return "big_init_expr";
+	case NODE_BI_COPY:		return "big_copy";
+	case NODE_BI_ADD:		return "big_add";
+	case NODE_BI_SUB:		return "big_sub";
+	case NODE_BI_MUL:		return "big_mul";
+	case NODE_BI_DIV:		return "big_div";
+	case NODE_BI_CEIL_DIV:	return "big_ceil_div";
+	case NODE_BI_FLOOR_DIV:	return "big_floor_div";
+	case NODE_BI_TRUNC_DIV:	return "big_truncate_div";
+	case NODE_BI_DIV_EXACT:	return "big_div_exact";
+	case NODE_BI_MOD:		return "big_mod";
+	case NODE_BI_NEG:		return "big_neg";
+	case NODE_BI_LSHIFT:	return "big_lshift";
+	case NODE_BI_RSHIFT:	return "big_rshift";
+	case NODE_BI_GCD:		return "big_gcd";
+	case NODE_BI_DIVISIBLE:	return "big_divisible";
+	case NODE_BI_CNGR_MOD_P:return "big_congruent_mod_p";
+	case NODE_BI_POW:		return "big_pow";
+	case NODE_BI_POW2:		return "big_pow2";
+	case NODE_BI_POW_MOD_P:	return "big_pow_mod_p";
+	case NODE_BI_POW2_MOD_P:return "big_pow2_mod_p";
+	case NODE_BI_COMP:		return "big_comp";
+	case NODE_BI_COMP_ABS:	return "big_comp_abs";
+	case NODE_BI_SIGN:		return "big_sign";
+	case NODE_BI_OR:		return "big_or";
+	case NODE_BI_AND:		return "big_and";
+	case NODE_BI_XOR:		return "big_xor";
+	case NODE_BI_OR_INT:	return "big_or_integer";
+	case NODE_BI_AND_INT:	return "big_and_integer";
+	case NODE_BI_XOR_INT:	return "big_xor_integer";
+	case NODE_BI_LEAST_32:	return "big_least_32bit";
 	case NODE_SHA256:		return "sha256";
 	case NODE_SHA512:		return "sha512";
 	case NODE_WHIRLPOOL:    return "whirlpool";
@@ -136,11 +229,6 @@ extern char* get_node_str(NODE_TYPE node_type) {
 	case NODE_SECP192K_PS:  return "SECP192K1PointSub";
 	case NODE_SECP192K_PSM: return "SECP192K1PointScalarMult";
 	case NODE_SECP192K_PN:  return "SECP192K1PointNegate";
-	case NODE_SECP192R_PTP: return "SECP192R1PrivToPub";
-	case NODE_SECP192R_PA:  return "SECP192R1PointAdd";
-	case NODE_SECP192R_PS:  return "SECP192R1PointSub";
-	case NODE_SECP192R_PSM: return "SECP192R1PointScalarMult";
-	case NODE_SECP192R_PN:  return "SECP192R1PointNegate";
 	case NODE_SECP224K_PTP: return "SECP224K1PrivToPub";
 	case NODE_SECP224K_PA:  return "SECP224K1PointAdd";
 	case NODE_SECP224K_PS:  return "SECP224K1PointSub";
@@ -156,11 +244,6 @@ extern char* get_node_str(NODE_TYPE node_type) {
 	case NODE_SECP256K_PS:  return "SECP256K1PointSub";
 	case NODE_SECP256K_PSM: return "SECP256K1PointScalarMult";
 	case NODE_SECP256K_PN:  return "SECP256K1PointNegate";
-	case NODE_SECP256R_PTP: return "SECP256R1PrivToPub";
-	case NODE_SECP256R_PA:  return "SECP256R1PointAdd";
-	case NODE_SECP256R_PS:  return "SECP256R1PointSub";
-	case NODE_SECP256R_PSM: return "SECP256R1PointScalarMult";
-	case NODE_SECP256R_PN:  return "SECP256R1PointNegate";
 	case NODE_SECP384R_PTP: return "SECP384R1PrivToPub";
 	case NODE_SECP384R_PA:  return "SECP384R1PointAdd";
 	case NODE_SECP384R_PS:  return "SECP384R1PointSub";
@@ -186,9 +269,7 @@ extern char* get_node_str(NODE_TYPE node_type) {
 	case NODE_PRM256V1_PS:  return "PRIME256V1PointSub";
 	case NODE_PRM256V1_PSM: return "PRIME256V1PointScalarMult";
 	case NODE_PRM256V1_PN:  return "PRIME256V1PointNegate";
-	case NODE_TIGER:        return "Tiger";
 	case NODE_RIPEMD160:    return "RIPEMD160";
-	case NODE_RIPEMD128:    return "RIPEMD128";
 	default: return "Unknown";
 	}
 }
