@@ -207,14 +207,6 @@ static bool validate_inputs(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 			return true;
 		break;
 
-	// Expressions w/ 1 Big Int & 2 - 32bit Ints
-	case NODE_BI_OR_INT:
-	case NODE_BI_AND_INT:
-	case NODE_BI_XOR_INT:
-		if (stack_exp[stack_exp_idx - 2]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 1]->data_type == DT_INT && stack_exp[stack_exp_idx]->data_type == DT_INT)
-			return true;
-		break;
-
 	// Expressions w/ 2 Big Ints
 	case NODE_BI_COPY:
 	case NODE_BI_DIVISIBLE:
@@ -234,6 +226,9 @@ static bool validate_inputs(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 	case NODE_BI_POW:
 	case NODE_BI_LSHIFT:
 	case NODE_BI_RSHIFT:
+	case NODE_BI_OR_INT:
+	case NODE_BI_AND_INT:
+	case NODE_BI_XOR_INT:
 		if (stack_exp[stack_exp_idx - 2]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 1]->data_type == DT_BIGINT && stack_exp[stack_exp_idx]->data_type == DT_INT)
 			return true;
 		break;
