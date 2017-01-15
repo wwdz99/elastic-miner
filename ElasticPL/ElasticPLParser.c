@@ -13,6 +13,7 @@
 #include "ElasticPL.h"
 #include "../miner.h"
 
+int num_exp = 0;
 
 static ast* add_exp(NODE_TYPE node_type, EXP_TYPE exp_type, int32_t value, double fvalue, unsigned char *svalue, int token_num, int line_num, DATA_TYPE data_type, ast* left, ast* right) {
 	ast* e = calloc(1, sizeof(ast));
@@ -55,6 +56,8 @@ static int pop_op() {
 
 static void push_exp(ast* exp) {
 	stack_exp[++stack_exp_idx] = exp;
+	if (!exp->end_stmnt)
+		num_exp++;
 }
 
 static ast* pop_exp() {
@@ -63,39 +66,26 @@ static ast* pop_exp() {
 	if (stack_exp_idx >= 0) {
 		exp = stack_exp[stack_exp_idx];
 		stack_exp[stack_exp_idx--] = NULL;
+		if (!exp->end_stmnt)
+			num_exp--;
 	}
 
 	return exp;
 }
 
 static bool validate_inputs(SOURCE_TOKEN *token, NODE_TYPE node_type) {
-	int i, num_exps = 0;
 
 	if ((token->inputs == 0) || (node_type == NODE_BLOCK))
 		return true;
 
-	// Count The Number Of Expressions On The Stack
-	for (i = stack_exp_idx; i >= 0; i--) {
-
-		// First Item For IF / ELSE / REPEAT Is A Statement
-		if ((i == stack_exp_idx) && ((node_type == NODE_IF) || (node_type == NODE_ELSE) || (node_type == NODE_REPEAT))) {
-			num_exps++;
-			continue;
+	// Validate That There Are Enough Expressions / Statements On The Stack
+	if ((node_type == NODE_IF) || (node_type == NODE_ELSE) || (node_type == NODE_REPEAT)) {
+		if (stack_exp_idx < 1) {
+			applog(LOG_ERR, "Syntax Error - Line: %d  Invalid number of inputs ", token->line_num);
+			return false;
 		}
-			
-		// Second Item For ELSE Is Also A Statement
-		if ((i == (stack_exp_idx - 1)) && (node_type == NODE_ELSE)) {
-			num_exps++;
-			continue;
-		}
-
-		if (stack_exp[i]->end_stmnt)
-			break;
-		num_exps++;
 	}
-
-	// Validate That There Are Enough Expressions On The Stack
-	if (num_exps < token->inputs) {
+	else if (num_exp < token->inputs) {
 		applog(LOG_ERR, "Syntax Error - Line: %d  Invalid number of inputs ", token->line_num);
 		return false;
 	}
@@ -695,14 +685,14 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 
 	exp = add_exp(node_type, token->exp, (int32_t)value, fvalue, svalue, token_num, token->line_num, token->data_type, left, right);
 
+	// Update The "End Statement" Indicator For If/Else/Repeat/Block
+	if ((exp->type == NODE_IF) || (exp->type == NODE_ELSE) || (exp->type == NODE_REPEAT) || (exp->type == NODE_BLOCK))
+		exp->end_stmnt = true;
+
 	if (exp)
 		push_exp(exp);
 	else
 		return false;
-
-	// Update The "End Statement" Indicator For If/Else/Repeat/Block
-	if ((stack_exp[stack_exp_idx]->type == NODE_IF) || (stack_exp[stack_exp_idx]->type == NODE_ELSE) || (stack_exp[stack_exp_idx]->type == NODE_REPEAT) || (stack_exp[stack_exp_idx]->type == NODE_BLOCK))
-		stack_exp[stack_exp_idx]->end_stmnt = true;
 
 	return true;
 }
@@ -754,6 +744,9 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 	int i, j, token_id;
 	ast *left, *right;
 	bool found;
+
+	// Used To Validate Inputs
+	num_exp = 0;
 
 	for (i = 0; i < token_list->num; i++) {
 
@@ -824,7 +817,10 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 
 		case TOKEN_END_STATEMENT:
 			// Flag Last Item On Stack As A Statement
-			stack_exp[stack_exp_idx]->end_stmnt = true;
+			if (!stack_exp[stack_exp_idx]->end_stmnt) {
+				stack_exp[stack_exp_idx]->end_stmnt = true;
+				num_exp--;
+			}
 			break;
 
 		case TOKEN_VAR_END:
