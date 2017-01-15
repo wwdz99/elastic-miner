@@ -342,7 +342,7 @@ static size_t all_data_cb(const void *ptr, size_t size, size_t nmemb, void *user
 	return len;
 }
 
-json_t* json_rpc_call(CURL *curl, const char *url, const char *userpass, char *req, int *curl_err) {
+json_t* json_rpc_call(CURL *curl, const char *url, const char *userpass, const char *req, int *curl_err) {
 	json_t *val = NULL;
 	int rc;
 	struct data_buffer all_data = { 0 };
@@ -369,15 +369,10 @@ json_t* json_rpc_call(CURL *curl, const char *url, const char *userpass, char *r
 		curl_easy_setopt(curl, CURLOPT_HTTPAUTH, CURLAUTH_BASIC);
 	}
 
-	rc = curl_easy_perform(curl);
-
-	if (opt_protocol) {
-		// Hide Passphrase
-		unsigned char *c = strstr(req, "secretPhrase=");
-		if (c) c[13] = 0;
+	if (opt_protocol)
 		applog(LOG_DEBUG, "DEBUG: RPC Request - %s", req);
-	}
 
+	rc = curl_easy_perform(curl);
 	if (rc) {
 		applog(LOG_ERR, "ERROR: Curl - '%s' (code=%d)", curl_err_str, rc);
 		*curl_err = rc;
