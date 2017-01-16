@@ -35,7 +35,7 @@ bool create_c_source() {
 	fprintf(f, "#include <gmp.h>\n");
 	if (use_elasticpl_math)
 		fprintf(f, "#include <math.h>\n");
-	if (use_elasticpl_crypto || use_elasticpl_bigint)
+	if (use_elasticpl_bigint)
 		fprintf(f, "#include \"../ElasticPL/ElasticPLFunctions.h\"\n");
 	fprintf(f, "\n");
 #ifdef _MSC_VER

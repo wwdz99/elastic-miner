@@ -63,7 +63,6 @@ extern __thread bool vm_bounty;
 
 extern bool use_elasticpl_math;
 extern bool use_elasticpl_bigint;
-extern bool use_elasticpl_crypto;
 
 extern bool opt_debug;
 extern bool opt_debug_epl;
