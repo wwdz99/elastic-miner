@@ -68,7 +68,7 @@ extern int32_t big_init_expr(mpz_t out, int32_t a, mpz_t *ptr, uint32_t *bi_size
 	// Reset The Big Int
 	mpz_clear(out);
 
-	mpz_set_si(out, a);
+	mpz_init_set_si(out, a);
 
 	*bi_size += ((uint32_t)out->_mp_size - old_sz);
 	if (*bi_size < 0) *bi_size = 0;
@@ -492,7 +492,7 @@ extern int32_t big_pow2_mod_p(mpz_t out, mpz_t a, mpz_t b, mpz_t *ptr, uint32_t 
 		mpz_set_ui(out, 0);
 	else {
 		mpz_t c;
-		mpz_set_ui(c, 2);
+		mpz_init_set_ui(c, 2);
 		mpz_powm(out, c, a, b);
 		mpz_clear(c);
 	}
@@ -614,7 +614,7 @@ extern int32_t big_or_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32_
 		mpz_set_ui(out, 0);
 	else {
 		mpz_t c;
-		mpz_set_ui(c, b);
+		mpz_init_set_ui(c, b);
 		mpz_ior(out, a, c);
 		mpz_clear(c);
 	}
@@ -640,7 +640,7 @@ extern int32_t big_and_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32
 		mpz_set_ui(out, 0);
 	else {
 		mpz_t c;
-		mpz_set_ui(c, b);
+		mpz_init_set_ui(c, b);
 		mpz_and(out, a, c);
 		mpz_clear(c);
 	}
@@ -666,7 +666,7 @@ extern int32_t big_xor_integer(mpz_t out, mpz_t a, int32_t b, mpz_t *ptr, uint32
 		mpz_set_ui(out, 0);
 	else {
 		mpz_t c;
-		mpz_set_ui(c, b);
+		mpz_init_set_ui(c, b);
 		mpz_xor(out, a, c);
 		mpz_clear(c);
 	}
