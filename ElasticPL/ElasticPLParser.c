@@ -213,11 +213,6 @@ static bool validate_inputs(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 	case NODE_BI_COMP:
 	case NODE_BI_COMP_ABS:
 	case NODE_BI_NEG:
-	case NODE_MD5:
-	case NODE_SHA256:
-	case NODE_SHA512:
-	case NODE_RIPEMD160:
-	case NODE_WHIRLPOOL:
 		if (stack_exp[stack_exp_idx - 1]->data_type == DT_BIGINT && stack_exp[stack_exp_idx]->data_type == DT_BIGINT)
 			return true;
 		break;
@@ -230,71 +225,6 @@ static bool validate_inputs(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 	case NODE_BI_AND_INT:
 	case NODE_BI_XOR_INT:
 		if (stack_exp[stack_exp_idx - 2]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 1]->data_type == DT_BIGINT && stack_exp[stack_exp_idx]->data_type == DT_INT)
-			return true;
-		break;
-
-	// Expressions w/ 2 Big Ints & Bool
-	case NODE_SECP192K_PTP:
-	case NODE_SECP224K_PTP:
-	case NODE_SECP224R_PTP:
-	case NODE_SECP256K_PTP:
-	case NODE_SECP384R_PTP:
-	case NODE_PRM192V1_PTP:
-	case NODE_PRM192V2_PTP:
-	case NODE_PRM192V3_PTP:
-	case NODE_PRM256V1_PTP:
-		if (stack_exp[stack_exp_idx - 2]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 1]->data_type == DT_BIGINT && stack_exp[stack_exp_idx]->data_type == DT_INT )
-			return true;
-		break;
-
-	// Expressions w/ Big Int - Bool - Big Int - Bool
-	case NODE_SECP192K_PN:
-	case NODE_SECP224K_PN:
-	case NODE_SECP224R_PN:
-	case NODE_SECP256K_PN:
-	case NODE_SECP384R_PN:
-	case NODE_PRM192V1_PN:
-	case NODE_PRM192V2_PN:
-	case NODE_PRM192V3_PN:
-	case NODE_PRM256V1_PN:
-		if (stack_exp[stack_exp_idx - 3]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 2]->data_type == DT_INT && stack_exp[stack_exp_idx - 1]->data_type == DT_BIGINT && stack_exp[stack_exp_idx]->data_type == DT_INT)
-			return true;
-		break;
-
-	// Expressions w/ Big Int - Bool - Big Int - Bool - Big Int - Bool
-	case NODE_SECP192K_PA:
-	case NODE_SECP192K_PS:
-	case NODE_SECP224K_PA:
-	case NODE_SECP224K_PS:
-	case NODE_SECP224R_PA:
-	case NODE_SECP224R_PS:
-	case NODE_SECP256K_PA:
-	case NODE_SECP256K_PS:
-	case NODE_SECP384R_PA:
-	case NODE_SECP384R_PS:
-	case NODE_PRM192V1_PA:
-	case NODE_PRM192V1_PS:
-	case NODE_PRM192V2_PA:
-	case NODE_PRM192V2_PS:
-	case NODE_PRM192V3_PA:
-	case NODE_PRM192V3_PS:
-	case NODE_PRM256V1_PA:
-	case NODE_PRM256V1_PS:
-		if (stack_exp[stack_exp_idx - 5]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 4]->data_type == DT_INT && stack_exp[stack_exp_idx - 3]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 2]->data_type == DT_INT && stack_exp[stack_exp_idx - 1]->data_type == DT_BIGINT && stack_exp[stack_exp_idx]->data_type == DT_INT)
-			return true;
-		break;
-
-	// Expressions w/ Big Int - Bool - Big Int - Bool - Big Int
-	case NODE_SECP192K_PSM:
-	case NODE_SECP224K_PSM:
-	case NODE_SECP224R_PSM:
-	case NODE_SECP256K_PSM:
-	case NODE_SECP384R_PSM:
-	case NODE_PRM192V1_PSM:
-	case NODE_PRM192V2_PSM:
-	case NODE_PRM192V3_PSM:
-	case NODE_PRM256V1_PSM:
-		if (stack_exp[stack_exp_idx - 4]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 3]->data_type == DT_INT && stack_exp[stack_exp_idx - 2]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 1]->data_type == DT_INT && stack_exp[stack_exp_idx]->data_type == DT_BIGINT)
 			return true;
 		break;
 
@@ -490,56 +420,6 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
 	case TOKEN_BI_AND_INT:		node_type = NODE_BI_AND_INT;	break;
 	case TOKEN_BI_XOR_INT:		node_type = NODE_BI_XOR_INT;	break;
 	case TOKEN_BI_LEAST_32:		node_type = NODE_BI_LEAST_32;	break;
-	case TOKEN_SHA256:			node_type = NODE_SHA256;		break;
-	case TOKEN_SHA512:			node_type = NODE_SHA512;		break;
-	case TOKEN_WHIRLPOOL:	   	node_type = NODE_WHIRLPOOL;		break;
-	case TOKEN_MD5:	           	node_type = NODE_MD5;			break;
-	case TOKEN_SECP192K_PTP:	node_type = NODE_SECP192K_PTP;	break;
-	case TOKEN_SECP192K_PA:	   	node_type = NODE_SECP192K_PA;	break;
-	case TOKEN_SECP192K_PS:	   	node_type = NODE_SECP192K_PS;	break;
-	case TOKEN_SECP192K_PSM:	node_type = NODE_SECP192K_PSM;	break;
-	case TOKEN_SECP192K_PN:	    node_type = NODE_SECP192K_PN;	break;
-	case TOKEN_SECP224K_PTP:	node_type = NODE_SECP224K_PTP;	break;
-	case TOKEN_SECP224K_PA:	    node_type = NODE_SECP224K_PA;	break;
-	case TOKEN_SECP224K_PS:	    node_type = NODE_SECP224K_PS;	break;
-	case TOKEN_SECP224K_PSM:	node_type = NODE_SECP224K_PSM;	break;
-	case TOKEN_SECP224K_PN:	    node_type = NODE_SECP224K_PN;	break;
-	case TOKEN_SECP224R_PTP:	node_type = NODE_SECP224R_PTP;	break;
-	case TOKEN_SECP224R_PA:	    node_type = NODE_SECP224R_PA;	break;
-	case TOKEN_SECP224R_PS:	    node_type = NODE_SECP224R_PS;	break;
-	case TOKEN_SECP224R_PSM:	node_type = NODE_SECP224R_PSM;	break;
-	case TOKEN_SECP224R_PN:	    node_type = NODE_SECP224R_PN;	break;
-	case TOKEN_SECP256K_PTP:	node_type = NODE_SECP256K_PTP;	break;
-	case TOKEN_SECP256K_PA:	    node_type = NODE_SECP256K_PA;	break;
-	case TOKEN_SECP256K_PS:	    node_type = NODE_SECP256K_PS;	break;
-	case TOKEN_SECP256K_PSM:	node_type = NODE_SECP256K_PSM;	break;
-	case TOKEN_SECP256K_PN:	    node_type = NODE_SECP256K_PN;	break;
-	case TOKEN_SECP384R_PTP:	node_type = NODE_SECP384R_PTP;	break;
-	case TOKEN_SECP384R_PA:	    node_type = NODE_SECP384R_PA;	break;
-	case TOKEN_SECP384R_PS:	    node_type = NODE_SECP384R_PS;	break;
-	case TOKEN_SECP384R_PSM:	node_type = NODE_SECP384R_PSM;	break;
-	case TOKEN_SECP384R_PN:	    node_type = NODE_SECP384R_PN;	break;
-	case TOKEN_PRM192V1_PTP:	node_type = NODE_PRM192V1_PTP;	break;
-	case TOKEN_PRM192V1_PA:	    node_type = NODE_PRM192V1_PA;	break;
-	case TOKEN_PRM192V1_PS:	    node_type = NODE_PRM192V1_PS;	break;
-	case TOKEN_PRM192V1_PSM:	node_type = NODE_PRM192V1_PSM;	break;
-	case TOKEN_PRM192V1_PN:	    node_type = NODE_PRM192V1_PN;	break;
-	case TOKEN_PRM192V2_PTP:	node_type = NODE_PRM192V2_PTP;	break;
-	case TOKEN_PRM192V2_PA:	    node_type = NODE_PRM192V2_PA;	break;
-	case TOKEN_PRM192V2_PS:	    node_type = NODE_PRM192V2_PS;	break;
-	case TOKEN_PRM192V2_PSM:	node_type = NODE_PRM192V2_PSM;	break;
-	case TOKEN_PRM192V2_PN:	    node_type = NODE_PRM192V2_PN;	break;
-	case TOKEN_PRM192V3_PTP:	node_type = NODE_PRM192V3_PTP;	break;
-	case TOKEN_PRM192V3_PA:	    node_type = NODE_PRM192V3_PA;	break;
-	case TOKEN_PRM192V3_PS:	    node_type = NODE_PRM192V3_PS;	break;
-	case TOKEN_PRM192V3_PSM:	node_type = NODE_PRM192V3_PSM;	break;
-	case TOKEN_PRM192V3_PN:	    node_type = NODE_PRM192V3_PN;	break;
-	case TOKEN_PRM256V1_PTP:	node_type = NODE_PRM256V1_PTP;	break;
-	case TOKEN_PRM256V1_PA:	    node_type = NODE_PRM256V1_PA;	break;
-	case TOKEN_PRM256V1_PS:	    node_type = NODE_PRM256V1_PS;	break;
-	case TOKEN_PRM256V1_PSM:	node_type = NODE_PRM256V1_PSM;	break;
-	case TOKEN_PRM256V1_PN:	    node_type = NODE_PRM256V1_PN;	break;
-	case TOKEN_RIPEMD160:	    node_type = NODE_RIPEMD160;		break;
 	default: return NODE_ERROR;
 	}
 
