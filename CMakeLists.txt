@@ -233,12 +233,10 @@ set(SRC_LIST	xel_miner.c
 				./ElasticPL/ElasticPLTokenManager.c
 				./ElasticPL/ElasticPLParser.c
 				./ElasticPL/ElasticPLInterpreter.c
-				./ElasticPL/ElasticPLCrypto.c
 				./ElasticPL/ElasticPLMath.c
 				./ElasticPL/ElasticPLConvert.c
 				./crypto/curve25519-donna.c
 				./crypto/sha2.c
-				./crypto/whirlpool.c
 )
 			
 set(TARGET_NAME xel_miner)
