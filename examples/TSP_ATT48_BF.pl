@@ -12,7 +12,7 @@
  *   Initialization Vars: m[20] - m[29]
  *   Initialization Data: m[60000] - m[60100]
  *   Cost Matrix:         m[10000] - m[59000]
- *   Program Vars:        m[1000] - m[9999]
+ *   Path Vars:           m[1000] - m[9999]
  *
  *****************************************************************************/
 
@@ -149,4 +149,27 @@ repeat(m[20]) {
 	m[25]++;	// Move To Next Matrix Element
 }
 
-verify (1==1);
+// Initialize The Path
+m[30] = 50; // Index of Path
+m[31] = 0;  // Counter
+repeat(m[20]) {
+	m[m[30] + m[31]] = m[31]++;
+}
+
+// Randomize The Path
+repeat(m[20]) {
+	m[32] = m[20] - m[31]--;   // Current index
+	m[33] = abs(m[0]) % m[32]; // Use m[0] for random input
+	m[m[30] + m[32]] = m[m[30] + m[33]];
+	m[m[30] + m[33]] = m[32];
+}
+
+// Sum Total Distance
+m[31] = 0;  // Counter
+m[200] = 0; // Total Distance
+repeat(m[20]) {
+	m[200] += m[(m[22] + (m[31] * m[20]) + (m[m[30] + m[31]]))];
+	m[31]++;
+}
+
+verify (m[200] < 10000);
