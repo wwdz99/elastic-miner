@@ -146,7 +146,7 @@ repeat(m[20]) {
 	
 	m[23] += 2;	// Increment Point A
 	m[24] = m[21];	// Reset Point B
-	m[25]++;	// Move To Next Matrix Row (i.e m[1047] moves to m[1100])
+	m[25]++;	// Move To Next Matrix Element
 }
 
 verify (1==1);
