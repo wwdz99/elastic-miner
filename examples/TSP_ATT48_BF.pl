@@ -127,7 +127,9 @@ repeat(m[20]) {
 	repeat(m[20]) {
 
 		if(m[24] == m[23]) {
-			m[24] += 2; // Move To Next Point B
+			m[24] += 2;   // Move To Next Point B
+			m[m[25]] = 0; // Distance To Self Is Zero
+			m[25]++;      // Move To Next Matrix Element
 			continue;
 		}
 			
@@ -135,7 +137,8 @@ repeat(m[20]) {
 		m[27] = m[m[24] + 1] - m[m[23] + 1];			// yd
 		f[0] = sqrt(((m[26]*m[26]) + (m[27]*m[27])) / 10.0);	// rij
 		m[28] = (f[0] + 0.5);					// tij - equivalent of nint function
-		if (m[28] < f[0])
+		f[1] = m[28];
+		if (f[1] < f[0])
 			m[m[25]] = m[28] + 1;				// dij
 		else
 			m[m[25]] = m[28];				// dij
@@ -146,7 +149,6 @@ repeat(m[20]) {
 	
 	m[23] += 2;	// Increment Point A
 	m[24] = m[21];	// Reset Point B
-	m[25]++;	// Move To Next Matrix Element
 }
 
 // Initialize The Path
@@ -157,19 +159,26 @@ repeat(m[20]) {
 }
 
 // Randomize The Path
-repeat(m[20]) {
-	m[32] = m[20] - m[31]--;   // Current index
-	m[33] = abs(m[0]) % m[32]; // Use m[0] for random input
-	m[m[30] + m[32]] = m[m[30] + m[33]];
-	m[m[30] + m[33]] = m[32];
+m[m[30]] = 0;      // First Value Always Zero
+m[m[30] + m[20]];  // Last Value Always Zero
+m[31] = m[20] - 1; // Start With Final Point In Path
+repeat(m[31]) {
+	m[32] = (abs(m[0]) % m[31]) + 1; // Use m[0] for random input
+	m[33] = m[m[30] + m[32]];
+	m[m[30] + m[32]] = m[m[30] + m[31]];
+	m[m[30] + m[31]] = m[33];
+	m[31]--;
 }
 
 // Sum Total Distance
 m[31] = 0;  // Counter
 m[200] = 0; // Total Distance
 repeat(m[20]) {
-	m[200] += m[(m[22] + (m[31] * m[20]) + (m[m[30] + m[31]]))];
+	m[34] = m[m[30] + m[31]];     // Matrix Row
+	m[35] = m[m[30] + m[31] + 1]; // Matrix Column
+	m[200] += m[(m[22] + (m[34] * m[20]) + m[35])];
 	m[31]++;
 }
 
-verify (m[200] < 10000);
+// Best Solution To Date = 10628
+verify (m[200] < 11000); 
