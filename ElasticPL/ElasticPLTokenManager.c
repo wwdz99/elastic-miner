@@ -433,7 +433,7 @@ extern bool get_token_list(char *str, SOURCE_TOKEN_LIST *token_list) {
 			if (epl_token[token_id].type == TOKEN_COMMENT) {
 				cmnt = strstr(&str[idx], "\n");
 				if (cmnt)
-					idx += &cmnt[0] - &str[idx];
+					idx += &cmnt[0] - &str[idx] + 1;
 				line_num++;
 				continue;
 			}

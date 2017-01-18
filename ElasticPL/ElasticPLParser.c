@@ -580,27 +580,23 @@ static bool validate_exp_list() {
 		return false;
 	}
 
-	for (i = 0; i < stack_exp_idx; i++) {
-		if ((stack_exp[i]->type == NODE_REPEAT) && (stack_exp[i]->right->type != NODE_BLOCK)) {
-			applog(LOG_ERR, "Syntax Error - Line: %d Repeat Statement Missing {}", stack_exp[i]->line_num);
-			return false;
-		}
-	}
-
-	for (i = 0; i < stack_exp_idx; i++) {
-		if (stack_exp[i]->type == NODE_VERIFY) {
-			applog(LOG_ERR, "Syntax Error - Line: %d Invalid Verify Statement", stack_exp[i]->line_num);
-			return false;
-		}
-	}
-
 	if (stack_exp[stack_exp_idx]->type != NODE_VERIFY) {
 		applog(LOG_ERR, "Syntax Error - Missing Verify Statement");
 		return false;
 	}
 
 	for (i = 0; i < stack_exp_idx; i++) {
-		if (stack_exp[i]->exp != EXP_STATEMENT && stack_exp[i]->exp != EXP_FUNCTION && stack_exp[i]->end_stmnt == false) {
+		if ((stack_exp[i]->type == NODE_REPEAT) && (stack_exp[i]->right->type != NODE_BLOCK)) {
+			applog(LOG_ERR, "Syntax Error - Line: %d Repeat Statement Missing {}", stack_exp[i]->line_num);
+			return false;
+		}
+
+		if (stack_exp[i]->type == NODE_VERIFY) {
+			applog(LOG_ERR, "Syntax Error - Line: %d Invalid Verify Statement", stack_exp[i]->line_num);
+			return false;
+		}
+
+		if (!stack_exp[i]->end_stmnt) {
 			applog(LOG_ERR, "Syntax Error - Line: %d  Invalid Statement", stack_exp[i]->line_num);
 			return false;
 		}
