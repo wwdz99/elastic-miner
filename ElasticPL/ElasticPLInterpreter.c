@@ -158,7 +158,7 @@ extern int interpret_ast() {
 	vm_continue = false;
 
 	for (i = 0; i < vm_ast_cnt; i++) {
-		if (!interpret(vm_ast[i]))
+		if (!interpret(vm_ast[i]) && (vm_ast[i]->type != NODE_VAR_CONST) && (vm_ast[i]->type != NODE_VAR_EXP) && (vm_ast[i]->type != NODE_CONSTANT))
 			return 0;
 	}
 
@@ -233,12 +233,14 @@ static double interpret(ast* exp) {
 			lval = (int32_t)interpret(exp->left);
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
-			return lval;
+			if (exp->data_type == DT_FLOAT)
+				return vm_f[lval];
+			return vm_m[lval];
 		case NODE_ASSIGN:
 			if (exp->left->type == NODE_VAR_CONST)
 				lval = exp->left->value;
 			else
-				lval = (int32_t)interpret(exp->left);
+				lval = (int32_t)interpret(exp->left->left);
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
 
