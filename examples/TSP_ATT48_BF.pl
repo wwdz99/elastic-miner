@@ -137,8 +137,7 @@ repeat(m[20]) {
 		m[27] = m[m[24] + 1] - m[m[23] + 1];			// yd
 		f[0] = sqrt(((m[26]*m[26]) + (m[27]*m[27])) / 10.0);	// rij
 		m[28] = (f[0] + 0.5);					// tij - equivalent of nint function
-		f[1] = m[28];
-		if (f[1] < f[0])
+		if (m[28] < f[0])
 			m[m[25]] = m[28] + 1;				// dij
 		else
 			m[m[25]] = m[28];				// dij
@@ -160,9 +159,9 @@ repeat(m[20]) {
 
 // Randomize The Path
 m[m[30]] = 0;      // First Value Always Zero
-m[m[30] + m[20]];  // Last Value Always Zero
+m[m[30] + m[20]] = 0;  // Last Value Always Zero
 m[31] = m[20] - 1; // Start With Final Point In Path
-repeat(m[31]) {
+repeat(m[20] - 1) {
 	m[32] = (abs(m[0]) % m[31]) + 1; // Use m[0] for random input
 	m[33] = m[m[30] + m[32]];
 	m[m[30] + m[32]] = m[m[30] + m[31]];
