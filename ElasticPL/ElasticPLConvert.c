@@ -461,7 +461,7 @@ static char* convert(ast* exp) {
 			if (l_is_float && !r_is_float)
 				sprintf(result, "(%s == (double)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "(%s == (int)(%s))", lval, rval);
+				sprintf(result, "((double)(%s) == %s)", lval, rval);
 			else
 				sprintf(result, "(%s == %s)", lval, rval);
 			exp->is_float = false;
@@ -470,7 +470,7 @@ static char* convert(ast* exp) {
 			if (l_is_float && !r_is_float)
 				sprintf(result, "(%s != (double)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "(%s != (int)(%s))", lval, rval);
+				sprintf(result, "((double)(%s) != %s)", lval, rval);
 			else
 				sprintf(result, "(%s != %s)", lval, rval);
 			exp->is_float = false;
@@ -479,7 +479,7 @@ static char* convert(ast* exp) {
 			if (l_is_float && !r_is_float)
 				sprintf(result, "(%s > (double)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "(%s > (int)(%s))", lval, rval);
+				sprintf(result, "((double)(%s) > %s)", lval, rval);
 			else
 				sprintf(result, "(%s > %s)", lval, rval);
 			exp->is_float = false;
@@ -488,7 +488,7 @@ static char* convert(ast* exp) {
 			if (l_is_float && !r_is_float)
 				sprintf(result, "(%s < (double)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "(%s < (int)(%s))", lval, rval);
+				sprintf(result, "((double)(%s) < %s)", lval, rval);
 			else
 				sprintf(result, "(%s < %s)", lval, rval);
 			exp->is_float = false;
@@ -497,7 +497,7 @@ static char* convert(ast* exp) {
 			if (l_is_float && !r_is_float)
 				sprintf(result, "(%s >= (double)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "(%s >= (int)(%s))", lval, rval);
+				sprintf(result, "((double)(%s) >= %s)", lval, rval);
 			else
 				sprintf(result, "(%s >= %s)", lval, rval);
 			exp->is_float = false;
@@ -506,7 +506,7 @@ static char* convert(ast* exp) {
 			if (l_is_float && !r_is_float)
 				sprintf(result, "(%s <= (double)(%s))", lval, rval);
 			else if (!l_is_float && r_is_float)
-				sprintf(result, "(%s <= (int)(%s))", lval, rval);
+				sprintf(result, "((double)(%s) <= %s)", lval, rval);
 			else
 				sprintf(result, "(%s <= %s)", lval, rval);
 			exp->is_float = false;
