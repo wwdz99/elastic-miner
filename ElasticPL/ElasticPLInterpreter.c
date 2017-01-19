@@ -303,7 +303,7 @@ static double interpret(ast* exp) {
 			if (exp->left->type == NODE_VAR_CONST)
 				lval = exp->left->value;
 			else
-				lval = (int32_t)interpret(exp->left);
+				lval = (int32_t)interpret(exp->left->left);
 
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
@@ -321,7 +321,7 @@ static double interpret(ast* exp) {
 			if (exp->left->type == NODE_VAR_CONST)
 				lval = exp->left->value;
 			else
-				lval = (int32_t)interpret(exp->left);
+				lval = (int32_t)interpret(exp->left->left);
 
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
@@ -339,7 +339,7 @@ static double interpret(ast* exp) {
 			if (exp->left->type == NODE_VAR_CONST)
 				lval = exp->left->value;
 			else
-				lval = (int32_t)interpret(exp->left);
+				lval = (int32_t)interpret(exp->left->left);
 
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
@@ -357,7 +357,7 @@ static double interpret(ast* exp) {
 			if (exp->left->type == NODE_VAR_CONST)
 				lval = exp->left->value;
 			else
-				lval = (int32_t)interpret(exp->left);
+				lval = (int32_t)interpret(exp->left->left);
 
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
@@ -377,7 +377,7 @@ static double interpret(ast* exp) {
 			if (exp->left->type == NODE_VAR_CONST)
 				lval = exp->left->value;
 			else
-				lval = (int32_t)interpret(exp->left);
+				lval = (int32_t)interpret(exp->left->left);
 
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
@@ -397,7 +397,7 @@ static double interpret(ast* exp) {
 			if (exp->left->type == NODE_VAR_CONST)
 				lval = exp->left->value;
 			else
-				lval = (int32_t)interpret(exp->left);
+				lval = (int32_t)interpret(exp->left->left);
 
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
@@ -414,7 +414,7 @@ static double interpret(ast* exp) {
 			if (exp->left->type == NODE_VAR_CONST)
 				lval = exp->left->value;
 			else
-				lval = (int32_t)interpret(exp->left);
+				lval = (int32_t)interpret(exp->left->left);
 
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
@@ -431,7 +431,7 @@ static double interpret(ast* exp) {
 			if (exp->left->type == NODE_VAR_CONST)
 				lval = exp->left->value;
 			else
-				lval = (int32_t)interpret(exp->left);
+				lval = (int32_t)interpret(exp->left->left);
 
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
@@ -448,7 +448,7 @@ static double interpret(ast* exp) {
 			if (exp->left->type == NODE_VAR_CONST)
 				lval = exp->left->value;
 			else
-				lval = (int32_t)interpret(exp->left);
+				lval = (int32_t)interpret(exp->left->left);
 
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
@@ -465,7 +465,7 @@ static double interpret(ast* exp) {
 			if (exp->left->type == NODE_VAR_CONST)
 				lval = exp->left->value;
 			else
-				lval = (int32_t)interpret(exp->left);
+				lval = (int32_t)interpret(exp->left->left);
 
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
@@ -482,7 +482,7 @@ static double interpret(ast* exp) {
 			if (exp->left->type == NODE_VAR_CONST)
 				lval = exp->left->value;
 			else
-				lval = (int32_t)interpret(exp->left);
+				lval = (int32_t)interpret(exp->left->left);
 
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
@@ -499,7 +499,7 @@ static double interpret(ast* exp) {
 			if (exp->left->type == NODE_VAR_CONST)
 				lval = exp->left->value;
 			else
-				lval = (int32_t)interpret(exp->left);
+				lval = (int32_t)interpret(exp->left->left);
 
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
@@ -516,7 +516,7 @@ static double interpret(ast* exp) {
 			if (exp->left->type == NODE_VAR_CONST)
 				lval = exp->left->value;
 			else
-				lval = (int32_t)interpret(exp->left);
+				lval = (int32_t)interpret(exp->left->left);
 
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
@@ -533,7 +533,7 @@ static double interpret(ast* exp) {
 			if (exp->left->type == NODE_VAR_CONST)
 				lval = exp->left->value;
 			else
-				lval = (int32_t)interpret(exp->left);
+				lval = (int32_t)interpret(exp->left->left);
 
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
