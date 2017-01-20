@@ -2,124 +2,132 @@
  *
  * Travelling Salesman Problem - Demo 2
  *
- * Name: TSP_ATT48_BF
- * Desc: 48 Captitals Of The US
- *       Using Pseudo-Euclidean distance
- *       Simulated Annealing Solution
+ * Name:	TSP_ATT48_BF
+ * Desc:	48 Captitals of the US
+ * Diminsions:	48
+ * Weight Type:	ATT - Pseudo-Euclidean distance
+ * Algorithm:	Simulated Annealing Solution
  *
  * Memory Map:
- *   Random Inputs:       m[0] - m[11]
- *   Initialization Vars: m[20] - m[29]
- *   Initialization Data: m[60000] - m[60100]
- *   Cost Matrix:         m[10000] - m[59000]
- *   Path Vars:           m[1000] - m[9999]
+ *   Random Inputs:		m[0]  - m[11]
+ *   Cost Matrix Vars:		m[20] - m[29]
+ *   Randomize Path Vars:	m[30] - m[39]
+ *   Algorithm Variables:	m[40] - m[100]
+ *   Calculated Distance:	m[999]
+ *   Path Data:			m[1000] - m[3999]
+ *   Point Data:		m[4000] - m[9999]
+ *   Cost Matrix:         	m[10000] - m[63999]
  *
  *****************************************************************************/
 
-// Initialize TSP Point Data
-m[60000] = 6734;
-m[60001] = 1453;
-m[60002] = 2233;
-m[60003] = 10;
-m[60004] = 5530;
-m[60005] = 1424;
-m[60006] = 401;
-m[60007] = 841;
-m[60008] = 3082;
-m[60009] = 1644;
-m[60010] = 7608;
-m[60011] = 4458;
-m[60012] = 7573;
-m[60013] = 3716;
-m[60014] = 7265;
-m[60015] = 1268;
-m[60016] = 6898;
-m[60017] = 1885;
-m[60018] = 1112;
-m[60019] = 2049;
-m[60020] = 5468;
-m[60021] = 2606;
-m[60022] = 5989;
-m[60023] = 2873;
-m[60024] = 4706;
-m[60025] = 2674;
-m[60026] = 4612;
-m[60027] = 2035;
-m[60028] = 6347;
-m[60029] = 2683;
-m[60030] = 6107;
-m[60031] = 669;
-m[60032] = 7611;
-m[60033] = 5184;
-m[60034] = 7462;
-m[60035] = 3590;
-m[60036] = 7732;
-m[60037] = 4723;
-m[60038] = 5900;
-m[60039] = 3561;
-m[60040] = 4483;
-m[60041] = 3369;
-m[60042] = 6101;
-m[60043] = 1110;
-m[60044] = 5199;
-m[60045] = 2182;
-m[60046] = 1633;
-m[60047] = 2809;
-m[60048] = 4307;
-m[60049] = 2322;
-m[60050] = 675;
-m[60051] = 1006;
-m[60052] = 7555;
-m[60053] = 4819;
-m[60054] = 7541;
-m[60055] = 3981;
-m[60056] = 3177;
-m[60057] = 756;
-m[60058] = 7352;
-m[60059] = 4506;
-m[60060] = 7545;
-m[60061] = 2801;
-m[60062] = 3245;
-m[60063] = 3305;
-m[60064] = 6426;
-m[60065] = 3173;
-m[60066] = 4608;
-m[60067] = 1198;
-m[60068] = 23;
-m[60069] = 2216;
-m[60070] = 7248;
-m[60071] = 3779;
-m[60072] = 7762;
-m[60073] = 4595;
-m[60074] = 7392;
-m[60075] = 2244;
-m[60076] = 3484;
-m[60077] = 2829;
-m[60078] = 6271;
-m[60079] = 2135;
-m[60080] = 4985;
-m[60081] = 140;
-m[60082] = 1916;
-m[60083] = 1569;
-m[60084] = 7280;
-m[60085] = 4899;
-m[60086] = 7509;
-m[60087] = 3239;
-m[60088] = 10;
-m[60089] = 2676;
-m[60090] = 6807;
-m[60091] = 2993;
-m[60092] = 5185;
-m[60093] = 3258;
-m[60094] = 3023;
-m[60095] = 1942;
-
 m[20] = 48;	// Number of TSP Points
-m[21] = 60000; 	// Starting index of Point Data
+m[21] = 4000; 	// Starting index of Point Data
 m[22] = 10000;	// Starting index of Cost Matrix
 m[23] = m[21];	// Index of x[i] - Point A
 m[24] = m[21];  // Index of y[i] - Point B
 m[25] = m[22];	// Index of dij - Cost Matrix Element
+m[26] = 0;	// xd - X Distance
+m[27] = 0;	// yd - Y Distance
+m[28] = 0;	// tij - Rounded Distance Between A & B
+f[0]  = 0;	// rij - Pseudo-Euclidean Distance Between A & B
+
+// Initialize TSP Point Data
+m[m[21] + 0] = 6734;
+m[m[21] + 1] = 1453;
+m[m[21] + 2] = 2233;
+m[m[21] + 3] = 10;
+m[m[21] + 4] = 5530;
+m[m[21] + 5] = 1424;
+m[m[21] + 6] = 401;
+m[m[21] + 7] = 841;
+m[m[21] + 8] = 3082;
+m[m[21] + 9] = 1644;
+m[m[21] + 10] = 7608;
+m[m[21] + 11] = 4458;
+m[m[21] + 12] = 7573;
+m[m[21] + 13] = 3716;
+m[m[21] + 14] = 7265;
+m[m[21] + 15] = 1268;
+m[m[21] + 16] = 6898;
+m[m[21] + 17] = 1885;
+m[m[21] + 18] = 1112;
+m[m[21] + 19] = 2049;
+m[m[21] + 20] = 5468;
+m[m[21] + 21] = 2606;
+m[m[21] + 22] = 5989;
+m[m[21] + 23] = 2873;
+m[m[21] + 24] = 4706;
+m[m[21] + 25] = 2674;
+m[m[21] + 26] = 4612;
+m[m[21] + 27] = 2035;
+m[m[21] + 28] = 6347;
+m[m[21] + 29] = 2683;
+m[m[21] + 30] = 6107;
+m[m[21] + 31] = 669;
+m[m[21] + 32] = 7611;
+m[m[21] + 33] = 5184;
+m[m[21] + 34] = 7462;
+m[m[21] + 35] = 3590;
+m[m[21] + 36] = 7732;
+m[m[21] + 37] = 4723;
+m[m[21] + 38] = 5900;
+m[m[21] + 39] = 3561;
+m[m[21] + 40] = 4483;
+m[m[21] + 41] = 3369;
+m[m[21] + 42] = 6101;
+m[m[21] + 43] = 1110;
+m[m[21] + 44] = 5199;
+m[m[21] + 45] = 2182;
+m[m[21] + 46] = 1633;
+m[m[21] + 47] = 2809;
+m[m[21] + 48] = 4307;
+m[m[21] + 49] = 2322;
+m[m[21] + 50] = 675;
+m[m[21] + 51] = 1006;
+m[m[21] + 52] = 7555;
+m[m[21] + 53] = 4819;
+m[m[21] + 54] = 7541;
+m[m[21] + 55] = 3981;
+m[m[21] + 56] = 3177;
+m[m[21] + 57] = 756;
+m[m[21] + 58] = 7352;
+m[m[21] + 59] = 4506;
+m[m[21] + 60] = 7545;
+m[m[21] + 61] = 2801;
+m[m[21] + 62] = 3245;
+m[m[21] + 63] = 3305;
+m[m[21] + 64] = 6426;
+m[m[21] + 65] = 3173;
+m[m[21] + 66] = 4608;
+m[m[21] + 67] = 1198;
+m[m[21] + 68] = 23;
+m[m[21] + 69] = 2216;
+m[m[21] + 70] = 7248;
+m[m[21] + 71] = 3779;
+m[m[21] + 72] = 7762;
+m[m[21] + 73] = 4595;
+m[m[21] + 74] = 7392;
+m[m[21] + 75] = 2244;
+m[m[21] + 76] = 3484;
+m[m[21] + 77] = 2829;
+m[m[21] + 78] = 6271;
+m[m[21] + 79] = 2135;
+m[m[21] + 80] = 4985;
+m[m[21] + 81] = 140;
+m[m[21] + 82] = 1916;
+m[m[21] + 83] = 1569;
+m[m[21] + 84] = 7280;
+m[m[21] + 85] = 4899;
+m[m[21] + 86] = 7509;
+m[m[21] + 87] = 3239;
+m[m[21] + 88] = 10;
+m[m[21] + 89] = 2676;
+m[m[21] + 90] = 6807;
+m[m[21] + 91] = 2993;
+m[m[21] + 92] = 5185;
+m[m[21] + 93] = 3258;
+m[m[21] + 94] = 3023;
+m[m[21] + 95] = 1942;
 
 // Create TSP Cost Matrix
 repeat(m[20]) {
@@ -151,16 +159,16 @@ repeat(m[20]) {
 }
 
 // Initialize The Path
-m[30] = 50; // Index of Path
+m[30] = 1000; // Index of Path
 m[31] = 0;  // Counter
 repeat(m[20]) {
 	m[m[30] + m[31]] = m[31]++;
 }
 
 // Randomize The Path
-m[m[30]] = 0;      // First Value Always Zero
-m[m[30] + m[20]] = 0;  // Last Value Always Zero
-m[31] = m[20] - 1; // Start With Final Point In Path
+m[m[30]] = 0;		// Start At Point Zero
+m[m[30] + m[20]] = 0;	// End At Point Zero
+m[31] = m[20] - 1;	// Counter - Start At Final Point In Path
 repeat(m[20] - 1) {
 	m[32] = (abs(m[0]) % m[31]) + 1; // Use m[0] for random input
 	m[33] = m[m[30] + m[32]];
@@ -170,78 +178,115 @@ repeat(m[20] - 1) {
 }
 
 // Simulated Annealing Variables
-m[40] = 10000; // Max Num Iterations
-m[41] = 0;     // Random City 1
-m[42] = 0;     // Random City 2
-m[43] = 0;     // Temp Variable To Swap City
-m[44] = 0;     // Current Distance
-m[45] = 0;     // New Distance
-m[46] = abs(m[1]); // Random #1
-m[47] = abs(m[2]); // Random #2
-f[1] = 10000.0;// Starting Temp
-f[2] = 0.003;  // Cooling Rate
-f[3] = 0.1;    // Min Temp
-f[4] = 0.0;    // Acceptance Probability
-f[5] = 0.0;    // Random Number
+m[40] = 20000;	// Max Num Iterations
+m[41] = 0;	// Random Point A
+m[42] = 0;	// Random Point B
+m[43] = 0;	// Tmp Variable To Swap Points
+m[44] = 0;	// Tmp Variable To Swap Points
+m[45] = 0;	// Tmp Variable To Swap Points
+m[46] = 0;	// Tmp Variable To Swap Points
+m[47] = abs(m[1]); // Random # For Point A
+m[48] = abs(m[2]); // Random # For Point B
+m[49] = 0;	// Iteration Number
+m[50] = 0;	// Current Distance
+m[51] = 0;	// New Distance
+f[1] = 4000.0;	// S Curve Amplitude - Starting Temp
+f[2] = 3000.0;	// S Curve Width - Cooling Rate
+f[3] = 0.0;	// Current Temp
+f[4] = 0.0;	// Acceptance Probability
+f[5] = 0.0;	// Random # For Accepting Longer Path
 
 // Simulated Annealing Logic
 repeat(m[40]) {
-	
-	// Update Temp
-	f[1] *= 1-f[2];
-	if (f[1] <= f[3])
-		break;
+
+	m[49]++;
+
+	// Update Temperature (using an S Curve)
+	f[6] = exp(m[49] / f[2]);
+	f[3] = f[1] * (1 / (1 + f[6]));
+//	f[3] = f[1] * (1 / (1 + exp(m[49] / f[2])));
 
 	// Sum Current Distance
 	m[31] = 0; // Counter
-	m[44] = 0; // Total Distance
+	m[50] = 0; // Total Distance
 	repeat(m[20]) {
 		m[34] = m[m[30] + m[31]];     // Matrix Row
 		m[35] = m[m[30] + m[31] + 1]; // Matrix Column
-		m[44] += m[(m[22] + (m[34] * m[20]) + m[35])];
+		m[50] += m[(m[22] + (m[34] * m[20]) + m[35])];
 		m[31]++;
 	}
 	
-	// Randomize The Numbers
-	m[46] = abs((m[46] <<< 1) ^ m[2]);
+	// Randomize
 	m[47] = abs((m[47] <<< 1) ^ m[2]);
+	m[48] = abs((m[48] <<< 1) ^ m[2]);
 	
-	// Pick Random Cities & Swap
-	m[41] = m[46] % m[20];               // Random City 1
-	m[42] = m[47] % m[20];               // Random City 2
-	m[43] = m[m[30] + m[41]];            // City 1 Number
-	m[m[30] + m[41]] = m[m[30] + m[42]]; // Swap City 1
-	m[m[30] + m[42]] = m[43];            // Swap City 2
+	// Pick Random Cities
+	m[41] = m[47] % m[20];               // Random Point A
+	m[42] = m[48] % m[20];               // Random Point B
+
+	// Swap Point A & B If Necessary
+	if (m[42] < m[41]) {
+		m[43] = m[41];
+		m[41] = m[42];
+		m[42] = m[43];
+	}
+
+	// Reverse Order Of Points Between A & B
+	m[43] = m[42] - m[41];
+	m[44] = m[41];
+	m[45] = m[42];
+	repeat(m[43]) {
+		m[46] = m[m[30] + m[44]];		// Point A Value
+		m[m[30] + m[44]] = m[m[30] + m[45]];	// Move Point B Value To A
+		m[m[30] + m[45]] = m[46];		// Move Point A Value To B
+		m[44]++;
+		m[45]--;
+		if(m[44] >= m[45])
+			break;	
+	}
 
 	// Sum New Distance
 	m[31] = 0; // Counter
-	m[45] = 0; // Total Distance
+	m[51] = 0; // Total Distance
 	repeat(m[20]) {
 		m[34] = m[m[30] + m[31]];     // Matrix Row
 		m[35] = m[m[30] + m[31] + 1]; // Matrix Column
-		m[45] += m[(m[22] + (m[34] * m[20]) + m[35])];
+		m[51] += m[(m[22] + (m[34] * m[20]) + m[35])];
 		m[31]++;
 	}
+
+	m[999] = m[51];
 	
 	// If New Route Is Shorter, Keep It
-	if (m[45] < m[44])
+	if (m[51] < m[50])
 		continue;
 	
 	// Calculate Acceptance Probability
-	f[4] = exp((m[44] - m[45]) / f[1]);
+	f[4] = exp((m[50] - m[51]) / f[3]);
 	
 	// Random Number (0 to 1)
 	f[5] = m[41] / m[20];
 	
 	// Check If New Path Should Be Accepted
-	if (f[4] < f[5])
+	if (f[4] > f[5])
 		continue;
 	
-	// Swap Cities Back
-	m[43] = m[m[30] + m[41]];            // City 1 Number
-	m[m[30] + m[41]] = m[m[30] + m[42]]; // Swap City 1
-	m[m[30] + m[42]] = m[43];            // Swap City 2
+	// Reverse Order Of Points Between A & B
+	m[43] = m[42] - m[41];
+	m[44] = m[41];
+	m[45] = m[42];
+	repeat(m[43]) {
+		m[46] = m[m[30] + m[44]];		// Point A Value
+		m[m[30] + m[44]] = m[m[30] + m[45]];	// Move Point B Value To A
+		m[m[30] + m[45]] = m[46];		// Move Point A Value To B
+		m[44]++;
+		m[45]--;
+		if(m[44] >= m[45])
+			break;	
+	}
+
+	m[999] = m[50];
 }
 
 // Best Solution To Date = 10628
-verify (m[200] < 11000); 
+verify (m[999] < 11000); 
