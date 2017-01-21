@@ -88,7 +88,7 @@ static char* convert(ast* exp) {
 			r_is_float = (exp->right->is_float);
 
 		// Allocate Memory For Results
-		result = malloc((lval ? strlen(lval) : 0) + (rval ? strlen(rval) : 0) + 256);
+		result = malloc((lval ? strlen(lval) : 0) + (rval ? 3 * strlen(rval) : 0) + 256);
 		result[0] = 0;
 
 		switch (exp->type) {
@@ -577,7 +577,7 @@ static char* convert(ast* exp) {
 			use_elasticpl_math = true;
 			break;
 		case NODE_EXPNT:
-			sprintf(result, "(((%s >= -708.0) && (%s <= 709.0)) ? exp( %s ) : 0.0)", rval, rval, rval);
+			sprintf(result, "((((%s) >= -708.0) && ((%s) <= 709.0)) ? exp( %s ) : 0.0)", rval, rval, rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
 			break;
