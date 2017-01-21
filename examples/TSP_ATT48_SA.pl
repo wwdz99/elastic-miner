@@ -202,9 +202,7 @@ repeat(m[40]) {
 	m[49]++;
 
 	// Update Temperature (using an S Curve)
-	f[6] = exp(m[49] / f[2]);
-	f[3] = f[1] * (1 / (1 + f[6]));
-//	f[3] = f[1] * (1 / (1 + exp(m[49] / f[2])));
+	f[3] = f[1] * (1 / (1 + exp(m[49] / f[2])));
 
 	// Sum Current Distance
 	m[31] = 0; // Counter
