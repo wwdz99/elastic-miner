@@ -46,7 +46,7 @@
 #define JSON_LOAD_FILE(path, err_ptr) json_load_file(path, err_ptr)
 #endif
 
-#define MAX_SOURCE_SIZE 1024 * 256	// 256K
+#define MAX_SOURCE_SIZE 1024 * 512	// 512K
 #define VM_INPUTS 12
 
 extern __thread _ALIGN(64) int32_t *vm_m;
@@ -61,6 +61,7 @@ extern __thread bool vm_break;
 extern __thread bool vm_continue;
 extern __thread bool vm_bounty;
 
+extern bool use_elasticpl_init;
 extern bool use_elasticpl_math;
 extern bool use_elasticpl_bigint;
 
@@ -306,7 +307,7 @@ static void show_usage_and_exit(int status);
 static void show_version_and_exit(void);
 static bool load_test_file(char *test_source);
 static bool get_vm_input(struct work *work);
-static int execute_vm(int thr_id, struct work *work, struct instance *inst, long *hashes_done, char* hash);
+static int execute_vm(int thr_id, struct work *work, struct instance *inst, long *hashes_done, char* hash, bool new_work);
 
 static bool get_work(CURL *curl);
 static int work_decode(const json_t *val, struct work *work);

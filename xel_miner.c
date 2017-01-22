@@ -93,6 +93,7 @@ __thread bool vm_break;
 __thread bool vm_continue;
 __thread bool vm_bounty;
 
+bool use_elasticpl_init;
 bool use_elasticpl_math;
 bool use_elasticpl_bigint;
 bool use_elasticpl_crypto;
@@ -578,7 +579,7 @@ static void *test_vm_thread(void *userdata) {
 	}
 	else {
 		// Execute The VM Logic
-		rc = interpret_ast();
+		rc = interpret_ast(true);
 	}
 
 	applog(LOG_DEBUG, "DEBUG: Bounty Found: %s", rc ? "true" : "false");
@@ -684,7 +685,7 @@ static bool get_opencl_base_data(struct work *work, uint32_t *vm_input) {
 	return true;
 }
 
-static int execute_vm(int thr_id, struct work *work, struct instance *inst, long *hashes_done, char* hash) {
+static int execute_vm(int thr_id, struct work *work, struct instance *inst, long *hashes_done, char* hash, bool new_work) {
 	int i, rc;
 	time_t t_start = time(NULL);
 	char msg[64];
@@ -717,7 +718,7 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 		if (opt_compile)
 			rc = inst->execute();
 		else
-			rc = interpret_ast();
+			rc = interpret_ast(new_work);
 
 		// Hee, we have found a bounty, exit immediately
 		if (rc == 1)
@@ -1288,6 +1289,7 @@ static void *cpu_miner_thread(void *userdata) {
 	struct instance *inst = NULL;
 	char hash[32];
 	uint32_t *hash32 = (uint32_t *)hash;
+	bool new_work = true;
 
 	// Set lower priority
 	if (!opt_norenice)
@@ -1328,6 +1330,7 @@ static void *cpu_miner_thread(void *userdata) {
 			// Copy Global Work Into Local Thread Work
 			memcpy((void *)&work, (void *)&g_work, sizeof(struct work));
 			work.thr_id = thr_id;
+			new_work = true;
 
 			// Create A Compiled VM Instance For The Thread
 			if (opt_compile) {
@@ -1346,7 +1349,8 @@ static void *cpu_miner_thread(void *userdata) {
 		work_restart[thr_id].restart = 0;
 
 		// Run VM To Check For POW Hash & Bounties
-		rc = execute_vm(thr_id, &work, inst, &hashes_done, hash);
+		rc = execute_vm(thr_id, &work, inst, &hashes_done, hash, new_work);
+		new_work = false;
 
 		// Record Elapsed Time
 		gettimeofday(&tv_end, NULL);

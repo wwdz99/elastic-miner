@@ -50,6 +50,8 @@ bool create_c_source() {
 	fprintf(f, "__thread uint32_t *state = NULL;\n\n");
 #endif
 
+	fprintf(f, "static void init_once();\n\n");
+
 	fprintf(f, "static const unsigned int mask32 = (CHAR_BIT*sizeof(uint32_t)-1);\n\n");
 
 	fprintf(f, "static uint32_t rotl32 (uint32_t x, unsigned int n) {\n");
@@ -107,6 +109,11 @@ bool create_c_source() {
 	fprintf(f, "\tf = vm_f;\n");
 	fprintf(f, "\tb = vm_b;\n");
 	fprintf(f, "\tstate = vm_state;\n");
+
+	if (use_elasticpl_init) {
+		fprintf(f, "\n\tinit_once();\n");
+	}
+
 	fprintf(f, "}\n\n");
 #ifdef WIN32
 	fprintf(f, "__declspec(dllexport) int execute() {\n");
@@ -127,9 +134,6 @@ bool create_c_source() {
 
 	fprintf(f, "\n\t// The following code created by ElasticPL to C converter\n\n");
 	fprintf(f, "%s", &code[0]);
-
-	fprintf(f, "\n\treturn bounty_found;\n");
-	fprintf(f, "}\n");
 
 	if (opt_test_vm) {
 		fprintf(stdout, "\n********************************************************************************\n");
