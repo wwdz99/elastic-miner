@@ -132,7 +132,8 @@ typedef enum {
 	NODE_BI_OR_INT,
 	NODE_BI_AND_INT,
 	NODE_BI_XOR_INT,
-	NODE_BI_LEAST_32
+	NODE_BI_LEAST_32,
+	NODE_INIT_ONCE
 } NODE_TYPE;
 
 
@@ -249,7 +250,8 @@ typedef enum {
 	TOKEN_BI_OR_INT,
 	TOKEN_BI_AND_INT,
 	TOKEN_BI_XOR_INT,
-	TOKEN_BI_LEAST_32
+	TOKEN_BI_LEAST_32,
+	TOKEN_INIT_ONCE
 } EPL_TOKEN_TYPE;
 
 typedef enum {
@@ -352,7 +354,7 @@ static char* append_strings(char * old, char * new);
 static char *replace(char* old, char* a, char* b);
 extern uint32_t calc_wcet();
 static uint32_t get_wcet(ast* exp);
-extern int interpret_ast();
+extern int interpret_ast(bool first_run);
 static double interpret(ast* exp);
 static int mangle_state(int x);
 #ifdef _MSC_VER

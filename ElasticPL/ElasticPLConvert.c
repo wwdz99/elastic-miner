@@ -21,21 +21,72 @@ char *tab[] = { "\t", "\t\t", "\t\t\t", "\t\t\t\t", "\t\t\t\t\t", "\t\t\t\t\t\t"
 int tabs;
 
 extern char* convert_ast_to_c() {
-	char* ret = NULL;
-	int i;
+	char* ptr = NULL;
+	char* code = NULL;
+	char* code1 = NULL;
+	char* code2 = NULL;
+	char code2_end[] = "\n\treturn bounty_found;\n}\n\n";
+	char code1_begin[] = "static void init_once() {\n\tint index;\n\n";
+	char code1_end[] = "}\n";
+
+	int i, idx = 0;
 
 	tabs = 0;
+	use_elasticpl_init = false;
 	use_elasticpl_math = false;
 
-	for (i = 0; i < vm_ast_cnt; i++) {
-		ret = append_strings(ret, convert(vm_ast[i]));
+	if (vm_ast[0]->type == NODE_INIT_ONCE) {
+		idx = 1;
+		use_elasticpl_init = true;
+		code1 = append_strings(code1, convert(vm_ast[0]->left));
 	}
 
-	// The Current OpenCL Code Can't Run The Big Integer Functions
-	if (opt_opencl && use_elasticpl_bigint)
+	for (i = idx; i < vm_ast_cnt; i++) {
+		code2 = append_strings(code2, convert(vm_ast[i]));
+	}
+
+	if (!code2)
 		return NULL;
 
-	return ret;
+	// The Current OpenCL Code Can't Run The Math or Big Integer Functions
+	if (opt_opencl && (use_elasticpl_bigint || use_elasticpl_math))
+		return NULL;
+
+	// Check For Init Function
+	if (code1) {
+		code = malloc(strlen(code1) + strlen(code2) + strlen(code2_end) + strlen(code1_begin) + strlen(code1_end) + 1);
+		ptr = &code[0];
+		memcpy(ptr, code2, strlen(code2));
+		ptr += strlen(code2);
+		memcpy(ptr, &code2_end[0], strlen(code2_end));
+		ptr += strlen(code2_end);
+		memcpy(ptr, &code1_begin[0], strlen(code1_begin));
+		ptr += strlen(code1_begin);
+		memcpy(ptr, code1, strlen(code1));
+		ptr += strlen(code1);
+		memcpy(ptr, &code1_end[0], strlen(code1_end));
+		ptr += strlen(code1_end);
+		ptr[0] = 0; // Terminate String
+
+		free(code1);
+		free(code2);
+	}
+	else {
+		code = malloc(strlen(code2) + strlen(code2_end) + strlen(code1_begin) + strlen(code1_end) + 1);
+		ptr = &code[0];
+		memcpy(ptr, code2, strlen(code2));
+		ptr += strlen(code2);
+		memcpy(ptr, &code2_end[0], strlen(code2_end));
+		ptr += strlen(code2_end);
+		memcpy(ptr, &code1_begin[0], strlen(code1_begin));
+		ptr += strlen(code1_begin);
+		memcpy(ptr, &code1_end[0], strlen(code1_end));
+		ptr += strlen(code1_end);
+		ptr[0] = 0; // Terminate String
+		free(code2);
+	}
+
+	return code;
 }
 
 static char* get_index(char *lval) {

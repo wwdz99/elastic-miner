@@ -36,6 +36,7 @@ struct EXP_TOKEN_LIST epl_token[] = {
 	{ "}",							1,	TOKEN_BLOCK_END,	EXP_STATEMENT,	2,	1,	DT_NONE },
 	{ "(",							1,	TOKEN_OPEN_PAREN,	EXP_NONE,		0,	1,	DT_INT },
 	{ ")",							1,	TOKEN_CLOSE_PAREN,	EXP_NONE,		0,	1,	DT_INT },
+	{ "init_once",					9,	TOKEN_INIT_ONCE,	EXP_STATEMENT,	1,	2,	DT_NONE },
 	{ "verify",						6,	TOKEN_VERIFY,		EXP_STATEMENT,	1,	2,	DT_NONE },
 	{ "repeat",						6,	TOKEN_REPEAT,		EXP_STATEMENT,	2,	2,	DT_NONE },
 	{ "if",							2,	TOKEN_IF,			EXP_STATEMENT,	2,	2,	DT_NONE },

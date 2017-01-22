@@ -15,6 +15,10 @@
 
 int num_exp = 0;
 
+int d_stack_op[10];	// DEBUG
+ast *d_stack_exp[10];	// DEBUG
+
+
 static ast* add_exp(NODE_TYPE node_type, EXP_TYPE exp_type, int32_t value, double fvalue, unsigned char *svalue, int token_num, int line_num, DATA_TYPE data_type, ast* left, ast* right) {
 	ast* e = calloc(1, sizeof(ast));
 	if (e) {
@@ -37,6 +41,14 @@ static ast* add_exp(NODE_TYPE node_type, EXP_TYPE exp_type, int32_t value, doubl
 static void push_op(int token_id) {
 	stack_op[++stack_op_idx] = token_id;
 	top_op = token_id;
+
+
+	// DEBUG
+	int i;
+	for (i = 0; i < 10; i++)
+		d_stack_op[i] = stack_op[i];
+
+
 }
 
 static int pop_op() {
@@ -51,6 +63,18 @@ static int pop_op() {
 	else
 		top_op = -1;
 
+
+
+
+
+	// DEBUG
+	int i;
+	for (i = 0; i < 10; i++)
+		d_stack_op[i] = stack_op[i];
+
+
+
+
 	return op;
 }
 
@@ -58,6 +82,13 @@ static void push_exp(ast* exp) {
 	stack_exp[++stack_exp_idx] = exp;
 	if (!exp->end_stmnt)
 		num_exp++;
+
+
+	// DEBUG
+	int i;
+	for (i = 0; i < 10; i++)
+		d_stack_exp[i] = stack_exp[i];
+
 
 }
 
@@ -70,6 +101,14 @@ static ast* pop_exp() {
 		if (!exp->end_stmnt)
 			num_exp--;
 	}
+
+
+
+	// DEBUG
+	int i;
+	for (i = 0; i < 10; i++)
+		d_stack_exp[i] = stack_exp[i];
+
 
 	return exp;
 }

@@ -150,14 +150,22 @@ static double expnt(double X) {
 	return exp(X);
 }
 
-extern int interpret_ast() {
-	int i;
+extern int interpret_ast(bool first_run) {
+	int i, idx = 0;
 
 	vm_bounty = false;
 	vm_break = false;
 	vm_continue = false;
 
-	for (i = 0; i < vm_ast_cnt; i++) {
+	if (vm_ast[0]->type == NODE_INIT_ONCE) {
+		idx = 1;
+		if (first_run) {
+			if (!interpret(vm_ast[0]->left))
+				return 0;
+		}
+	}
+
+	for (i = idx; i < vm_ast_cnt; i++) {
 		if (!interpret(vm_ast[i]) && (vm_ast[i]->type != NODE_VAR_CONST) && (vm_ast[i]->type != NODE_VAR_EXP) && (vm_ast[i]->type != NODE_CONSTANT))
 			return 0;
 	}
