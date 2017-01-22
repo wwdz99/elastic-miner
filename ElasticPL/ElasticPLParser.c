@@ -463,18 +463,18 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 				if (token->data_type == DT_INT) {
 
 					// Check For Hex - If Found, Convert To Int
-					if (token->literal[0] == '0' && token->literal[1] == 'x' && strlen(token->literal) > 2 && strlen(token->literal) <= 10) {
-						hex2ints(val, 1, token->literal + 2, strlen(token->literal) - 2);
+					if ((strlen(token->literal) > 2) && (strlen(token->literal) <= 10) && (token->literal[0] == '0') && (token->literal[1] == 'x')) {
+							hex2ints(val, 1, token->literal + 2, strlen(token->literal) - 2);
 						sprintf(token->literal, "%d", val[0]);
 					}
 
 					// Check For Binary - If Found, Convert To Decimal String
-					if (token->literal[0] == '0' && token->literal[1] == 'b' && strlen(token->literal) > 2 && strlen(token->literal) <= 34) {
+					else if ((strlen(token->literal) > 2) && (strlen(token->literal) <= 34) && (token->literal[0] == '0') && (token->literal[1] == 'b')) {
 						val[0] = bin2int(token->literal + 2);
 						sprintf(token->literal, "%d", val[0]);
 					}
 
-					if (strlen(token->literal) <= 11) {
+					else if ((strlen(token->literal) > 0) && (strlen(token->literal) <= 11)) {
 						value = (long long)strtod(token->literal, NULL);
 						fvalue = (double)strtod(token->literal, NULL);
 					}

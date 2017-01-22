@@ -39,11 +39,11 @@ extern int32_t big_init_const(mpz_t out, unsigned char* str, mpz_t *ptr, uint32_
 	mpz_clear(out);
 
 	// TODO: Determine Max Len Elastic Allows For Hex / Binary Strings
-	if (str[0] == '0' && str[1] == 'x' && strlen(str) > 2 && strlen(str) <= 256) {
-		mpz_init_set_str(out, str + 2, 16);
+	if ((strlen(str) > 2) && (strlen(str) <= 256) && (str[0] == '0') && (str[1] == 'x')) {
+			mpz_init_set_str(out, str + 2, 16);
 	}
-	else if (str[0] == '0' && str[1] == 'b' && strlen(str) > 2 && strlen(str) <= 256) {
-		mpz_init_set_str(out, str + 2, 2);
+	else if ((strlen(str) > 2) && (strlen(str) <= 256) && (str[0] == '0') && (str[1] == 'b')) {
+			mpz_init_set_str(out, str + 2, 2);
 	}
 	else {
 		mpz_init_set_str(out, str, 10);
