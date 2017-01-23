@@ -51,9 +51,7 @@
 
 extern __thread _ALIGN(64) int32_t *vm_m;
 extern __thread _ALIGN(64) double *vm_f;
-extern __thread mpz_t *vm_b;
 extern __thread uint32_t *vm_state;
-extern __thread uint32_t vm_bi_size;
 extern __thread double vm_param_val[6];
 extern __thread uint32_t vm_param_idx[6];
 extern __thread uint32_t vm_param_num;
@@ -63,7 +61,6 @@ extern __thread bool vm_bounty;
 
 extern bool use_elasticpl_init;
 extern bool use_elasticpl_math;
-extern bool use_elasticpl_bigint;
 
 extern bool opt_debug;
 extern bool opt_debug_epl;
@@ -187,11 +184,11 @@ struct instance {
 
 #ifdef WIN32
 	HINSTANCE hndl;
-	int(__cdecl* initialize)(int32_t *, double *, mpz_t *, uint32_t *);
+	int(__cdecl* initialize)(int32_t *, double *, uint32_t *);
 	int(__cdecl* execute)();
 #else
 	void *hndl;
-	int(*initialize)(int32_t *, double *, mpz_t *, uint32_t *);
+	int(*initialize)(int32_t *, double *, uint32_t *);
 	int(*execute)();
 #endif
 

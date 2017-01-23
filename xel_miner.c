@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <time.h>
+#include <openssl/md5.h>
 #include <openssl/rand.h>
 #include "miner.h"
 
@@ -83,9 +84,7 @@ uint32_t g_pow_target[4];
 
 __thread _ALIGN(64) int32_t *vm_m = NULL;
 __thread _ALIGN(64) double *vm_f = NULL;
-__thread mpz_t *vm_b = NULL;
 __thread uint32_t *vm_state = NULL;
-__thread uint32_t vm_bi_size;
 __thread double vm_param_val[6];
 __thread uint32_t vm_param_idx[6];
 __thread uint32_t vm_param_num;
@@ -95,8 +94,6 @@ __thread bool vm_bounty;
 
 bool use_elasticpl_init;
 bool use_elasticpl_math;
-bool use_elasticpl_bigint;
-bool use_elasticpl_crypto;
 
 pthread_mutex_t applog_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t work_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -528,13 +525,8 @@ static void *test_vm_thread(void *userdata) {
 	vm_state = calloc(4, sizeof(uint32_t));
 	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
 	vm_f = calloc(VM_FLOAT_SIZE, sizeof(double));
-	vm_b = (mpz_t *)malloc(VM_BI_SIZE * sizeof(mpz_t));
-	for (i = 0; i < VM_BI_SIZE; i++) {
-		mpz_init(vm_b[i]);
-		mpz_set_ui(vm_b[i], 0);
-	}
 
-	if (!vm_m || !vm_f || !vm_b || !vm_state) {
+	if (!vm_m || !vm_f || !vm_state) {
 		applog(LOG_ERR, "%s: Unable to allocate VM memory", mythr->name);
 		exit(EXIT_FAILURE);
 	}
@@ -570,7 +562,7 @@ static void *test_vm_thread(void *userdata) {
 			free_compiler(inst);
 		inst = calloc(1, sizeof(struct instance));
 		create_instance(inst, "test");
-		inst->initialize(vm_m, vm_f, vm_b, vm_state);
+		inst->initialize(vm_m, vm_f, vm_state);
 
 		// Execute The VM Logic
 		rc = inst->execute();
@@ -598,23 +590,14 @@ static void *test_vm_thread(void *userdata) {
 		if (vm_f[i] != 0.0)
 			printf("\t\t  vm_f[%d] = %f\n", i, vm_f[i]);
 	}
-	printf("\n\t  VM Big Ints:\n");
-	for (i = 0; i < VM_BI_SIZE; i++) {
-		if (vm_b[i]->_mp_size)
-			gmp_printf("\t\t  vm_b[%d] (alloc: %d, size: %d) = %ZX\n", i, vm_b[i]->_mp_alloc, vm_b[i]->_mp_size, vm_b[i]);
-	}
 	printf("\n");
 
 	applog(LOG_NOTICE, "DEBUG: Compiler Test Complete");
 	applog(LOG_WARNING, "Exiting " PACKAGE_NAME);
 
-	for (i = 0; i < VM_BI_SIZE; i++)
-		mpz_clear(vm_b[i]);
-
 	if (inst) free(inst);
 	if (vm_m) free(vm_m);
 	if (vm_f) free(vm_f);
-	if (vm_b) free(vm_b);
 	if (vm_state) free(vm_state);
 
 	tq_freeze(mythr->q);
@@ -1281,7 +1264,7 @@ static void *cpu_miner_thread(void *userdata) {
 	char s[16];
 	long hashes_done;
 	struct timeval tv_start, tv_end, diff;
-	int i, rc = 0;
+	int rc = 0;
 	unsigned char msg[41];
 	uint32_t *msg32 = (uint32_t *)msg;
 	uint32_t *workid32;
@@ -1299,13 +1282,8 @@ static void *cpu_miner_thread(void *userdata) {
 	vm_state = calloc(4, sizeof(uint32_t));
 	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
 	vm_f = calloc(VM_FLOAT_SIZE, sizeof(double));
-	vm_b = (mpz_t *)malloc(VM_BI_SIZE * sizeof(mpz_t));
-	for (i = 0; i < VM_BI_SIZE; i++) {
-		mpz_init(vm_b[i]);
-		mpz_set_ui(vm_b[i], 0);
-	}
 
-	if (!vm_m || !vm_f || !vm_b || !vm_state) {
+	if (!vm_m || !vm_f || !vm_state) {
 		applog(LOG_ERR, "CPU%d: Unable to allocate VM memory", thr_id);
 		goto out;
 	}
@@ -1338,7 +1316,7 @@ static void *cpu_miner_thread(void *userdata) {
 					free_compiler(inst);
 				inst = calloc(1, sizeof(struct instance));
 				create_instance(inst, work.work_str);
-				inst->initialize(vm_m, vm_f, vm_b, vm_state);
+				inst->initialize(vm_m, vm_f, vm_state);
 			}
 		}
 		// Otherwise, Just Update POW Target
@@ -1424,13 +1402,9 @@ static void *cpu_miner_thread(void *userdata) {
 	}
 
 out:
-	for (i = 0; i < VM_BI_SIZE; i++)
-		mpz_clear(vm_b[i]);
-
 	if (inst) free(inst);
 	if (vm_m) free(vm_m);
 	if (vm_f) free(vm_f);
-	if (vm_b) free(vm_b);
 	if (vm_state) free(vm_state);
 
 	tq_freeze(mythr->q);

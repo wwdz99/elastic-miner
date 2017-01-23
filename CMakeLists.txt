@@ -199,30 +199,14 @@ ELSE (SSL_LIBRARY)
 	message(STATUS "  SSL:    Not Found!")
 ENDIF (SSL_LIBRARY)
 
-# Confirm GMP Has Been Installed
-find_path( GMP_INCLUDE_DIR gmp.h  PATHS ENV PATH_SUFFIXES include )
-find_library( GMP_LIBRARIES NAMES gmp libgmp PATHS ENV PATH_SUFFIXES lib )
-
-IF (GMP_INCLUDE_DIR AND GMP_LIBRARIES)
-	SET(GMP_FOUND TRUE)
-ELSE (GMP_INCLUDE_DIR AND GMP_LIBRARIES)
-	SET(GMP_FOUND FALSE)
-ENDIF (GMP_INCLUDE_DIR AND GMP_LIBRARIES)
-
-IF (GMP_FOUND)
-	message(STATUS "  GMP:    Found")
-ELSE (GMP_FOUND)
-	message(STATUS "  GMP:    Not Found")
-ENDIF (GMP_FOUND)
-
 add_subdirectory(compat/jansson)
 add_subdirectory(ElasticPL)
 
 IF (OPENCL_FOUND)
 	add_definitions(-DUSE_OPENCL)
-	include_directories(${OPENCL_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/algo ${PROJECT_SOURCE_DIR}/compat/jansson ${CURL_INCLUDE_DIR} ${OPENSSL_INCLUDE_DIR} ${GMP_INCLUDE_DIR})
+	include_directories(${OPENCL_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/algo ${PROJECT_SOURCE_DIR}/compat/jansson ${CURL_INCLUDE_DIR} ${OPENSSL_INCLUDE_DIR})
 ELSE (OPENCL_FOUND)
-	include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/algo ${PROJECT_SOURCE_DIR}/compat/jansson ${CURL_INCLUDE_DIR} ${OPENSSL_INCLUDE_DIR} ${GMP_INCLUDE_DIR})
+	include_directories(${PROJECT_SOURCE_DIR} ${PROJECT_SOURCE_DIR}/algo ${PROJECT_SOURCE_DIR}/compat/jansson ${CURL_INCLUDE_DIR} ${OPENSSL_INCLUDE_DIR})
 ENDIF(OPENCL_FOUND)
 
 set(SRC_LIST	xel_miner.c
@@ -248,9 +232,9 @@ ELSE ( WIN32 )
 ENDIF ( WIN32 )
 
 IF (OPENCL_FOUND)
-	target_link_libraries(${TARGET_NAME} crypto pthread ${CURL_LIBRARIES} ${OPENCL_LIBRARIES} jansson ${GMP_LIBRARIES})
+	target_link_libraries(${TARGET_NAME} crypto pthread ${CURL_LIBRARIES} ${OPENCL_LIBRARIES} jansson)
 ELSE (OPENCL_FOUND)
-	target_link_libraries(${TARGET_NAME} crypto pthread ${CURL_LIBRARIES} jansson ${GMP_LIBRARIES})
+	target_link_libraries(${TARGET_NAME} crypto pthread ${CURL_LIBRARIES} jansson)
 ENDIF(OPENCL_FOUND)
 
 IF(${CMAKE_SYSTEM_PROCESSOR} MATCHES "arm")
