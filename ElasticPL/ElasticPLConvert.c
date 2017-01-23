@@ -49,7 +49,7 @@ extern char* convert_ast_to_c() {
 		return NULL;
 
 	// The Current OpenCL Code Can't Run The Math or Big Integer Functions
-	if (opt_opencl && (use_elasticpl_bigint || use_elasticpl_math))
+	if (opt_opencl && use_elasticpl_math)
 		return NULL;
 
 	// Check For Init Function
@@ -157,16 +157,16 @@ static char* convert(ast* exp) {
 					sprintf(result, "m[0]");
 				else if (exp->data_type == DT_FLOAT)
 					sprintf(result, "f[0]");
-				else if (exp->data_type == DT_BIGINT)
-					sprintf(result, "b[0]");
+				else
+					sprintf(result, "0");
 			}
 			else {
 				if (exp->data_type == DT_INT)
 					sprintf(result, "m[%lu]", exp->value);
 				else if (exp->data_type == DT_FLOAT)
 					sprintf(result, "f[%lu]", exp->value);
-				else if (exp->data_type == DT_BIGINT)
-					sprintf(result, "b[%lu]", exp->value);
+				else
+					sprintf(result, "0");
 			}
 			break;
 		case NODE_VAR_EXP:
@@ -174,8 +174,8 @@ static char* convert(ast* exp) {
 				sprintf(result, "m[%s]", lval);
 			else if (exp->data_type == DT_FLOAT)
 				sprintf(result, "f[%s]", lval);
-			else if (exp->data_type == DT_BIGINT)
-				sprintf(result, "b[%s]", lval);
+			else
+				sprintf(result, "0");
 			break;
 		case NODE_ASSIGN:
 			tmp = get_index(lval);
@@ -683,138 +683,6 @@ static char* convert(ast* exp) {
 			sprintf(result, "gcd( %s )", rval);
 			exp->is_float = true;
 			use_elasticpl_math = true;
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_CONST:
-			tmp = strstr(rval, ",");
-			tmp[1] = '\"';
-			tmp = NULL;
-			sprintf(result, "mangle_state( big_init_const( %s\", b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_EXPR:
-			sprintf(result, "mangle_state( big_init_expr( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_COPY:
-			sprintf(result, "mangle_state( big_copy( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_ADD:
-			sprintf(result, "mangle_state( big_add( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_SUB:
-			sprintf(result, "mangle_state( big_sub( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_MUL:
-			sprintf(result, "mangle_state( big_mul( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_DIV:
-			sprintf(result, "mangle_state( big_div( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_CEIL_DIV:
-			sprintf(result, "mangle_state( big_ceil_div( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_FLOOR_DIV:
-			sprintf(result, "mangle_state( big_floor_div( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_TRUNC_DIV:
-			sprintf(result, "mangle_state( big_truncate_div( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_DIV_EXACT:
-			sprintf(result, "mangle_state( big_div_exact( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_MOD:
-			sprintf(result, "mangle_state( big_mod( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_NEG:
-			sprintf(result, "mangle_state( big_neg( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_LSHIFT:
-			sprintf(result, "mangle_state( big_lshift( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_RSHIFT:
-			sprintf(result, "mangle_state( big_rshift( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_GCD:
-			sprintf(result, "mangle_state( big_gcd( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_DIVISIBLE:
-			sprintf(result, "big_divisible( %s, b )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_CNGR_MOD_P:
-			sprintf(result, "big_congruent_mod_p( %s, b )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_POW:
-			sprintf(result, "mangle_state( big_pow( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_POW2:
-			sprintf(result, "mangle_state( big_pow2( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_POW_MOD_P:
-			sprintf(result, "mangle_state( big_pow_mod_p( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_POW2_MOD_P:
-			sprintf(result, "mangle_state( big_pow2_mod_p( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_COMP:
-			sprintf(result, "big_compare( %s, b )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_COMP_ABS:
-			sprintf(result, "big_compare_abs( %s, b )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_SIGN:
-			sprintf(result, "big_sign( %s, b )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_OR:
-			sprintf(result, "mangle_state( big_or( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_AND:
-			sprintf(result, "mangle_state( big_and( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_XOR:
-			sprintf(result, "mangle_state( big_xor( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_OR_INT:
-			sprintf(result, "mangle_state( big_or_integer( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_AND_INT:
-			sprintf(result, "mangle_state( big_and_integer( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_XOR_INT:
-			sprintf(result, "mangle_state( big_xor_integer( %s, b, &bi_size ) )", rval);
-			use_elasticpl_bigint = true;
-			break;
-		case NODE_BI_LEAST_32:
-			sprintf(result, "big_least_32bit( %s, b )", rval);
-			use_elasticpl_bigint = true;
 			break;
 		default:
 			sprintf(result, "fprintf(stderr, \"ERROR: VM Runtime - Unsupported Operation (%d)\");\n", exp->type);

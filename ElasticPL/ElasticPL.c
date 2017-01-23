@@ -188,38 +188,6 @@ extern char* get_node_str(NODE_TYPE node_type) {
 	case NODE_FABS:			return "fabs";
 	case NODE_FMOD:			return "fmod";
 	case NODE_GCD:			return "gcd";
-	case NODE_BI_CONST:		return "big_init_const";
-	case NODE_BI_EXPR:		return "big_init_expr";
-	case NODE_BI_COPY:		return "big_copy";
-	case NODE_BI_ADD:		return "big_add";
-	case NODE_BI_SUB:		return "big_sub";
-	case NODE_BI_MUL:		return "big_mul";
-	case NODE_BI_DIV:		return "big_div";
-	case NODE_BI_CEIL_DIV:	return "big_ceil_div";
-	case NODE_BI_FLOOR_DIV:	return "big_floor_div";
-	case NODE_BI_TRUNC_DIV:	return "big_truncate_div";
-	case NODE_BI_DIV_EXACT:	return "big_div_exact";
-	case NODE_BI_MOD:		return "big_mod";
-	case NODE_BI_NEG:		return "big_neg";
-	case NODE_BI_LSHIFT:	return "big_lshift";
-	case NODE_BI_RSHIFT:	return "big_rshift";
-	case NODE_BI_GCD:		return "big_gcd";
-	case NODE_BI_DIVISIBLE:	return "big_divisible";
-	case NODE_BI_CNGR_MOD_P:return "big_congruent_mod_p";
-	case NODE_BI_POW:		return "big_pow";
-	case NODE_BI_POW2:		return "big_pow2";
-	case NODE_BI_POW_MOD_P:	return "big_pow_mod_p";
-	case NODE_BI_POW2_MOD_P:return "big_pow2_mod_p";
-	case NODE_BI_COMP:		return "big_comp";
-	case NODE_BI_COMP_ABS:	return "big_comp_abs";
-	case NODE_BI_SIGN:		return "big_sign";
-	case NODE_BI_OR:		return "big_or";
-	case NODE_BI_AND:		return "big_and";
-	case NODE_BI_XOR:		return "big_xor";
-	case NODE_BI_OR_INT:	return "big_or_integer";
-	case NODE_BI_AND_INT:	return "big_and_integer";
-	case NODE_BI_XOR_INT:	return "big_xor_integer";
-	case NODE_BI_LEAST_32:	return "big_least_32bit";
 	default: return "Unknown";
 	}
 }

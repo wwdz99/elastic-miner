@@ -200,73 +200,6 @@ static bool validate_inputs(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 			return true;
 		break;
 
-	// Expressions w/ 1 Big Int
-	case NODE_BI_SIGN:
-	case NODE_BI_LEAST_32:
-		if (stack_exp[stack_exp_idx]->data_type == DT_BIGINT)
-			return true;
-		break;
-
-	// Expressions w/ 1 Big Int & String
-	case NODE_BI_CONST:
-		if (stack_exp[stack_exp_idx - 1]->data_type == DT_BIGINT && stack_exp[stack_exp_idx]->data_type == DT_STRING)
-			return true;
-		break;
-
-	// Expressions w/ 1 Big Int & 32bit Int
-	case NODE_BI_EXPR:
-	case NODE_BI_POW2:
-		if (stack_exp[stack_exp_idx - 1]->data_type == DT_BIGINT && stack_exp[stack_exp_idx]->data_type == DT_INT)
-			return true;
-		break;
-
-	// Expressions w/ 2 Big Ints
-	case NODE_BI_COPY:
-	case NODE_BI_DIVISIBLE:
-	case NODE_BI_COMP:
-	case NODE_BI_COMP_ABS:
-	case NODE_BI_NEG:
-		if (stack_exp[stack_exp_idx - 1]->data_type == DT_BIGINT && stack_exp[stack_exp_idx]->data_type == DT_BIGINT)
-			return true;
-		break;
-
-	// Expressions w/ 2 Big Ints & 32 Bit Int
-	case NODE_BI_POW:
-	case NODE_BI_LSHIFT:
-	case NODE_BI_RSHIFT:
-	case NODE_BI_OR_INT:
-	case NODE_BI_AND_INT:
-	case NODE_BI_XOR_INT:
-		if (stack_exp[stack_exp_idx - 2]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 1]->data_type == DT_BIGINT && stack_exp[stack_exp_idx]->data_type == DT_INT)
-			return true;
-		break;
-
-	// Expressions w/ 3 Big Ints
-	case NODE_BI_ADD:
-	case NODE_BI_SUB:
-	case NODE_BI_MUL:
-	case NODE_BI_DIV:
-	case NODE_BI_CEIL_DIV:
-	case NODE_BI_FLOOR_DIV:
-	case NODE_BI_TRUNC_DIV:
-	case NODE_BI_DIV_EXACT:
-	case NODE_BI_MOD:
-	case NODE_BI_GCD:
-	case NODE_BI_POW2_MOD_P:
-	case NODE_BI_CNGR_MOD_P:
-	case NODE_BI_OR:
-	case NODE_BI_AND:
-	case NODE_BI_XOR:
-		if (stack_exp[stack_exp_idx - 2]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 1]->data_type == DT_BIGINT && stack_exp[stack_exp_idx]->data_type == DT_BIGINT)
-			return true;
-		break;
-
-	// Expressions w/ 4 Big Ints
-	case NODE_BI_POW_MOD_P:
-		if (stack_exp[stack_exp_idx - 3]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 2]->data_type == DT_BIGINT && stack_exp[stack_exp_idx - 1]->data_type == DT_BIGINT && stack_exp[stack_exp_idx]->data_type == DT_BIGINT)
-			return true;
-		break;
-
 	default:
 		break;
 	}
@@ -401,38 +334,6 @@ static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
 	case TOKEN_FABS:			node_type = NODE_FABS;			break;
 	case TOKEN_FMOD:			node_type = NODE_FMOD; 			break;
 	case TOKEN_GCD:				node_type = NODE_GCD; 			break;
-	case TOKEN_BI_CONST:		node_type = NODE_BI_CONST;		break;
-	case TOKEN_BI_EXPR:			node_type = NODE_BI_EXPR;		break;
-	case TOKEN_BI_COPY:			node_type = NODE_BI_COPY;		break;
-	case TOKEN_BI_ADD:			node_type = NODE_BI_ADD;		break;
-	case TOKEN_BI_SUB:			node_type = NODE_BI_SUB;		break;
-	case TOKEN_BI_MUL:			node_type = NODE_BI_MUL;		break;
-	case TOKEN_BI_DIV:			node_type = NODE_BI_DIV;		break;
-	case TOKEN_BI_CEIL_DIV:		node_type = NODE_BI_CEIL_DIV;	break;
-	case TOKEN_BI_FLOOR_DIV:	node_type = NODE_BI_FLOOR_DIV;	break;
-	case TOKEN_BI_TRUNC_DIV:	node_type = NODE_BI_TRUNC_DIV;	break;
-	case TOKEN_BI_DIV_EXACT:	node_type = NODE_BI_DIV_EXACT;	break;
-	case TOKEN_BI_MOD:			node_type = NODE_BI_MOD;		break;
-	case TOKEN_BI_NEG:			node_type = NODE_BI_NEG;		break;
-	case TOKEN_BI_LSHIFT:		node_type = NODE_BI_LSHIFT;		break;
-	case TOKEN_BI_RSHIFT:		node_type = NODE_BI_RSHIFT;		break;
-	case TOKEN_BI_GCD:			node_type = NODE_BI_GCD;		break;
-	case TOKEN_BI_DIVISIBLE:	node_type = NODE_BI_DIVISIBLE;	break;
-	case TOKEN_BI_CNGR_MOD_P:	node_type = NODE_BI_CNGR_MOD_P;	break;
-	case TOKEN_BI_POW:			node_type = NODE_BI_POW;		break;
-	case TOKEN_BI_POW2:			node_type = NODE_BI_POW2;		break;
-	case TOKEN_BI_POW_MOD_P:	node_type = NODE_BI_POW_MOD_P;	break;
-	case TOKEN_BI_POW2_MOD_P:	node_type = NODE_BI_POW2_MOD_P;	break;
-	case TOKEN_BI_COMP:			node_type = NODE_BI_COMP;		break;
-	case TOKEN_BI_COMP_ABS:		node_type = NODE_BI_COMP_ABS;	break;
-	case TOKEN_BI_SIGN:			node_type = NODE_BI_SIGN;		break;
-	case TOKEN_BI_OR:			node_type = NODE_BI_OR;			break;
-	case TOKEN_BI_AND:			node_type = NODE_BI_AND;		break;
-	case TOKEN_BI_XOR:			node_type = NODE_BI_XOR;		break;
-	case TOKEN_BI_OR_INT:		node_type = NODE_BI_OR_INT;		break;
-	case TOKEN_BI_AND_INT:		node_type = NODE_BI_AND_INT;	break;
-	case TOKEN_BI_XOR_INT:		node_type = NODE_BI_XOR_INT;	break;
-	case TOKEN_BI_LEAST_32:		node_type = NODE_BI_LEAST_32;	break;
 	case TOKEN_INIT_ONCE:		node_type = NODE_INIT_ONCE;		break;
 	default: return NODE_ERROR;
 	}

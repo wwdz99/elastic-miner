@@ -46,7 +46,6 @@ struct EXP_TOKEN_LIST epl_token[] = {
 
 	{ "m[",							2,	TOKEN_VAR_BEGIN,	EXP_EXPRESSION,	1,	4,	DT_INT },
 	{ "f[",							2,	TOKEN_VAR_BEGIN,	EXP_EXPRESSION,	1,	4,	DT_FLOAT },
-	{ "b[",							2,	TOKEN_VAR_BEGIN,	EXP_EXPRESSION,	1,	4,	DT_BIGINT },
 	{ "]",							1,	TOKEN_VAR_END,		EXP_EXPRESSION,	1,	4,	DT_INT },
 
 	{ "++",							2,	TOKEN_INCREMENT,	EXP_EXPRESSION,	1,	13,	DT_INT },	// Increment
@@ -125,39 +124,6 @@ struct EXP_TOKEN_LIST epl_token[] = {
 	{ "abs",						3,	TOKEN_ABS,			EXP_FUNCTION,	1,	50,	DT_INT },	// Built In Math Functions
 	{ "fmod",						4,	TOKEN_FMOD,			EXP_FUNCTION,	2,	50,	DT_FLOAT },	// Built In Math Functions
 	{ "gcd",						3,	TOKEN_GCD,			EXP_FUNCTION,	2,	50,	DT_FLOAT },	// Built In Math Functions
-
-	{ "big_init_const",				14,	TOKEN_BI_CONST,		EXP_FUNCTION,	2,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_init_expr",				13,	TOKEN_BI_EXPR,		EXP_FUNCTION,	2,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_copy",					8,	TOKEN_BI_COPY,		EXP_FUNCTION,	2,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_add",					7,	TOKEN_BI_ADD,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_sub",					7,	TOKEN_BI_SUB,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_mul",					7,	TOKEN_BI_MUL,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_divisible",				13,	TOKEN_BI_DIVISIBLE,	EXP_FUNCTION,	2,	55,	DT_INT },	// Built In Big Int Functions
-	{ "big_div_exact",				13,	TOKEN_BI_DIV_EXACT,	EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_div",					7,	TOKEN_BI_DIV,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_ceil_div",				12,	TOKEN_BI_CEIL_DIV,	EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_floor_div",				13,	TOKEN_BI_FLOOR_DIV,	EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_truncate_div",			16,	TOKEN_BI_TRUNC_DIV,	EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_mod",					7,	TOKEN_BI_MOD,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_neg",					7,	TOKEN_BI_NEG,		EXP_FUNCTION,	2,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_lshift",					10,	TOKEN_BI_LSHIFT,	EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_rshift",					10,	TOKEN_BI_RSHIFT,	EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_gcd",					7,	TOKEN_BI_GCD,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_congruent_mod_p",		19,	TOKEN_BI_CNGR_MOD_P,EXP_FUNCTION,	3,	55,	DT_INT },	// Built In Big Int Functions
-	{ "big_pow2_mod_p",				14,	TOKEN_BI_POW2_MOD_P,EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_pow_mod_p",				13,	TOKEN_BI_POW_MOD_P,	EXP_FUNCTION,	4,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_pow2",					8,	TOKEN_BI_POW2,		EXP_FUNCTION,	2,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_pow",					7,	TOKEN_BI_POW,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_compare_abs",			15,	TOKEN_BI_COMP_ABS,	EXP_FUNCTION,	2,	55,	DT_INT },	// Built In Big Int Functions
-	{ "big_compare",				11,	TOKEN_BI_COMP,		EXP_FUNCTION,	2,	55,	DT_INT },	// Built In Big Int Functions
-	{ "big_sign",					8,	TOKEN_BI_SIGN,		EXP_FUNCTION,	1,	55,	DT_INT },	// Built In Big Int Functions
-	{ "big_or_integer",				14,	TOKEN_BI_OR_INT,	EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_or",						6,	TOKEN_BI_OR,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_and_integer",			15,	TOKEN_BI_AND_INT,	EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_and",					7,	TOKEN_BI_AND,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_xor_integer",			15,	TOKEN_BI_XOR_INT,	EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_xor",					7,	TOKEN_BI_XOR,		EXP_FUNCTION,	3,	55,	DT_NONE },	// Built In Big Int Functions
-	{ "big_least_32bit",			15,	TOKEN_BI_LEAST_32,	EXP_FUNCTION,	1,	55,	DT_NONE },	// Built In Big Int Functions
 };
 
 extern bool init_token_list(SOURCE_TOKEN_LIST *token_list, size_t size) {

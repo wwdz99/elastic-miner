@@ -18,9 +18,6 @@
 #include "ElasticPLFunctions.h"
 #include "../miner.h"
 
-char blk_new[4096];
-char blk_old[4096];
-
 uint32_t wcet_block;
 
 extern uint32_t calc_wcet() {
@@ -653,6 +650,7 @@ static double interpret(ast* exp) {
 			vm_param_val[vm_param_num] = interpret(exp->left);
 			vm_param_idx[vm_param_num++] = exp->left->value;
 			rval = (int32_t)interpret(exp->right);
+			vm_param_num = 0;
 			return 1;
 		case NODE_SIN:
 			vm_param_num = 0;
@@ -717,7 +715,7 @@ static double interpret(ast* exp) {
 		case NODE_POW:
 			vm_param_num = 0;
 			interpret(exp->right);
-			return pow(vm_param_val[0], vm_param_val[0]);
+			return pow(vm_param_val[0], vm_param_val[1]);
 		case NODE_SQRT:
 			vm_param_num = 0;
 			interpret(exp->right);
@@ -750,164 +748,6 @@ static double interpret(ast* exp) {
 			vm_param_num = 0;
 			interpret(exp->right);
 			return gcd((int32_t)vm_param_val[0], (int32_t)vm_param_val[1]);
-		case NODE_BI_CONST:
-			vm_param_num = 0;
-			interpret(exp->right);
-
-			if (!exp->right->right->left->svalue)
-				return 0;
-
-			mangle_state(big_init_const(vm_b[vm_param_idx[0]], exp->right->right->left->svalue, vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_EXPR:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_init_expr(vm_b[vm_param_idx[0]], (int32_t)vm_param_val[1], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_COPY:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_copy(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_ADD:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_add(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_SUB:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_sub(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_MUL:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_mul(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_DIV:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_div(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_CEIL_DIV:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_ceil_div(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_FLOOR_DIV:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_floor_div(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_TRUNC_DIV:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_truncate_div(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_DIV_EXACT:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_div_exact(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_MOD:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_mod(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_NEG:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_neg(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_LSHIFT:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_lshift(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], (uint32_t)vm_param_val[2], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_RSHIFT:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_rshift(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], (uint32_t)vm_param_val[2], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_GCD:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_gcd(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_DIVISIBLE:
-			vm_param_num = 0;
-			interpret(exp->right);
-			return big_divisible(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b);
-		case NODE_BI_CNGR_MOD_P:
-			vm_param_num = 0;
-			interpret(exp->right);
-			return big_congruent_mod_p(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b);
-		case NODE_BI_POW:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_pow(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], (uint32_t)vm_param_val[2], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_POW2:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_pow2(vm_b[vm_param_idx[0]], (uint32_t)vm_param_val[1], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_POW_MOD_P:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_pow_mod_p(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b[vm_param_idx[3]], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_POW2_MOD_P:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_pow2_mod_p(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_COMP:
-			vm_param_num = 0;
-			interpret(exp->right);
-			return big_compare(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b);
-		case NODE_BI_COMP_ABS:
-			vm_param_num = 0;
-			interpret(exp->right);
-			return big_compare_abs(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b);
-		case NODE_BI_SIGN:
-			vm_param_num = 0;
-			interpret(exp->right);
-			return big_sign(vm_b[vm_param_idx[0]], vm_b);
-		case NODE_BI_OR:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_or(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_AND:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_and(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_XOR:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_xor(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], vm_b[vm_param_idx[2]], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_OR_INT:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_or_integer(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], (uint32_t)vm_param_val[2], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_AND_INT:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_and_integer(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], (uint32_t)vm_param_val[2], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_XOR_INT:
-			vm_param_num = 0;
-			interpret(exp->right);
-			mangle_state(big_xor_integer(vm_b[vm_param_idx[0]], vm_b[vm_param_idx[1]], (uint32_t)vm_param_val[2], vm_b, &vm_bi_size));
-			return 1;
-		case NODE_BI_LEAST_32:
-			vm_param_num = 0;
-			interpret(exp->right);
-			return big_least_32bit(vm_b[vm_param_idx[0]], vm_b);
 		case NODE_VERIFY:
 			lval = (int32_t)interpret(exp->left);
 			vm_bounty = (lval != 0);
