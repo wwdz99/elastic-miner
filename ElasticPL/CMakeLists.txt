@@ -13,19 +13,10 @@ ELSE (SSL_LIBRARY)
 	message(STATUS "  SSL:    Not Found!")
 ENDIF (SSL_LIBRARY)
 
-# Confirm GMP Has Been Installed
-find_library(GMP_LIBRARY libgmp.a REQUIRED)
-
-IF (GMP_LIBRARY)
-	message(STATUS "  GMP:    Found")
-ELSE (GMP_LIBRARY)
-	message(STATUS "  GMP:    Not Found!")
-ENDIF (GMP_LIBRARY)
-
 ADD_LIBRARY( ElasticPLFunctions STATIC
 	ElasticPLMath.c
 )
 
-target_link_libraries(ElasticPLFunctions gmp)
+target_link_libraries(ElasticPLFunctions)
 
 install(TARGETS ${PROJECT_NAME} DESTINATION ${PROJECT_SOURCE_DIR})
