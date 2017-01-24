@@ -17,12 +17,10 @@
 bool create_c_source() {
 	char *code;
 	FILE* f = fopen("./work/work_lib.c", "w");
-
 	if (!f)
 		return false;
 
 	code = convert_ast_to_c();
-
 	if (!code)
 		return false;
 
@@ -238,8 +236,11 @@ extern bool create_opencl_source(char *work_str) {
 	sprintf(filename, "./work/%s.cl", work_str);
 
 	f = fopen(filename, "w");
-
 	if (!f)
+		return false;
+
+	code = convert_ast_to_c();
+	if (!code)
 		return false;
 
 	fprintf(f, "#pragma OPENCL EXTENSION cl_khr_byte_addressable_store : enable\n");
@@ -376,6 +377,17 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "\tmd5_round(out, (uint*)key);\n");
 	fprintf(f, "}\n\n");
 
+	fprintf(f, "int gcd(int a, int b) {\n");
+	fprintf(f, "\tif (a < 0) a = -a;\n");
+	fprintf(f, "\tif (b < 0) b = -b;\n");
+	fprintf(f, "\twhile (b != 0) {\n");
+	fprintf(f, "\t\ta %%= b;\n");
+	fprintf(f, "\t\tif (a == 0) return b;\n");
+	fprintf(f, "\t\tb %%= a;\n");
+	fprintf(f, "\t}\n");
+	fprintf(f, "\treturn a;\n");
+	fprintf(f, "}\n\n");
+
 	fprintf(f, "uint swap32(uint a) {\n");
 	fprintf(f, "\treturn ((a << 24) | ((a << 8) & 0x00FF0000) | ((a >> 8) & 0x0000FF00) | ((a >> 24) & 0x000000FF));\n");
 	fprintf(f, "}\n\n");
@@ -413,7 +425,7 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "}\n\n");
 
 	fprintf(f, "__kernel void execute (global uint* restrict base_data, global int* restrict input_m, global double* restrict input_f, global uint* restrict output) {\n");
-	fprintf(f, "\tint i, bounty_found;\n");
+	fprintf(f, "\tint i, index, bounty_found;\n");
 	fprintf(f, "\tuint base_data_local[20];\n");
 	fprintf(f, "\tuint msg[16];\n");
 	fprintf(f, "\tuint hash[4];\n");
@@ -467,11 +479,6 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "\tvm_state[3] = 0;\n\n");
 
 	fprintf(f, "\t//The following code created by ElasticPL to C parser\n");
-
-	code = convert_ast_to_c();
-
-	if (!code)
-		return false;
 
 	fprintf(f, "%s", code);
 

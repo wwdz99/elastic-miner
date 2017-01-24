@@ -516,11 +516,6 @@ static void *test_vm_thread(void *userdata) {
 	struct instance *inst = NULL;
 	int i, rc;
 
-	if (opt_opencl) {
-		applog(LOG_ERR, "ERROR:  --test-vm option cannot be used with OpenCL");
-		exit(EXIT_FAILURE);
-	}
-
 	// Initialize Global Variables
 	vm_state = calloc(4, sizeof(uint32_t));
 	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
@@ -568,6 +563,14 @@ static void *test_vm_thread(void *userdata) {
 		rc = inst->execute();
 
 		free_compiler(inst);
+	}
+	else if (opt_opencl) {
+
+		// Convert The ElasticPL Source Into OpenCL
+		if (!create_opencl_source("test")) {
+			applog(LOG_ERR, "ERROR: Unable to convert 'source' to OpenC.  Exiting 'test_vm'\n");
+			exit(EXIT_FAILURE);
+		}
 	}
 	else {
 		// Execute The VM Logic
