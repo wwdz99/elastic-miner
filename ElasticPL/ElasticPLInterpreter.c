@@ -190,7 +190,7 @@ static uint32_t rotr32(uint32_t x, unsigned int n) {
 	return (x >> n) | (x << ((-n)&mask32));
 }
 
-static int mangle_state(int x) {
+static void mangle_state(int x) {
 	int mod = x % 32;
 	int leaf = mod % 4;
 	if (leaf == 0) {
@@ -209,7 +209,6 @@ static int mangle_state(int x) {
 		vm_state[3] = rotl32(vm_state[3], mod);
 		vm_state[3] = vm_state[3] ^ x;
 	}
-	return x;
 }
 
 static double interpret(ast* exp) {
@@ -250,13 +249,15 @@ static double interpret(ast* exp) {
 				return 0;
 
 			rfval = interpret(exp->right);
-			if (exp->left->is_float)
-				vm_f[lval] = rfval;
-			else
-				vm_m[lval] = (int32_t)rfval;
 
-			mangle_state(lval);
-			mangle_state((int32_t)rfval);
+			if (exp->left->is_float) {
+				vm_f[lval] = rfval;
+				mangle_state((int32_t)vm_f[lval]);
+			}
+			else {
+				vm_m[lval] = (int32_t)rfval;
+				mangle_state(vm_m[lval]);
+			}
 			return 1;
 		case NODE_IF:
 			if (exp->right->type != NODE_ELSE) {
@@ -315,12 +316,14 @@ static double interpret(ast* exp) {
 
 			rfval = interpret(exp->right);
 
-			if (exp->left->is_float)
+			if (exp->left->is_float) {
 				vm_f[lval] += rfval;
-			else 
+				mangle_state((int32_t)vm_f[lval]);
+			}
+			else {
 				vm_m[lval] += (int32_t)rfval;
-			mangle_state(lval);
-			mangle_state((int32_t)rfval);
+				mangle_state(vm_m[lval]);
+			}
 			return 1;
 		case NODE_SUB_ASSIGN:
 			if (exp->left->type == NODE_VAR_CONST)
@@ -333,12 +336,14 @@ static double interpret(ast* exp) {
 
 			rfval = interpret(exp->right);
 
-			if (exp->left->is_float)
+			if (exp->left->is_float) {
 				vm_f[lval] -= rfval;
-			else
+				mangle_state((int32_t)vm_f[lval]);
+			}
+			else {
 				vm_m[lval] -= (int32_t)rfval;
-			mangle_state(lval);
-			mangle_state((int32_t)rfval);
+				mangle_state(vm_m[lval]);
+			}
 			return 1;
 		case NODE_MUL_ASSIGN:
 			if (exp->left->type == NODE_VAR_CONST)
@@ -351,12 +356,14 @@ static double interpret(ast* exp) {
 
 			rfval = interpret(exp->right);
 
-			if (exp->left->is_float)
+			if (exp->left->is_float) {
 				vm_f[lval] *= rfval;
-			else
+				mangle_state((int32_t)vm_f[lval]);
+			}
+			else {
 				vm_m[lval] *= (int32_t)rfval;
-			mangle_state(lval);
-			mangle_state((int32_t)rfval);
+				mangle_state(vm_m[lval]);
+			}
 			return 1;
 		case NODE_DIV_ASSIGN:
 			if (exp->left->type == NODE_VAR_CONST)
@@ -371,12 +378,14 @@ static double interpret(ast* exp) {
 			if (rfval == 0.0)
 				return 0;
 
-			if (exp->left->is_float)
+			if (exp->left->is_float) {
 				vm_f[lval] /= rfval;
-			else
+				mangle_state((int32_t)vm_f[lval]);
+			}
+			else {
 				vm_m[lval] = (int32_t)(vm_m[lval] / rfval);
-			mangle_state(lval);
-			mangle_state((int32_t)rfval);
+				mangle_state(vm_m[lval]);
+			}
 			return 1;
 		case NODE_MOD_ASSIGN:
 			if (exp->left->type == NODE_VAR_CONST)
@@ -391,12 +400,14 @@ static double interpret(ast* exp) {
 			if (rval == 0)
 				return 0;
 
-			if (exp->left->is_float)
+			if (exp->left->is_float) {
 				vm_f[lval] = (double)((int32_t)vm_f[lval] % rval);
-			else
+				mangle_state((int32_t)vm_f[lval]);
+			}
+			else {
 				vm_m[lval] %= rval;
-			mangle_state(lval);
-			mangle_state((int32_t)rval);
+				mangle_state(vm_m[lval]);
+			}
 			return 1;
 		case NODE_LSHFT_ASSIGN:
 			if (exp->left->type == NODE_VAR_CONST)
@@ -408,12 +419,15 @@ static double interpret(ast* exp) {
 				return 0;
 
 			rval = (int32_t)interpret(exp->right);
-			if (exp->left->is_float)
+
+			if (exp->left->is_float) {
 				vm_f[lval] = (double)((int32_t)vm_f[lval] << rval);
-			else
+				mangle_state((int32_t)vm_f[lval]);
+			}
+			else {
 				vm_m[lval] <<= rval;
-			mangle_state(lval);
-			mangle_state((int32_t)rval);
+				mangle_state(vm_m[lval]);
+			}
 			return 1;
 		case NODE_RSHFT_ASSIGN:
 			if (exp->left->type == NODE_VAR_CONST)
@@ -425,12 +439,15 @@ static double interpret(ast* exp) {
 				return 0;
 
 			rval = (int32_t)interpret(exp->right);
-			if (exp->left->is_float)
+
+			if (exp->left->is_float) {
 				vm_f[lval] = (double)((int32_t)vm_f[lval] >> rval);
-			else
+				mangle_state((int32_t)vm_f[lval]);
+			}
+			else {
 				vm_m[lval] >>= rval;
-			mangle_state(lval);
-			mangle_state((int32_t)rval);
+				mangle_state(vm_m[lval]);
+			}
 			return 1;
 		case NODE_AND_ASSIGN:
 			if (exp->left->type == NODE_VAR_CONST)
@@ -442,12 +459,15 @@ static double interpret(ast* exp) {
 				return 0;
 
 			rval = (int32_t)interpret(exp->right);
-			if (exp->left->is_float)
+
+			if (exp->left->is_float) {
 				vm_f[lval] = (double)((int32_t)vm_f[lval] & rval);
-			else
+				mangle_state((int32_t)vm_f[lval]);
+			}
+			else {
 				vm_m[lval] &= rval;
-			mangle_state(lval);
-			mangle_state((int32_t)rval);
+				mangle_state(vm_m[lval]);
+			}
 			return 1;
 		case NODE_XOR_ASSIGN:
 			if (exp->left->type == NODE_VAR_CONST)
@@ -459,12 +479,15 @@ static double interpret(ast* exp) {
 				return 0;
 
 			rval = (int32_t)interpret(exp->right);
-			if (exp->left->is_float)
+
+			if (exp->left->is_float) {
 				vm_f[lval] = (double)((int32_t)vm_f[lval] ^ rval);
-			else
+				mangle_state((int32_t)vm_f[lval]);
+			}
+			else {
 				vm_m[lval] ^= rval;
-			mangle_state(lval);
-			mangle_state((int32_t)rval);
+				mangle_state(vm_m[lval]);
+			}
 			return 1;
 		case NODE_OR_ASSIGN:
 			if (exp->left->type == NODE_VAR_CONST)
@@ -476,12 +499,15 @@ static double interpret(ast* exp) {
 				return 0;
 
 			rval = (int32_t)interpret(exp->right);
-			if (exp->left->is_float)
+
+			if (exp->left->is_float) {
 				vm_f[lval] = (double)((int32_t)vm_f[lval] | rval);
-			else
+				mangle_state((int32_t)vm_f[lval]);
+			}
+			else {
 				vm_m[lval] |= rval;
-			mangle_state(lval);
-			mangle_state((int32_t)rval);
+				mangle_state(vm_m[lval]);
+			}
 			return 1;
 		case NODE_INCREMENT_R:
 			if (exp->left->type == NODE_VAR_CONST)
@@ -492,13 +518,12 @@ static double interpret(ast* exp) {
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
 
-			if (exp->left->is_float) {
-				++vm_f[lval];
-				return ((exp->end_stmnt) ? 1 : vm_f[lval]);
+			if (exp->end_stmnt) {
+				mangle_state((exp->left->is_float) ? ++vm_f[lval] : ++vm_m[lval]);
+				return 1;
 			}
 			else {
-				++vm_m[lval];
-				return ((exp->end_stmnt) ? 1 : vm_m[lval]);
+				return (exp->left->is_float) ? ++vm_f[lval] : ++vm_m[lval];
 			}
 		case NODE_INCREMENT_L:
 			if (exp->left->type == NODE_VAR_CONST)
@@ -509,13 +534,19 @@ static double interpret(ast* exp) {
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
 
-			if (exp->left->is_float) {
-				rfval = vm_f[lval]++;
-				return ((exp->end_stmnt) ? 1 : rfval);
+			if (exp->end_stmnt) {
+				mangle_state((exp->left->is_float) ? ++vm_f[lval] : ++vm_m[lval]);
+				return 1;
 			}
 			else {
-				rval = vm_m[lval]++;
-				return ((exp->end_stmnt) ? 1 : rval);
+				if (exp->left->is_float) {
+					rfval = vm_f[lval]++;
+					return rfval;
+				}
+				else {
+					rval = vm_m[lval]++;
+					return rval;
+				}
 			}
 		case NODE_DECREMENT_R:
 			if (exp->left->type == NODE_VAR_CONST)
@@ -526,13 +557,12 @@ static double interpret(ast* exp) {
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
 
-			if (exp->left->is_float) {
-				--vm_f[lval];
-				return ((exp->end_stmnt) ? 1 : vm_f[lval]);
+			if (exp->end_stmnt) {
+				mangle_state((exp->left->is_float) ? --vm_f[lval] : --vm_m[lval]);
+				return 1;
 			}
 			else {
-				--vm_m[lval];
-				return ((exp->end_stmnt) ? 1 : vm_m[lval]);
+				return (exp->left->is_float) ? --vm_f[lval] : --vm_m[lval];
 			}
 		case NODE_DECREMENT_L:
 			if (exp->left->type == NODE_VAR_CONST)
@@ -543,13 +573,19 @@ static double interpret(ast* exp) {
 			if (lval < 0 || lval > VM_MEMORY_SIZE)
 				return 0;
 
-			if (exp->left->is_float) {
-				rfval = vm_f[lval]--;
-				return ((exp->end_stmnt) ? 1 : rfval);
+			if (exp->end_stmnt) {
+				mangle_state((exp->left->is_float) ? --vm_f[lval] : --vm_m[lval]);
+				return 1;
 			}
 			else {
-				rval = vm_m[lval]--;
-				return ((exp->end_stmnt) ? 1 : rval);
+				if (exp->left->is_float) {
+					rfval = vm_f[lval]--;
+					return rfval;
+				}
+				else {
+					rval = vm_m[lval]--;
+					return rval;
+				}
 			}
 		case NODE_ADD:
 			lfval = interpret(exp->left);

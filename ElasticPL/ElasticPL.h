@@ -285,12 +285,11 @@ extern void dump_vm_ast(ast* root);
 extern char* convert_ast_to_c();
 static char* convert(ast* exp);
 static char* append_strings(char * old, char * new);
-static char *replace(char* old, char* a, char* b);
 extern uint32_t calc_wcet();
 static uint32_t get_wcet(ast* exp);
 extern int interpret_ast(bool first_run);
 static double interpret(ast* exp);
-static int mangle_state(int x);
+static void mangle_state(int x);
 #ifdef _MSC_VER
 static uint32_t rotl32(uint32_t x, int n);
 static uint32_t rotr32(uint32_t x, int n);
