@@ -74,7 +74,7 @@ static ast* pop_exp() {
 	return exp;
 }
 
-static bool validate_inputs(SOURCE_TOKEN *token, NODE_TYPE node_type) {
+static bool validate_inputs(SOURCE_TOKEN *token, int token_num, NODE_TYPE node_type) {
 
 	if ((token->inputs == 0) || (node_type == NODE_BLOCK))
 		return true;
@@ -106,12 +106,18 @@ static bool validate_inputs(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 			return true;
 		break;
 
-	// Expressions w/ 1 Statement & 1 Int / Float (Ignore Right Side)
+	// Expressions w/ 1 Int / Float & 1 If/Else/Repeat/Break/Continue Statement
 	case NODE_IF:
-	case NODE_REPEAT:
 		if (((stack_exp[stack_exp_idx - 1]->data_type == DT_INT) || (stack_exp[stack_exp_idx - 1]->data_type == DT_FLOAT)) &&
 				((stack_exp[stack_exp_idx]->end_stmnt == true) || (stack_exp[stack_exp_idx]->type == NODE_IF) || (stack_exp[stack_exp_idx]->type == NODE_ELSE) || (stack_exp[stack_exp_idx]->type == NODE_REPEAT) || (stack_exp[stack_exp_idx]->type == NODE_BREAK) || (stack_exp[stack_exp_idx]->type == NODE_CONTINUE)))
 				return true;
+		break;
+
+	// Expressions w/ 1 Constant & 1 If/Else/Repeat/Break/Continue Statement
+	case NODE_REPEAT:
+		if ((stack_exp[stack_exp_idx - 1]->type == NODE_CONSTANT) &&
+			((stack_exp[stack_exp_idx]->end_stmnt == true) || (stack_exp[stack_exp_idx]->type == NODE_IF) || (stack_exp[stack_exp_idx]->type == NODE_ELSE) || (stack_exp[stack_exp_idx]->type == NODE_REPEAT) || (stack_exp[stack_exp_idx]->type == NODE_BREAK) || (stack_exp[stack_exp_idx]->type == NODE_CONTINUE)))
+			return true;
 		break;
 
 	case NODE_ELSE:
@@ -119,48 +125,49 @@ static bool validate_inputs(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 			return true;
 		break;
 
-	// Expressions w/ 1 Int
+	// Expressions w/ 1 Int (Right Operand)
 	case NODE_ABS:
 	case NODE_VERIFY:
-		if (stack_exp[stack_exp_idx]->data_type == DT_INT)
+		if ((stack_exp[stack_exp_idx]->data_type == DT_INT) && (stack_exp[stack_exp_idx]->token_num > token_num))
 			return true;
 		break;
 
-	// Expressions w/ 1 Int or Float
+	// Expressions w/ 1 Variable (Left Operand)
+	case NODE_INCREMENT_R:
+	case NODE_DECREMENT_R:
+		if ((stack_exp[stack_exp_idx]->token_num > token_num) &&
+			((stack_exp[stack_exp_idx]->type == NODE_VAR_CONST) || (stack_exp[stack_exp_idx]->type == NODE_VAR_EXP)))
+			return true;
+		break;
+
+	// Expressions w/ 1 Variable (Right Operand)
+	case NODE_INCREMENT_L:
+	case NODE_DECREMENT_L:
+		if ((stack_exp[stack_exp_idx]->token_num < token_num) &&
+			((stack_exp[stack_exp_idx]->type == NODE_VAR_CONST) || (stack_exp[stack_exp_idx]->type == NODE_VAR_EXP)))
+				return true;
+		break;
+
+	// Expressions w/ 1 Int or Float (Right Operand)
 	case NODE_CONSTANT:
 	case NODE_VAR_CONST:
 	case NODE_VAR_EXP:
-	case NODE_INCREMENT_R:
-	case NODE_INCREMENT_L:
-	case NODE_DECREMENT_R:
-	case NODE_DECREMENT_L:
-	case NODE_COMPL:
-	case NODE_NOT:
-	case NODE_NEG:
-	case NODE_SIN:
-	case NODE_COS:
-	case NODE_TAN:
-	case NODE_SINH:
-	case NODE_COSH:
-	case NODE_TANH:
-	case NODE_ASIN:
-	case NODE_ACOS:
-	case NODE_ATAN:
-	case NODE_EXPNT:
-	case NODE_LOG:
-	case NODE_LOG10:
-	case NODE_SQRT:
-	case NODE_CEIL:
-	case NODE_FLOOR:
-	case NODE_FABS:
-		if ((stack_exp[stack_exp_idx]->data_type == DT_INT) || (stack_exp[stack_exp_idx]->data_type == DT_FLOAT))
+		if ((stack_exp[stack_exp_idx]->token_num < token_num) &&
+			(stack_exp[stack_exp_idx]->data_type == DT_INT) || (stack_exp[stack_exp_idx]->data_type == DT_FLOAT))
 			return true;
 		break;
 
-	// Expressions w/ 2 Ints or Floats
-	case NODE_MUL:
-	case NODE_DIV:
-	case NODE_MOD:
+	// Expressions w/ 1 Int or Float (Left Operand)
+	case NODE_COMPL:
+	case NODE_NOT:
+	case NODE_NEG:
+		if ((stack_exp[stack_exp_idx]->token_num > token_num) &&
+			(stack_exp[stack_exp_idx]->data_type == DT_INT) || (stack_exp[stack_exp_idx]->data_type == DT_FLOAT))
+			return true;
+		break;
+
+	// Expressions w/ 1 Variable (Left Operand) & 1 Int or Float (Right Operand)
+	case NODE_ASSIGN:
 	case NODE_ADD_ASSIGN:
 	case NODE_SUB_ASSIGN:
 	case NODE_MUL_ASSIGN:
@@ -171,6 +178,16 @@ static bool validate_inputs(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 	case NODE_AND_ASSIGN:
 	case NODE_XOR_ASSIGN:
 	case NODE_OR_ASSIGN:
+		if (((stack_exp[stack_exp_idx - 1]->token_num < token_num) && (stack_exp[stack_exp_idx]->token_num > token_num)) &&
+			((stack_exp[stack_exp_idx - 1]->type == NODE_VAR_CONST) || (stack_exp[stack_exp_idx - 1]->type == NODE_VAR_EXP)) &&
+			(stack_exp[stack_exp_idx]->data_type == DT_INT) || (stack_exp[stack_exp_idx]->data_type == DT_FLOAT))
+			return true;
+		break;
+
+	// Expressions w/ 2 Ints or Floats
+	case NODE_MUL:
+	case NODE_DIV:
+	case NODE_MOD:
 	case NODE_ADD:
 	case NODE_SUB:
 	case NODE_LROT:
@@ -188,14 +205,43 @@ static bool validate_inputs(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 	case NODE_BITWISE_OR:
 	case NODE_AND:
 	case NODE_OR:
-	case NODE_ASSIGN:
 	case NODE_CONDITIONAL:
 	case NODE_COND_ELSE:
+		if (((stack_exp[stack_exp_idx - 1]->token_num < token_num) && (stack_exp[stack_exp_idx]->token_num > token_num)) &&
+			((stack_exp[stack_exp_idx - 1]->data_type == DT_INT) || (stack_exp[stack_exp_idx - 1]->data_type == DT_FLOAT)) &&
+			(stack_exp[stack_exp_idx]->data_type == DT_INT) || (stack_exp[stack_exp_idx]->data_type == DT_FLOAT))
+			return true;
+		break;
+
+	// Functions w/ 1 Int or Float
+	case NODE_SIN:
+	case NODE_COS:
+	case NODE_TAN:
+	case NODE_SINH:
+	case NODE_COSH:
+	case NODE_TANH:
+	case NODE_ASIN:
+	case NODE_ACOS:
+	case NODE_ATAN:
+	case NODE_EXPNT:
+	case NODE_LOG:
+	case NODE_LOG10:
+	case NODE_SQRT:
+	case NODE_CEIL:
+	case NODE_FLOOR:
+	case NODE_FABS:
+		if ((stack_exp[stack_exp_idx]->token_num > token_num) &&
+			(stack_exp[stack_exp_idx]->data_type == DT_INT) || (stack_exp[stack_exp_idx]->data_type == DT_FLOAT))
+			return true;
+		break;
+
+	// Functions w/ 2 Ints or Floats
 	case NODE_ATAN2:
 	case NODE_POW:
 	case NODE_FMOD:
 	case NODE_GCD:
-		if ((stack_exp[stack_exp_idx - 1]->data_type == DT_INT) || (stack_exp[stack_exp_idx - 1]->data_type == DT_FLOAT) &&
+		if (((stack_exp[stack_exp_idx - 1]->token_num > token_num) && (stack_exp[stack_exp_idx]->token_num > token_num)) &&
+			((stack_exp[stack_exp_idx - 1]->data_type == DT_INT) || (stack_exp[stack_exp_idx - 1]->data_type == DT_FLOAT)) &&
 			(stack_exp[stack_exp_idx]->data_type == DT_INT) || (stack_exp[stack_exp_idx]->data_type == DT_FLOAT))
 			return true;
 		break;
@@ -206,43 +252,6 @@ static bool validate_inputs(SOURCE_TOKEN *token, NODE_TYPE node_type) {
 
 	applog(LOG_ERR, "Syntax Error - Line: %d  Invalid inputs for '%s'", token->line_num, get_node_str(node_type));
 	return false;
-}
-
-// Validate Unary Operations Have 1 Valid Expression
-static bool validate_unary_exp(SOURCE_TOKEN *token, int token_num, NODE_TYPE node_type) {
-
-	if (node_type == NODE_CONSTANT)
-		return true;
-
-	// Validate Increment / Decrement Have Variable For Operand
-	if (token->type == TOKEN_INCREMENT || token->type == TOKEN_DECREMENT) {
-		if (stack_exp[stack_exp_idx]->type != NODE_VAR_CONST && stack_exp[stack_exp_idx]->type != NODE_VAR_EXP) {
-			applog(LOG_ERR, "Syntax Error - Line: %d  Invalid Operand For: \"%s\"\n", token->line_num, get_node_str(node_type));
-			return false;
-		}
-		return true;
-	}
-
-	// Validate Expression Is Not A Statement (Left For Variables, Right For Other Unary Expressions)
-	if (stack_exp[stack_exp_idx]->exp != EXP_STATEMENT && stack_exp[stack_exp_idx]->exp != EXP_FUNCTION) {
-
-		// Check Left Expression For Variables & Increment / Decrement
-		if ((node_type == NODE_VAR_CONST) || (node_type == NODE_VAR_EXP)) {
-				if (stack_exp[stack_exp_idx]->token_num >= token_num) {
-				applog(LOG_ERR, "Syntax Error - Line: %d  Invalid Operand For: \"%s\"\n", token->line_num, get_node_str(node_type));
-				return false;
-			}
-		}
-		// Check Right Expression For Other Unary Operators
-		else {
-			if (stack_exp[stack_exp_idx]->token_num <= token_num) {
-				applog(LOG_ERR, "Syntax Error - Line: %d  Invalid Operand For: \"%s\"\n", token->line_num, get_node_str(node_type));
-				return false;
-			}
-		}
-	}
-
-	return true;
 }
 
 static NODE_TYPE get_node_type(SOURCE_TOKEN *token, int token_num) {
@@ -359,7 +368,7 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 	}
 
 	// Confirm Required Number / Types Of Expressions Are On Stack
-	if (!validate_inputs(token, node_type))
+	if (!validate_inputs(token, token_num, node_type))
 		return false;
 
 	switch (token->exp) {
@@ -410,10 +419,6 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 		}
 		// Unary Expressions
 		else if (token->inputs == 1) {
-
-			// Additional Validations For Unary Expressions
-			if (!validate_unary_exp(token, token_num, node_type))
-				return false;
 
 			left = pop_exp();
 
