@@ -57,7 +57,7 @@ bool create_c_source() {
 	fprintf(f, "\treturn (x>>n) | (x<<( (-n)&mask32 ));\n");
 	fprintf(f, "}\n\n");
 
-	fprintf(f, "static int mangle_state(int x) {\n");
+	fprintf(f, "static void mangle_state(int x) {\n");
 	fprintf(f, "\tint mod = x %% 32;\n");
 	fprintf(f, "\tint leaf = mod %% 4;\n");
 	fprintf(f, "\tif (leaf == 0) {\n");
@@ -75,21 +75,6 @@ bool create_c_source() {
 	fprintf(f, "\telse {\n");
 	fprintf(f, "\t\tstate[3] = rotl32(state[3], mod);\n");
 	fprintf(f, "\t\tstate[3] = state[3] ^ x;\n");
-	fprintf(f, "\t}\n");
-	fprintf(f, "\treturn x;\n");
-	fprintf(f, "}\n\n");
-
-	fprintf(f, "static void mangle(int index, bool is_float) {\n");
-	fprintf(f, "\tif (is_float) {\n");
-//	fprintf(f, "\t\tuint32_t *f_val = (uint32_t *)(&f[index]);\n");
-//	fprintf(f, "\t\tuint32_t val = f_val[0] ^ f_val[1];\n");
-	fprintf(f, "\t\tmangle_state(index);\n");
-	fprintf(f, "\t\tmangle_state((int32_t)f[index]);\n");
-//	fprintf(f, "\t\tmangle_state(val);\n");
-	fprintf(f, "\t}\n");
-	fprintf(f, "\telse {\n");
-	fprintf(f, "\t\tmangle_state(index);\n");
-	fprintf(f, "\t\tmangle_state(m[index]);\n");
 	fprintf(f, "\t}\n");
 	fprintf(f, "}\n\n");
 
@@ -112,7 +97,6 @@ bool create_c_source() {
 #else
 	fprintf(f, "int execute() {\n");
 #endif
-	fprintf(f, "\tint index;\n");
 	fprintf(f, "\tint bounty_found;\n");
 	fprintf(f, "\n\t// The following code created by ElasticPL to C converter\n\n");
 	fprintf(f, "%s", &code[0]);
@@ -402,7 +386,7 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "\treturn (x>>n) | (x<<( (-n) & 0x0000001f ));\n");
 	fprintf(f, "}\n\n");
 
-	fprintf(f, "static int mangle_state(int x, uint *vm_state) {\n");
+	fprintf(f, "static void mangle_state(int x, uint *vm_state) {\n");
 	fprintf(f, "\tint mod = x %% 32;\n");
 	fprintf(f, "\tint leaf = mod %% 4;\n");
 	fprintf(f, "\tif (leaf == 0) {\n");
@@ -421,11 +405,10 @@ extern bool create_opencl_source(char *work_str) {
 	fprintf(f, "\t\tvm_state[3] = rotl32(vm_state[3], mod);\n");
 	fprintf(f, "\t\tvm_state[3] = vm_state[3] ^ x;\n");
 	fprintf(f, "\t}\n");
-	fprintf(f, "\treturn x;\n");
 	fprintf(f, "}\n\n");
 
 	fprintf(f, "__kernel void execute (global uint* restrict base_data, global int* restrict input_m, global double* restrict input_f, global uint* restrict output) {\n");
-	fprintf(f, "\tint i, index, bounty_found;\n");
+	fprintf(f, "\tint i, bounty_found;\n");
 	fprintf(f, "\tuint base_data_local[20];\n");
 	fprintf(f, "\tuint msg[16];\n");
 	fprintf(f, "\tuint hash[4];\n");
