@@ -470,40 +470,50 @@ static void thread_low_priority() {
 }
 
 static bool load_test_file(char *buf) {
-	size_t i, len, bytes;
+	int i, fsize, len, bytes;
+	char *ptr;
 	FILE *fp;
 
 	fp = fopen(test_filename, "r");
 
 	if (!fp) {
-		fprintf(stderr, "ERROR: Unable to open test file: '%s'\n", test_filename);
+		applog(LOG_ERR, "ERROR: Unable to open test file: '%s'\n", test_filename);
 		return false;
 	}
 
 	if (0 != fseek(fp, 0, SEEK_END)) {
-		fprintf(stderr, "ERROR: Unable to determine size of test file: '%s'\n", test_filename);
+		applog(LOG_ERR, "ERROR: Unable to determine size of test file: '%s'\n", test_filename);
 		fclose(fp);
 		return false;
 	}
 
-	len = ftell(fp);
+	fsize = ftell(fp);
 
-	if (len > MAX_SOURCE_SIZE - 4) {
-		fprintf(stderr, "ERROR: Test file exceeds max size (%d): %zu bytes\n", MAX_SOURCE_SIZE, len);
+	if (fsize > MAX_SOURCE_SIZE - 4) {
+		applog(LOG_ERR, "ERROR: Test file exceeds max size (%d bytes): %zu bytes\n", MAX_SOURCE_SIZE, fsize);
 		fclose(fp);
 		return false;
 	}
 
 	rewind(fp);
-	bytes = fread(buf, 1, len, fp);
+	ptr = buf;
+	len = fsize;
+	while (len > 0) {
+		bytes = fread(ptr, 1, ((len > 1024) ? 1024 : len), fp);
+		if (bytes == 0) {
+			if (feof(fp))
+				break;
+			else
+				applog(LOG_ERR, "ERROR: Unable to read test file: '%s'\n", test_filename);
+			return false;
+		}
+		len -= bytes;
+		ptr += bytes;
+		ptr[0] = 0;
+	}
 	fclose(fp);
 
-	if (bytes == 0)
-		fprintf(stderr, "ERROR: Unable to read test file: '%s'\n", test_filename);
-
-	buf[bytes] = 0;
-
-	for (i = 0; i < strlen(buf); i++)
+	for (i = 0; i < fsize; i++)
 		buf[i] = tolower(buf[i]);
 
 	return true;
@@ -529,8 +539,6 @@ static void *test_vm_thread(void *userdata) {
 	applog(LOG_DEBUG, "DEBUG: Loading Test File");
 	if (!load_test_file(test_code))
 		exit(EXIT_FAILURE);
-
-	fprintf(stdout, "%s\n\n", test_code);
 
 	// Convert The Source Code Into ElasticPL AST
 	if (!create_epl_vm(test_code)) {
