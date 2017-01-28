@@ -44,10 +44,14 @@ extern uint32_t calc_wcet() {
 
 // Use Post Order Traversal To Calculate WCET For Each Statement
 static uint32_t get_wcet(ast* exp) {
+	uint32_t weight = 1;
 	uint32_t lval = 0;
 	uint32_t rval = 0;
 	uint32_t tmp = 0;
 	uint32_t wcet = 0;
+
+	bool l_is_float = false;
+	bool r_is_float = false;
 
 	if (exp != NULL) {
 
@@ -63,53 +67,74 @@ static uint32_t get_wcet(ast* exp) {
 		if (exp->type != NODE_IF)
 			rval = get_wcet(exp->right);
 
+		// Check If Leafs Are Float Or Int To Determine Weight
+		if (exp->left != NULL)
+			l_is_float = (exp->left->is_float);
+		if (exp->right != NULL)
+			r_is_float = (exp->right->is_float);
+
+		exp->is_float = exp->is_float | l_is_float | r_is_float;
+
+		// Increase Weight For Double Operations
+		if (exp->is_float)
+			weight = 2;
+
 		switch (exp->type) {
-		case NODE_CONSTANT:
-		case NODE_VAR_CONST:
-		case NODE_VAR_EXP:
-			wcet = (wcet < 0xFFFFFFFF ? 1 : 0);
-			break;
-		case NODE_ASSIGN:
-			wcet = (wcet < (0xFFFFFFFF - (lval + rval + 1)) ? (lval + rval + 1) : 0);
-			break;
 		case NODE_IF:
 			if (exp->right->type != NODE_ELSE) {
 				rval = get_wcet(exp->right);				// If Body (No Else Condition)
-				wcet = (wcet < (0xFFFFFFFF - (lval + rval + 1)) ? (lval + rval + 1) : 0);
+				wcet = (wcet < (0xFFFFFFFF - (lval + rval + (4 * weight))) ? (lval + rval + (4 * weight)) : 0);
 			}
 			else {
 				tmp = lval;									// Condition
 				lval = get_wcet(exp->right->left);			// If Body
 				rval = get_wcet(exp->right->right);			// Else Body
 				if (lval >= rval)
-					wcet = (wcet < (0xFFFFFFFF - (tmp + lval + 1)) ? (tmp + lval + 1) : 0);
+					wcet = (wcet < (0xFFFFFFFF - (tmp + lval + (4 * weight))) ? (tmp + lval + (4 * weight)) : 0);
 				else
-					wcet = (wcet < (0xFFFFFFFF - (tmp + rval + 1)) ? (tmp + rval + 1) : 0);
+					wcet = (wcet < (0xFFFFFFFF - (tmp + rval + (4 * weight))) ? (tmp + rval + (4 * weight)) : 0);
 			}
-			break;
-		case NODE_ELSE:
 			break;
 		case NODE_REPEAT:
 			tmp = exp->left->value;
-			wcet = (wcet < (0xFFFFFFFF - ((tmp * rval) + 1)) ? ((tmp * rval) + 1) : 0);
+			wcet = (wcet < (0xFFFFFFFF - ((tmp * rval) + (4 * weight))) ? ((tmp * rval) + (4 * weight)) : 0);
 			break;
 		case NODE_BLOCK:
 			wcet_block += lval;
 			wcet = wcet_block;
 			break;
-		case NODE_INCREMENT_R:
-		case NODE_INCREMENT_L:
-		case NODE_ADD:
-		case NODE_DECREMENT_R:
-		case NODE_DECREMENT_L:
-		case NODE_SUB:
-		case NODE_MUL:
-		case NODE_DIV:
-		case NODE_MOD:
-		case NODE_LSHIFT:
-		case NODE_LROT:
-		case NODE_RSHIFT:
-		case NODE_RROT:
+		case NODE_PARAM:
+			wcet_block += lval;
+			wcet = wcet_block;
+			break;
+		case NODE_BREAK:
+		case NODE_CONTINUE:
+			wcet = (wcet < (0xFFFFFFFF - (0 + weight)) ? (0 + weight) : 0);
+			break;
+
+		// Variable / Constants (Weight x 1)
+		case NODE_CONSTANT:
+		case NODE_VAR_CONST:
+		case NODE_VAR_EXP:
+			wcet = (wcet < 0xFFFFFFFF ? weight : 0);
+			break;
+
+		// Assignments (Weight x 1)
+		case NODE_ASSIGN:
+		case NODE_ADD_ASSIGN:
+		case NODE_SUB_ASSIGN:
+		case NODE_MUL_ASSIGN:
+		case NODE_DIV_ASSIGN:
+		case NODE_MOD_ASSIGN:
+		case NODE_LSHFT_ASSIGN:
+		case NODE_RSHFT_ASSIGN:
+		case NODE_AND_ASSIGN:
+		case NODE_XOR_ASSIGN:
+		case NODE_OR_ASSIGN:
+			wcet = (wcet < (0xFFFFFFFF - (lval + rval + weight)) ? (lval + rval + weight) : 0);
+			break;
+
+		// Simple Operations (Weight x 1)
 		case NODE_AND:
 		case NODE_OR:
 		case NODE_BITWISE_AND:
@@ -121,19 +146,73 @@ static uint32_t get_wcet(ast* exp) {
 		case NODE_LT:
 		case NODE_GE:
 		case NODE_LE:
-			wcet = (wcet < (0xFFFFFFFF - (lval + rval + 1)) ? (lval + rval + 1) : 0);
+			wcet = (wcet < (0xFFFFFFFF - (lval + rval + weight)) ? (lval + rval + weight) : 0);
 			break;
+
 		case NODE_NOT:
 		case NODE_COMPL:
 		case NODE_NEG:
-			wcet = (wcet < (0xFFFFFFFF - (lval + 1)) ? (lval + 1) : 0);
+		case NODE_INCREMENT_R:
+		case NODE_INCREMENT_L:
+		case NODE_DECREMENT_R:
+		case NODE_DECREMENT_L:
+			wcet = (wcet < (0xFFFFFFFF - (lval + weight)) ? (lval + weight) : 0);
 			break;
+
+		// Medium Operations (Weight x 2)
+		case NODE_ADD:
+		case NODE_SUB:
+		case NODE_LSHIFT:
+		case NODE_RSHIFT:
 		case NODE_VERIFY:
-			wcet = (wcet < (0xFFFFFFFF - (lval + rval + 1)) ? (lval + rval + 1) : 0);
+		case NODE_CONDITIONAL:
+			wcet = (wcet < (0xFFFFFFFF - (lval + rval + (2 * weight))) ? (lval + rval + (2 * weight)) : 0);
 			break;
-		case NODE_PARAM:
-			wcet_block += lval;
-			wcet = wcet_block;
+
+		// Complex Operations (Weight x 3)
+		case NODE_MUL:
+		case NODE_DIV:
+		case NODE_MOD:
+		case NODE_LROT:
+		case NODE_RROT:
+			wcet = (wcet < (0xFFFFFFFF - (lval + rval + (3 * weight))) ? (lval + rval + (3 * weight)) : 0);
+			break;
+
+		// Complex Operations (Weight x 2)
+		case NODE_ABS:
+		case NODE_CEIL:
+		case NODE_FLOOR:
+		case NODE_FABS:
+			wcet = (wcet < (0xFFFFFFFF - (lval + rval + (2 * weight))) ? (lval + rval + (2 * weight)) : 0);
+			break;
+
+		// Medium Functions (Weight x 4)
+		case NODE_SIN:
+		case NODE_COS:
+		case NODE_TAN:
+		case NODE_SINH:
+		case NODE_COSH:
+		case NODE_TANH:
+		case NODE_ASIN:
+		case NODE_ACOS:
+		case NODE_ATAN:
+		case NODE_FMOD:
+			wcet = (wcet < (0xFFFFFFFF - (lval + rval + (4 * weight))) ? (lval + rval + (4 * weight)) : 0);
+			break;
+
+		// Complex Functions (Weight x 6)
+		case NODE_EXPNT:
+		case NODE_LOG:
+		case NODE_LOG10:
+		case NODE_SQRT:
+		case NODE_ATAN2:
+		case NODE_POW:
+		case NODE_GCD:
+			wcet = (wcet < (0xFFFFFFFF - (lval + rval + (6 * weight))) ? (lval + rval + (6 * weight)) : 0);
+			break;
+
+		case NODE_COND_ELSE:
+		case NODE_ELSE:
 			break;
 		default:
 			break;
