@@ -142,7 +142,7 @@ static bool add_token(SOURCE_TOKEN_LIST *token_list, int token_id, char *literal
 
 	// Increase Token List Size If Needed
 	if (token_list->num == token_list->size) {
-		token_list->size += 256;
+		token_list->size += 1024;
 		token_list->token = (SOURCE_TOKEN *)realloc(token_list->token, token_list->size * sizeof(SOURCE_TOKEN));
 
 		if (!token_list->token)

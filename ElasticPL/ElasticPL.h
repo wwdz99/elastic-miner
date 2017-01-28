@@ -16,8 +16,8 @@
 #include <string.h>
 
 #define MAX_LITERAL_SIZE 260
-#define TOKEN_LIST_SIZE 1024
-#define PARSE_STACK_SIZE 512
+#define TOKEN_LIST_SIZE 32000
+#define PARSE_STACK_SIZE 24000
 
 #define VM_MEMORY_SIZE	64000	// Number Of Integers Supported By ElasticPL
 #define VM_FLOAT_SIZE	1000	// Number Of Doubles Supported By ElasticPL

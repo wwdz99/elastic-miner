@@ -24,8 +24,8 @@ extern bool create_epl_vm(char *source) {
 	stack_op_idx = -1;
 	stack_exp_idx = -1;
 	top_op = -1;
-	stack_op = calloc(PARSE_STACK_SIZE, sizeof(int));
-	stack_exp = calloc(PARSE_STACK_SIZE, sizeof(ast) / sizeof(stack_exp[0]));
+	stack_op = calloc(PARSE_STACK_SIZE * 2, sizeof(int));
+	stack_exp = calloc(PARSE_STACK_SIZE, sizeof(ast));
 
 	if (!stack_op || !stack_exp) {
 		applog(LOG_ERR, "ERROR: Unable To Allocate VM Parser Stack!");
@@ -104,13 +104,12 @@ extern void dump_vm_ast(ast* root) {
 	if (root != NULL) {
 		dump_vm_ast(root->left);
 		dump_vm_ast(root->right);
+		val[0] = 0;
 
 		if (root->type == NODE_CONSTANT || root->type == NODE_VAR_CONST)
 			sprintf(val, "%ld", root->value);
-		else
-			strcpy(val, "");
 
-		fprintf(stdout, "Type: %d,\t%s\t%s\n", root->type, get_node_str(root->type), val);
+		printf("Type: %d,\t%s\t%s\n", root->type, get_node_str(root->type), val);
 	}
 }
 
