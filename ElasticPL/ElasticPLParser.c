@@ -558,7 +558,8 @@ extern bool parse_token_list(SOURCE_TOKEN_LIST *token_list) {
 			(token_list->token[i].type == TOKEN_BLOCK_END) ||
 			(token_list->token[i].type == TOKEN_VAR_END) ||
 			(token_list->token[i].type == TOKEN_CLOSE_PAREN) ||
-			(token_list->token[i].type == TOKEN_COND_ELSE) ) {
+			(token_list->token[i].type == TOKEN_COMMA) ||
+			(token_list->token[i].type == TOKEN_COND_ELSE)) {
 
 			while ((top_op >= 0) && (token_list->token[top_op].prec >= token_list->token[i].prec)) {
 
