@@ -30,6 +30,11 @@ static ast* add_exp(NODE_TYPE node_type, EXP_TYPE exp_type, int32_t value, doubl
 		e->is_float = (data_type == DT_FLOAT);
 		e->left = left;
 		e->right = right;
+
+		if (left)
+			e->left->parent = e;
+		if (right)
+			e->right->parent = e;
 	}
 	return e;
 };

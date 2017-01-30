@@ -16,7 +16,7 @@
 #include <string.h>
 
 #define MAX_LITERAL_SIZE 260
-#define TOKEN_LIST_SIZE 32000
+#define TOKEN_LIST_SIZE 4096
 #define PARSE_STACK_SIZE 24000
 
 #define VM_MEMORY_SIZE	64000	// Number Of Integers Supported By ElasticPL
@@ -243,6 +243,7 @@ typedef struct AST {
 	bool end_stmnt;
 	DATA_TYPE data_type;
 	bool is_float;
+	struct AST*	parent;
 	struct AST*	left;
 	struct AST*	right;
 } ast;
@@ -280,12 +281,15 @@ static void push_op(int token_id);
 static ast* add_exp(NODE_TYPE node_type, EXP_TYPE exp_type, int32_t value, double fvalue, unsigned char *svalue, int token_num, int line_num, DATA_TYPE data_type, ast* left, ast* right);
 extern char* get_node_str(NODE_TYPE node_type);
 extern void dump_vm_ast(ast* root);
+static void print_node(ast* node);
 
 extern char* convert_ast_to_c();
 static char* convert(ast* exp);
 static char* append_strings(char * old, char * new);
 extern uint32_t calc_wcet();
 static uint32_t get_wcet(ast* exp);
+static uint32_t calc_weight(ast* root);
+static uint32_t get_weight(ast* exp);
 extern int interpret_ast(bool first_run);
 static double interpret(ast* exp);
 static void mangle_state(int x);

@@ -20,6 +20,231 @@
 
 uint32_t wcet_block;
 
+static uint32_t calc_weight(ast* root) {
+	uint32_t weight, total_weight = 0;
+	uint32_t block_weight[100];
+	int block_level = -1;
+	bool downward = true;
+	ast *new_ptr = NULL;
+	ast *old_ptr = NULL;
+
+	if (!root)
+		return 0;
+
+	new_ptr = root;
+
+	while (new_ptr) {
+		old_ptr = new_ptr;
+
+		// Navigate Down The Tree
+		if (downward) {
+			// Navigate To Lowest Left Parent Node
+			while (new_ptr->left) {
+				if (!new_ptr->left->left)
+					break;
+				new_ptr = new_ptr->left;
+			}
+
+			// Get weight Of Left Node
+			if (new_ptr->left)
+				weight = get_weight(new_ptr->left);
+
+			// Check For "Repeat" Blocks
+			if (new_ptr->type == NODE_REPEAT) {
+				total_weight += weight;
+				block_level++;
+				if (block_level >= 100)
+					return 0;
+				block_weight[block_level] = 0;
+			}
+
+			// Switch To Right Node
+			if (new_ptr->right) {
+				new_ptr = new_ptr->right;
+			}
+			else {
+				// Print Right Node & Navigate Back Up The Tree
+				if (old_ptr != root) {
+					weight = get_weight(new_ptr);
+					new_ptr = old_ptr->parent;
+				}
+				downward = false;
+			}
+		}
+
+		// Navigate Back Up The Tree
+		else {
+			if (new_ptr == root)
+				break;
+
+			// Get weight Of Parent Node
+			weight = get_weight(new_ptr);
+
+			// Check If We Need To Navigate Back Down A Right Branch
+			if ((new_ptr == new_ptr->parent->left) && (new_ptr->parent->right)) {
+				new_ptr = new_ptr->parent->right;
+				downward = true;
+			}
+			else {
+				new_ptr = old_ptr->parent;
+			}
+		}
+
+		if (block_level >= 0)
+			block_weight[block_level] += weight;
+		else
+			total_weight += (total_weight < (0xFFFFFFFF - weight) ? weight : 0);
+
+		// Get Total weight For The "Repeat" Block
+		if ((block_level >= 0) && (new_ptr->type == NODE_REPEAT)) {
+			if (block_level == 0)
+				total_weight += (((new_ptr->left->value > 0) ? new_ptr->left->value : 0) * block_weight[block_level]);
+			else
+				block_weight[block_level - 1] += (((new_ptr->left->value > 0) ? new_ptr->left->value : 0) * block_weight[block_level]);
+			block_level--;
+		}
+	}
+
+	// Get weight Of Root Node
+	weight = get_weight(new_ptr);
+	total_weight += (total_weight < (0xFFFFFFFF - weight) ? weight : 0);
+
+	return total_weight;
+}
+
+static uint32_t get_weight(ast* exp) {
+	uint32_t weight = 1;
+
+	bool l_is_float = false;
+	bool r_is_float = false;
+
+	if (!exp)
+		return 0;
+
+	// Check If Leafs Are Float Or Int To Determine Weight
+	if (exp->left != NULL)
+		l_is_float = (exp->left->is_float);
+	if (exp->right != NULL)
+		r_is_float = (exp->right->is_float);
+
+	exp->is_float = exp->is_float | l_is_float | r_is_float;
+
+	// Increase Weight For Double Operations
+	if (exp->is_float)
+		weight = 2;
+
+	switch (exp->type) {
+		case NODE_IF:
+		case NODE_ELSE:
+		case NODE_REPEAT:
+		case NODE_COND_ELSE:
+			return weight * 4;
+
+		case NODE_BREAK:
+		case NODE_CONTINUE:
+			return weight;
+
+		// Variable / Constants (Weight x 1)
+		case NODE_CONSTANT:
+		case NODE_VAR_CONST:
+		case NODE_VAR_EXP:
+			return weight;
+
+		// Assignments (Weight x 1)
+		case NODE_ASSIGN:
+		case NODE_ADD_ASSIGN:
+		case NODE_SUB_ASSIGN:
+		case NODE_MUL_ASSIGN:
+		case NODE_DIV_ASSIGN:
+		case NODE_MOD_ASSIGN:
+		case NODE_LSHFT_ASSIGN:
+		case NODE_RSHFT_ASSIGN:
+		case NODE_AND_ASSIGN:
+		case NODE_XOR_ASSIGN:
+		case NODE_OR_ASSIGN:
+			return weight;
+
+		// Simple Operations (Weight x 1)
+		case NODE_AND:
+		case NODE_OR:
+		case NODE_BITWISE_AND:
+		case NODE_BITWISE_XOR:
+		case NODE_BITWISE_OR:
+		case NODE_EQ:
+		case NODE_NE:
+		case NODE_GT:
+		case NODE_LT:
+		case NODE_GE:
+		case NODE_LE:
+			return weight;
+
+		case NODE_NOT:
+		case NODE_COMPL:
+		case NODE_NEG:
+		case NODE_INCREMENT_R:
+		case NODE_INCREMENT_L:
+		case NODE_DECREMENT_R:
+		case NODE_DECREMENT_L:
+			return weight;
+
+		// Medium Operations (Weight x 2)
+		case NODE_ADD:
+		case NODE_SUB:
+		case NODE_LSHIFT:
+		case NODE_RSHIFT:
+		case NODE_VERIFY:
+		case NODE_CONDITIONAL:
+			return weight * 2;
+
+		// Complex Operations (Weight x 3)
+		case NODE_MUL:
+		case NODE_DIV:
+		case NODE_MOD:
+		case NODE_LROT:
+		case NODE_RROT:
+			return weight * 3;
+
+		// Complex Operations (Weight x 2)
+		case NODE_ABS:
+		case NODE_CEIL:
+		case NODE_FLOOR:
+		case NODE_FABS:
+			return weight * 2;
+
+		// Medium Functions (Weight x 4)
+		case NODE_SIN:
+		case NODE_COS:
+		case NODE_TAN:
+		case NODE_SINH:
+		case NODE_COSH:
+		case NODE_TANH:
+		case NODE_ASIN:
+		case NODE_ACOS:
+		case NODE_ATAN:
+		case NODE_FMOD:
+			return weight * 4;
+
+		// Complex Functions (Weight x 6)
+		case NODE_EXPNT:
+		case NODE_LOG:
+		case NODE_LOG10:
+		case NODE_SQRT:
+		case NODE_ATAN2:
+		case NODE_POW:
+		case NODE_GCD:
+			return weight * 6;
+
+		case NODE_BLOCK:
+		case NODE_PARAM:
+			break;
+
+		default:
+			break;
+	}
+
+	return 0;
+}
+
 extern uint32_t calc_wcet() {
 	int i;
 	uint32_t wcet, total = 0;
@@ -27,9 +252,10 @@ extern uint32_t calc_wcet() {
 	wcet_block = 0;
 
 	for (i = 0; i < vm_ast_cnt; i++) {
-		wcet = get_wcet(vm_ast[i]);
+		//wcet = get_wcet(vm_ast[i]);
+		wcet = calc_weight(vm_ast[i]);
 		applog(LOG_DEBUG, "DEBUG: Statement WCET = %lu", wcet);
-		if (wcet > (0xFFFFFFFF - total)) {
+		if (wcet >(0xFFFFFFFF - total)) {
 			total = 0xFFFFFFFF;
 			break;
 		}

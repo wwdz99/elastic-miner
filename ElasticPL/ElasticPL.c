@@ -12,6 +12,7 @@
 #include "ElasticPL.h"
 #include "../miner.h"
 
+
 extern bool create_epl_vm(char *source) {
 	int i;
 	SOURCE_TOKEN_LIST token_list;
@@ -99,17 +100,93 @@ static bool delete_epl_vm() {
 
 // Temporary - For Debugging Only
 extern void dump_vm_ast(ast* root) {
-	char val[12];
+	bool downward = true;
+	ast *new_ptr = NULL;
+	ast *old_ptr = NULL;
 
-	if (root != NULL) {
-		dump_vm_ast(root->left);
-		dump_vm_ast(root->right);
-		val[0] = 0;
+	if (!root)
+		return;
+	new_ptr = root;
 
-		if (root->type == NODE_CONSTANT || root->type == NODE_VAR_CONST)
-			sprintf(val, "%ld", root->value);
+	while (new_ptr) {
+		old_ptr = new_ptr;
 
-		printf("Type: %d,\t%s\t%s\n", root->type, get_node_str(root->type), val);
+		// Navigate Down The Tree
+		if (downward) {
+			// Navigate To Lowest Left Parent Node
+			while (new_ptr->left) {
+				if (!new_ptr->left->left)
+					break;
+				new_ptr = new_ptr->left;
+			}
+
+			// Print Left Node
+			if (new_ptr->left)
+				print_node(new_ptr->left);
+
+			// Switch To Right Node
+			if (new_ptr->right) {
+				new_ptr = new_ptr->right;
+			}
+			else {
+				// Print Right Node & Navigate Back Up The Tree
+				if (old_ptr != root) {
+					print_node(new_ptr);
+					new_ptr = old_ptr->parent;
+				}
+				downward = false;
+			}
+		}
+
+		// Navigate Back Up The Tree
+		else {
+			if (new_ptr == root)
+				break;
+
+			// Print Parent Node
+			print_node(new_ptr);
+
+			// Check If We Need To Navigate Back Down A Right Branch
+			if ((new_ptr == new_ptr->parent->left) && (new_ptr->parent->right)) {
+				new_ptr = new_ptr->parent->right;
+				downward = true;
+			}
+			else {
+				new_ptr = old_ptr->parent;
+			}
+		}
+	}
+
+	// Display Root Node
+	print_node(new_ptr);
+}
+
+static void print_node(ast* node) {
+	char val[18];
+	val[0] = 0;
+
+	switch (node->type) {
+	case NODE_CONSTANT:
+		if (node->is_float)
+			printf("Type: %d,\t%f\n", node->type, node->fvalue);
+		else
+			printf("Type: %d,\t%ld\n", node->type, node->value);
+		break;
+	case NODE_VAR_CONST:
+		if (node->is_float)
+			printf("Type: %d,\tf[%ld]\n", node->type, node->value);
+		else
+			printf("Type: %d,\tm[%ld]\n", node->type, node->value);
+		break;
+	case NODE_VAR_EXP:
+		if (node->is_float)
+			printf("Type: %d,\tf[x]\n", node->type);
+		else
+			printf("Type: %d,\tm[x]\n", node->type);
+		break;
+	default:
+		printf("Type: %d,\t%s\n", node->type, get_node_str(node->type));
+		break;
 	}
 }
 
