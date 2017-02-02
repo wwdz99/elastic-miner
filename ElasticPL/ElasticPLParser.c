@@ -120,7 +120,8 @@ static bool validate_inputs(SOURCE_TOKEN *token, int token_num, NODE_TYPE node_t
 
 	// Expressions w/ 1 Int, 1 Constant Int & 1 Block
 	case NODE_REPEAT:
-		if ((stack_exp[stack_exp_idx - 2]->data_type == DT_INT) &&
+		if ((stack_exp_idx > 1) &&
+			(stack_exp[stack_exp_idx - 2]->data_type == DT_INT) &&
 			(stack_exp[stack_exp_idx - 1]->type == NODE_CONSTANT) &&
 			(stack_exp[stack_exp_idx - 1]->value > 0) &&
 			(!stack_exp[stack_exp_idx - 1]->is_float) &&
