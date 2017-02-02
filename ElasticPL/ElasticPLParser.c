@@ -15,6 +15,7 @@
 
 int num_exp = 0;
 
+
 static ast* add_exp(NODE_TYPE node_type, EXP_TYPE exp_type, int32_t value, double fvalue, unsigned char *svalue, int token_num, int line_num, DATA_TYPE data_type, ast* left, ast* right) {
 	ast* e = calloc(1, sizeof(ast));
 	if (e) {
@@ -63,7 +64,6 @@ static void push_exp(ast* exp) {
 	stack_exp[++stack_exp_idx] = exp;
 	if (!exp->end_stmnt)
 		num_exp++;
-
 }
 
 static ast* pop_exp() {
@@ -118,10 +118,13 @@ static bool validate_inputs(SOURCE_TOKEN *token, int token_num, NODE_TYPE node_t
 				return true;
 		break;
 
-	// Expressions w/ 1 Constant & 1 If/Else/Repeat/Break/Continue Statement
+	// Expressions w/ 1 Int, 1 Constant Int & 1 Block
 	case NODE_REPEAT:
-		if ((stack_exp[stack_exp_idx - 1]->type == NODE_CONSTANT) &&
-			((stack_exp[stack_exp_idx]->end_stmnt == true) || (stack_exp[stack_exp_idx]->type == NODE_IF) || (stack_exp[stack_exp_idx]->type == NODE_ELSE) || (stack_exp[stack_exp_idx]->type == NODE_REPEAT) || (stack_exp[stack_exp_idx]->type == NODE_BREAK) || (stack_exp[stack_exp_idx]->type == NODE_CONTINUE)))
+		if ((stack_exp[stack_exp_idx - 2]->data_type == DT_INT) &&
+			(stack_exp[stack_exp_idx - 1]->type == NODE_CONSTANT) &&
+			(stack_exp[stack_exp_idx - 1]->value > 0) &&
+			(!stack_exp[stack_exp_idx - 1]->is_float) &&
+			(stack_exp[stack_exp_idx]->type == NODE_BLOCK))
 			return true;
 		break;
 
@@ -455,7 +458,12 @@ static bool create_exp(SOURCE_TOKEN *token, int token_num) {
 			else
 				right = pop_exp();
 			left = pop_exp();
-
+		}
+		// Repeat Statements
+		else if (node_type == NODE_REPEAT) {
+			right = pop_exp();			// Block
+			value = pop_exp()->value;	// Max # Of Iterations
+			left = pop_exp();			// # Of Iterations
 		}
 		break;
 
@@ -511,11 +519,6 @@ static bool validate_exp_list() {
 	}
 
 	for (i = 0; i < stack_exp_idx; i++) {
-		if ((stack_exp[i]->type == NODE_REPEAT) && (stack_exp[i]->right->type != NODE_BLOCK)) {
-			applog(LOG_ERR, "Syntax Error - Line: %d Repeat Statement Missing {}", stack_exp[i]->line_num);
-			return false;
-		}
-
 		if (stack_exp[i]->type == NODE_INIT_ONCE) {
 			if (i > 0) {
 				applog(LOG_ERR, "Syntax Error - Line: %d Init_Once must be first statement", stack_exp[i]->line_num);

@@ -104,9 +104,9 @@ static uint32_t calc_weight(ast* root, uint32_t *ast_depth) {
 		// Get Total weight For The "Repeat" Block
 		if ((block_level >= 0) && (new_ptr->type == NODE_REPEAT)) {
 			if (block_level == 0)
-				total_weight += (((new_ptr->left->value > 0) ? new_ptr->left->value : 0) * block_weight[block_level]);
+				total_weight += (new_ptr->value * block_weight[block_level]);
 			else
-				block_weight[block_level - 1] += (((new_ptr->left->value > 0) ? new_ptr->left->value : 0) * block_weight[block_level]);
+				block_weight[block_level - 1] += (new_ptr->value * block_weight[block_level]);
 			block_level--;
 		}
 	}
@@ -411,6 +411,8 @@ static double interpret(ast* node) {
 	case NODE_REPEAT:
 		vm_break = false;
 		lval = (int32_t)interpret(node->left);
+		if (lval > node->value)
+			lval = node->value;
 		if (lval > 0) {
 			int i;
 			for (i = 0; i < lval; i++) {
