@@ -133,9 +133,9 @@ init_once {
 	m[m[21] + 95] = 1942;
 
 	// Create TSP Cost Matrix
-	repeat(48) {
+	repeat(m[20], 48) {
 
-		repeat(48) {
+		repeat(m[20], 48) {
 
 			if(m[24] == m[23]) {
 				m[24] += 2;   // Move To Next Point B
@@ -165,7 +165,7 @@ init_once {
 // Initialize The Path
 m[30] = 1000; // Index of Path
 m[31] = 0;  // Counter
-repeat(48) {
+repeat(m[20], 48) {
 	m[m[30] + m[31]] = m[31]++;
 }
 
@@ -173,7 +173,7 @@ repeat(48) {
 m[m[30]] = 0;		// Start At Point Zero
 m[m[30] + m[20]] = 0;	// End At Point Zero
 m[31] = m[20] - 1;	// Counter - Start At Final Point In Path
-repeat(47) {
+repeat(m[20] - 1, 48) {
 	m[32] = (abs(m[0]) % m[31]) + 1; // Use m[0] for random input
 	m[33] = m[m[30] + m[32]];
 	m[m[30] + m[32]] = m[m[30] + m[31]];
@@ -201,7 +201,7 @@ f[4] = 0.0;	// Acceptance Probability
 f[5] = 0.0;	// Random # For Accepting Longer Path
 
 // Simulated Annealing Logic
-repeat(20000) {
+repeat(m[40], 48) {
 
 	m[49]++;
 
@@ -211,7 +211,7 @@ repeat(20000) {
 	// Sum Current Distance
 	m[31] = 0; // Counter
 	m[50] = 0; // Total Distance
-	repeat(48) {
+	repeat(m[20], 48) {
 		m[34] = m[m[30] + m[31]];     // Matrix Row
 		m[35] = m[m[30] + m[31] + 1]; // Matrix Column
 		m[50] += m[(m[22] + (m[34] * m[20]) + m[35])];
@@ -237,12 +237,7 @@ repeat(20000) {
 	m[43] = m[42] - m[41];
 	m[44] = m[41];
 	m[45] = m[42];
-	m[31] = 0; // Counter
-	repeat(48) {
-		if (m[43] <= m[31])
-			break;
-		else
-			m[31]++;
+	repeat(m[43], 48) {
 		m[46] = m[m[30] + m[44]];		// Point A Value
 		m[m[30] + m[44]] = m[m[30] + m[45]];	// Move Point B Value To A
 		m[m[30] + m[45]] = m[46];		// Move Point A Value To B
@@ -255,7 +250,7 @@ repeat(20000) {
 	// Sum New Distance
 	m[31] = 0; // Counter
 	m[51] = 0; // Total Distance
-	repeat(48) {
+	repeat(m[20], 48) {
 		m[34] = m[m[30] + m[31]];     // Matrix Row
 		m[35] = m[m[30] + m[31] + 1]; // Matrix Column
 		m[51] += m[(m[22] + (m[34] * m[20]) + m[35])];
@@ -282,12 +277,7 @@ repeat(20000) {
 	m[43] = m[42] - m[41];
 	m[44] = m[41];
 	m[45] = m[42];
-	m[31] = 0; // Counter
-	repeat(48) {
-		if (m[43] <= m[31])
-			break;
-		else
-			m[31]++;
+	repeat(m[43], 48) {
 		m[46] = m[m[30] + m[44]];		// Point A Value
 		m[m[30] + m[44]] = m[m[30] + m[45]];	// Move Point B Value To A
 		m[m[30] + m[45]] = m[46];		// Move Point A Value To B
