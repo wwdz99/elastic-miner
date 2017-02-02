@@ -133,9 +133,9 @@ init_once {
 	m[m[21] + 95] = 1942;
 
 	// Create TSP Cost Matrix
-	repeat(m[20]) {
+	repeat(48) {
 
-		repeat(m[20]) {
+		repeat(48) {
 
 			if(m[24] == m[23]) {
 				m[24] += 2;   // Move To Next Point B
@@ -165,7 +165,7 @@ init_once {
 // Initialize The Path
 m[30] = 1000; // Index of Path
 m[31] = 0;  // Counter
-repeat(m[20]) {
+repeat(48) {
 	m[m[30] + m[31]] = m[31]++;
 }
 
@@ -173,7 +173,7 @@ repeat(m[20]) {
 m[m[30]] = 0;		// Start At Point Zero
 m[m[30] + m[20]] = 0;	// End At Point Zero
 m[31] = m[20] - 1;	// Counter - Start At Final Point In Path
-repeat(m[20] - 1) {
+repeat(47) {
 	m[32] = (abs(m[0]) % m[31]) + 1; // Use m[0] for random input
 	m[33] = m[m[30] + m[32]];
 	m[m[30] + m[32]] = m[m[30] + m[31]];
@@ -184,7 +184,7 @@ repeat(m[20] - 1) {
 // Brute Force Logic
 m[31] = 0;  // Counter
 m[999] = 0; // Total Distance
-repeat(m[20]) {
+repeat(48) {
 	m[34] = m[m[30] + m[31]];     // Matrix Row
 	m[35] = m[m[30] + m[31] + 1]; // Matrix Column
 	m[999] += m[(m[22] + (m[34] * m[20]) + m[35])];
