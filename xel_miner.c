@@ -3,6 +3,7 @@
 * Copyright 2012-2014 pooler
 * Copyright 2014 Lucas Jones
 * Copyright 2016 sprocket
+* Copyright 2016 Evil-Knievel
 *
 * This program is free software; you can redistribuSte it and/or modify it
 * under the terms of the GNU General Public License as published by the Free
@@ -13,17 +14,18 @@
 #define _GNU_SOURCE
 
 #include <curl/curl.h>
+#include <ctype.h>
 #include <getopt.h>
 #include <jansson.h>
+#include <math.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
 #include <time.h>
+#include <openssl/md5.h>
 #include <openssl/rand.h>
 #include "miner.h"
-
-#include "crypto/elasticpl_crypto.h"
 
 #ifdef WIN32
 #include <malloc.h>
@@ -33,7 +35,9 @@
 #include <sys/resource.h>
 #include <sys/types.h>
 #include <sys/syscall.h>
+#include <ctype.h> // avoid implicit declaration of tolower
 #endif
+
 
 enum prefs {
 	PREF_PROFIT,	// Estimate most profitable based on WCET vs reward
@@ -62,6 +66,9 @@ static int opt_fail_pause = 10;
 static int opt_scantime = 60;  // Get New Work From Server At Least Every 60s
 bool opt_test_miner = false;
 bool opt_test_vm = false;
+bool opt_opencl = false;
+int opt_opencl_gthreads = 0;
+int opt_opencl_vwidth = 0;
 int opt_timeout = 30;
 int opt_n_threads = 0;
 static enum prefs opt_pref = PREF_PROFIT;
@@ -73,13 +80,20 @@ char g_work_nm[50];
 char g_work_id[22];
 uint64_t g_cur_work_id;
 unsigned char g_pow_target_str[33];
-uint32_t g_pow_target[8];
+uint32_t g_pow_target[4];
 
-__thread _ALIGN(64) *vm_mem = NULL;
+__thread _ALIGN(64) int32_t *vm_m = NULL;
+__thread _ALIGN(64) double *vm_f = NULL;
 __thread uint32_t *vm_state = NULL;
-__thread vm_stack_item *vm_stack = NULL;
-__thread int vm_stack_idx;
+__thread double vm_param_val[6];
+__thread uint32_t vm_param_idx[6];
+__thread uint32_t vm_param_num;
+__thread bool vm_break;
+__thread bool vm_continue;
 __thread bool vm_bounty;
+
+bool use_elasticpl_init;
+bool use_elasticpl_math;
 
 pthread_mutex_t applog_lock = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t work_lock = PTHREAD_MUTEX_INITIALIZER;
@@ -118,7 +132,11 @@ int work_thr_id;
 struct thr_info *thr_info;
 struct work_restart *work_restart = NULL;
 
-extern uint32_t swap32(int a) {
+#ifdef USE_OPENCL
+struct opencl_device *gpu;
+#endif
+
+extern uint32_t swap32(uint32_t a) {
 	return ((a << 24) | ((a << 8) & 0x00FF0000) | ((a >> 8) & 0x0000FF00) | ((a >> 24) & 0x000000FF));
 }
 
@@ -127,6 +145,7 @@ Usage: " PACKAGE_NAME " [OPTIONS]\n\
 Options:\n\
   -c, --config <file>         Use JSON-formated configuration file\n\
   -D, --debug                 Display debug output\n\
+      --debug-epl             Display EPL source code\n\
   -h, --help                  Display this help text and exit\n\
   -m, --mining PREF[:ID]      Mining preference for choosing work\n\
                                 profit       (Default) Estimate most profitable based on POW Reward / WCET\n\
@@ -134,6 +153,9 @@ Options:\n\
                                 workid		 Specify work ID\n\
       --no-color              Don't display colored output\n\
       --no-compile            Use internal VM Interpreter instead of compiled C code\n\
+      --opencl	              Run VM using compiled OpenCL code\n\
+      --opencl-gthreads <n>   Max Num of Global Threads (256 - 10240, default: 1024)\n\
+      --opencl-vwidth <n>	  Vector width of local work size (1 - 256, default: calculated)\n\
   -o, --url=URL               URL of mining server\n\
   -p, --pass <password>       Password for mining server\n\
   -P, --phrase <passphrase>   Secret Passphrase for Elastic account\n\
@@ -161,11 +183,15 @@ static char const short_options[] = "c:Dk:hm:o:p:P:qr:R:s:t:T:u:VX";
 static struct option const options[] = {
 	{ "config",			1, NULL, 'c' },
 	{ "debug",			0, NULL, 'D' },
+	{ "debug-epl",		0, NULL, 1007 },
 	{ "help",			0, NULL, 'h' },
 	{ "mining",			1, NULL, 'm' },
 	{ "no-color",		0, NULL, 1001 },
 	{ "no-compile",		0, NULL, 1002 },
 	{ "no-renice",		0, NULL, 'X' },
+	{ "opencl",			0, NULL, 1006 },
+	{ "opencl-gthreads", 1, NULL, 1008 },
+	{ "opencl-vwidth",	1, NULL, 1009 },
 	{ "pass",			1, NULL, 'p' },
 	{ "phrase",			1, NULL, 'P' },
 	{ "protocol",	    0, NULL, 1003 },
@@ -367,6 +393,27 @@ void parse_arg(int key, char *arg)
 		opt_debug_epl = true;
 		opt_debug_vm = true;
 		break;
+	case 1006:
+		opt_opencl = true;
+		opt_compile = false;
+		break;
+	case 1007:
+		opt_debug = true;
+		opt_debug_epl = true;
+		break;
+	case 1008:
+		v = atoi(arg);
+		if (v < 256 || v > 10240)
+			show_usage_and_exit(1);
+		opt_opencl_gthreads = v;
+		break;
+	case 1009:
+		v = atoi(arg);
+		if (v < 1 || v > 256)
+			show_usage_and_exit(1);
+		else
+			opt_opencl_vwidth = v;
+		break;
 	default:
 		show_usage_and_exit(1);
 	}
@@ -423,40 +470,50 @@ static void thread_low_priority() {
 }
 
 static bool load_test_file(char *buf) {
-	size_t i, len, bytes;
+	int i, fsize, len, bytes;
+	char *ptr;
 	FILE *fp;
 
 	fp = fopen(test_filename, "r");
 
 	if (!fp) {
-		fprintf(stderr, "ERROR: Unable to open test file: '%s'\n", test_filename);
+		applog(LOG_ERR, "ERROR: Unable to open test file: '%s'\n", test_filename);
 		return false;
 	}
 
 	if (0 != fseek(fp, 0, SEEK_END)) {
-		fprintf(stderr, "ERROR: Unable to determine size of test file: '%s'\n", test_filename);
+		applog(LOG_ERR, "ERROR: Unable to determine size of test file: '%s'\n", test_filename);
 		fclose(fp);
 		return false;
 	}
 
-	len = ftell(fp);
+	fsize = ftell(fp);
 
-	if (len > MAX_SOURCE_SIZE - 4) {
-		fprintf(stderr, "ERROR: Test file exceeds max size (%d): %d bytes\n", MAX_SOURCE_SIZE, len);
+	if (fsize > MAX_SOURCE_SIZE - 4) {
+		applog(LOG_ERR, "ERROR: Test file exceeds max size (%d bytes): %zu bytes\n", MAX_SOURCE_SIZE, fsize);
 		fclose(fp);
 		return false;
 	}
 
 	rewind(fp);
-	bytes = fread(buf, 1, len, fp);
+	ptr = buf;
+	len = fsize;
+	while (len > 0) {
+		bytes = fread(ptr, 1, ((len > 1024) ? 1024 : len), fp);
+		if (bytes == 0) {
+			if (feof(fp))
+				break;
+			else
+				applog(LOG_ERR, "ERROR: Unable to read test file: '%s'\n", test_filename);
+			return false;
+		}
+		len -= bytes;
+		ptr += bytes;
+		ptr[0] = 0;
+	}
 	fclose(fp);
 
-	if (bytes == 0)
-		fprintf(stderr, "ERROR: Unable to read test file: '%s'\n", test_filename);
-
-	buf[bytes] = 0;
-
-	for (i = 0; i < strlen(buf); i++)
+	for (i = 0; i < fsize; i++)
 		buf[i] = tolower(buf[i]);
 
 	return true;
@@ -470,20 +527,18 @@ static void *test_vm_thread(void *userdata) {
 	int i, rc;
 
 	// Initialize Global Variables
-	vm_mem = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
 	vm_state = calloc(4, sizeof(uint32_t));
-	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
-	vm_stack_idx = -1;
-	if (!vm_mem || !vm_stack) {
-		applog(LOG_ERR, "CPU%d: Unable to allocate VM memory", thr_id);
+	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
+	vm_f = calloc(VM_FLOAT_SIZE, sizeof(double));
+
+	if (!vm_m || !vm_f || !vm_state) {
+		applog(LOG_ERR, "%s: Unable to allocate VM memory", mythr->name);
 		exit(EXIT_FAILURE);
 	}
 
 	applog(LOG_DEBUG, "DEBUG: Loading Test File");
 	if (!load_test_file(test_code))
 		exit(EXIT_FAILURE);
-
-	fprintf(stdout, "%s\n\n", test_code);
 
 	// Convert The Source Code Into ElasticPL AST
 	if (!create_epl_vm(test_code)) {
@@ -510,16 +565,24 @@ static void *test_vm_thread(void *userdata) {
 			free_compiler(inst);
 		inst = calloc(1, sizeof(struct instance));
 		create_instance(inst, "test");
-		inst->initialize(vm_mem, vm_state);
+		inst->initialize(vm_m, vm_f, vm_state);
 
 		// Execute The VM Logic
 		rc = inst->execute();
 
 		free_compiler(inst);
 	}
+	else if (opt_opencl) {
+
+		// Convert The ElasticPL Source Into OpenCL
+		if (!create_opencl_source("test")) {
+			applog(LOG_ERR, "ERROR: Unable to convert 'source' to OpenC.  Exiting 'test_vm'\n");
+			exit(EXIT_FAILURE);
+		}
+	}
 	else {
 		// Execute The VM Logic
-		rc = interpret_ast();
+		rc = interpret_ast(true);
 	}
 
 	applog(LOG_DEBUG, "DEBUG: Bounty Found: %s", rc ? "true" : "false");
@@ -527,13 +590,30 @@ static void *test_vm_thread(void *userdata) {
 	for (i = 0; i < 4; i++)
 		applog(LOG_DEBUG, "DEBUG: vm_state[%d]: %11d, Hex: %08X", i, vm_state[i], vm_state[i]);
 
+	// Dump Non-Zero VM Values
+	printf("\n\t   VM Integers:\n");
+	for (i = 0; i < VM_MEMORY_SIZE; i++) {
+		if (vm_m[i])
+			printf("\t\t  vm_m[%d] = %d\n", i, vm_m[i]);
+	}
+	printf("\n\t   VM Floats:\n");
+	for (i = 0; i < VM_FLOAT_SIZE; i++) {
+		if (vm_f[i] != 0.0)
+			printf("\t\t  vm_f[%d] = %f\n", i, vm_f[i]);
+	}
+	printf("\n");
+
 	applog(LOG_NOTICE, "DEBUG: Compiler Test Complete");
+	applog(LOG_WARNING, "Exiting " PACKAGE_NAME);
 
-	free(vm_mem);
-	free(vm_state);
-	free(vm_stack);
+	if (inst) free(inst);
+	if (vm_m) free(vm_m);
+	if (vm_f) free(vm_f);
+	if (vm_state) free(vm_state);
 
-	exit(EXIT_SUCCESS);
+	tq_freeze(mythr->q);
+
+	return NULL;
 }
 
 static bool get_vm_input(struct work *work) {
@@ -569,7 +649,37 @@ static bool get_vm_input(struct work *work) {
 	return true;
 }
 
-static int execute_vm(int thr_id, struct work *work, struct instance *inst, long *hashes_done, char* hash) {
+static bool get_opencl_base_data(struct work *work, uint32_t *vm_input) {
+	char msg[80];
+	uint32_t *msg32 = (uint32_t *)msg;
+	uint32_t *workid32 = (uint32_t *)&work->work_id;
+	uint32_t *blockid32 = (uint32_t *)&work->block_id;
+
+	memcpy(&vm_input[0], work->multiplicator, 32);
+	memcpy(&vm_input[8], publickey, 32);
+	memcpy(&vm_input[16], &workid32[1], 4);	// Swap First 4 Bytes Of Long
+	memcpy(&vm_input[17], &workid32[0], 4);	// With Second 4 Bytes Of Long
+	memcpy(&vm_input[18], &blockid32[1], 4);
+	memcpy(&vm_input[19], &blockid32[0], 4);
+	vm_input[16] = swap32(vm_input[16]);
+	vm_input[17] = swap32(vm_input[17]);
+	vm_input[18] = swap32(vm_input[18]);
+	vm_input[19] = swap32(vm_input[19]);
+
+	// Target
+	vm_input[20] = g_pow_target[0];
+	vm_input[21] = g_pow_target[1];
+	vm_input[22] = g_pow_target[2];
+	vm_input[23] = g_pow_target[3];
+	//vm_input[20] = work->pow_target[0];
+	//vm_input[21] = work->pow_target[1];
+	//vm_input[22] = work->pow_target[2];
+	//vm_input[23] = work->pow_target[3];
+
+	return true;
+}
+
+static int execute_vm(int thr_id, struct work *work, struct instance *inst, long *hashes_done, char* hash, bool new_work) {
 	int i, rc;
 	time_t t_start = time(NULL);
 	char msg[64];
@@ -578,38 +688,31 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 	uint32_t *mult32 = (uint32_t *)work->multiplicator;
 	uint32_t *hash32 = (uint32_t *)hash;
 
-
-	mult32[0] = thr_id;
-	mult32[6] = genrand_int32();
-	mult32[7] = genrand_int32();
-
-	//	RAND_bytes(&mult32[6], 8);
-	//	RAND_bytes(&mult32[7], 4);
+	mult32[0] = thr_id;				// Ensures Each Thread Is Unique
+	mult32[1] = 0;					// Value Will Be Incremented On Each Pass
+	mult32[6] = genrand_int32();	// Random Number
+	mult32[7] = genrand_int32();	// Random Number
 
 	while (1) {
 		// Check If New Work Is Available
 		if (work_restart[thr_id].restart)
 			return 0;
 
-		// Increment mult32
-		mult32[7] = mult32[7] + 1;
-		if (mult32[7] == INT32_MAX) {
-			mult32[7] = 0;
-			mult32[6] = mult32[6] + 1;
-		}
+		// Increment Multiplicator
+		mult32[2] += 1;
 
 		// Get Values For VM Inputs
 		get_vm_input(work);
 
 		// Reset VM Memory / State
-		memcpy(vm_mem, work->vm_input, VM_INPUTS * sizeof(int));
+		memcpy(vm_m, work->vm_input, VM_INPUTS * sizeof(int));
 		memset(vm_state, 0, 4 * sizeof(int));
 
 		// Execute The VM Logic
 		if (opt_compile)
 			rc = inst->execute();
 		else
-			rc = interpret_ast();
+			rc = interpret_ast(new_work);
 
 		// Hee, we have found a bounty, exit immediately
 		if (rc == 1)
@@ -627,19 +730,21 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 
 		MD5(msg, 64, hash);
 
-		// POW Solution Found
-		if (swap32(hash32[0]) <= g_pow_target[0]) {
-			if (swap32(hash32[1]) <= g_pow_target[1])
-				rc = 2;
+		// Check For POW Solution
+		for (i = 0; i < 4; i++) {
+
+			hash32[i] = swap32(hash32[i]);
+
+			if (hash32[i] <= work->pow_target[i]) {
+				return 2;	// POW Solution Found
+			}
+			else {
+				if (hash32[i] > work->pow_target[i])
+					break;
+			}
 		}
-		else
-			rc = 0;
 
 		(*hashes_done)++;
-
-		if (rc == 2) {
-			return rc;
-		}
 
 		// Only Run For 1s Before Returning To Miner Thread
 		if ((time(NULL) - t_start) >= 1)
@@ -647,6 +752,7 @@ static int execute_vm(int thr_id, struct work *work, struct instance *inst, long
 	}
 	return 0;
 }
+
 
 static void update_pending_cnt(uint64_t work_id, bool add) {
 	int i;
@@ -735,8 +841,8 @@ static bool get_work(CURL *curl) {
 	if (rc > 0) {
 		strncpy(g_work_id, work.work_str, 21);
 		strncpy(g_work_nm, work.work_nm, 49);
-		sprintf(g_pow_target_str, "%08X%08X%08X...", work.pow_target[0], work.pow_target[1], work.pow_target[2]);
-		memcpy(g_pow_target, work.pow_target, 8 * sizeof(uint32_t));
+		sprintf(g_pow_target_str, "%08X%08X%08X%08X", work.pow_target[0], work.pow_target[1], work.pow_target[2], work.pow_target[3]);
+		memcpy(g_pow_target, work.pow_target, 4 * sizeof(uint32_t));
 		memcpy(&g_work, &work, sizeof(struct work));
 
 		// Restart Miner Threads If Work Package Changes
@@ -782,7 +888,7 @@ static double calc_diff(uint32_t *target) {
 static int work_decode(const json_t *val, struct work *work) {
 	int i, j, rc, num_pkg, best_pkg, bty_rcvd, work_pkg_id;
 	uint64_t work_id;
-	uint32_t best_wcet = 0xFFFFFFFF, pow_tgt[8];
+	uint32_t best_wcet = 0xFFFFFFFF, pow_tgt[4];
 	double difficulty, best_profit = 0, profit = 0;
 	char *tgt = NULL, *src = NULL, *str = NULL, *best_src = NULL, *best_tgt = NULL, *elastic_src = NULL;
 	json_t *wrk = NULL, *pkg = NULL;
@@ -805,7 +911,7 @@ static int work_decode(const json_t *val, struct work *work) {
 	// Check If Any Work Packages Are Available
 	num_pkg = json_array_size(wrk);
 	if (num_pkg == 0) {
-			applog(LOG_INFO, "No work available...retrying in %ds", opt_scantime);
+		applog(LOG_INFO, "No work available...retrying in %ds", opt_scantime);
 		return -1;
 	}
 
@@ -851,10 +957,10 @@ static int work_decode(const json_t *val, struct work *work) {
 			str = (char *)json_string_value(json_object_get(pkg, "source"));
 
 			// Extract The ElasticPL Source Code
-			if (!str || strlen(str) > MAX_SOURCE_SIZE) {
+			if (!str || strlen(str) > MAX_SOURCE_SIZE || strlen(str) == 0) {
 				work_package.blacklisted = true;
 				applog(LOG_ERR, "ERROR: Invalid 'source' for work_id: %s", work_package.work_str);
-				return 0;
+				continue;
 			}
 
 			elastic_src = malloc(MAX_SOURCE_SIZE);
@@ -902,6 +1008,13 @@ static int work_decode(const json_t *val, struct work *work) {
 					return 0;
 				}
 			}
+			else if (opt_opencl) {
+				if (!create_opencl_source(work_package.work_str)) {
+					work_package.blacklisted = true;
+					applog(LOG_ERR, "ERROR: Unable to convert 'source' to OpenCL for work_id: %s\n\n%s\n", work_package.work_str, str);
+					return 0;
+				}
+			}
 
 			applog(LOG_DEBUG, "DEBUG: Adding work package to list, work_id: %s", work_package.work_str);
 
@@ -923,7 +1036,7 @@ static int work_decode(const json_t *val, struct work *work) {
 		}
 
 		// Get Updated Target For The Job
-		rc = hex2ints(pow_tgt, 8, tgt, strlen(tgt));
+		rc = hex2ints(pow_tgt, 4, tgt, strlen(tgt));
 		if (!rc) {
 			applog(LOG_ERR, "Invalid Target in JSON response for work_id: %s", g_work_package[work_pkg_id].work_str);
 			return 0;
@@ -966,7 +1079,7 @@ static int work_decode(const json_t *val, struct work *work) {
 	}
 
 	// If Running VM Interpreter Instead Of Compiled VM
-	if (!opt_compile && (g_work_package[best_pkg].work_id != g_cur_work_id)) {
+	if (!opt_compile && !opt_opencl && (g_work_package[best_pkg].work_id != g_cur_work_id)) {
 		elastic_src = malloc(MAX_SOURCE_SIZE);
 		if (!elastic_src) {
 			applog(LOG_ERR, "ERROR: Unable to allocate memory for ElasticPL Source");
@@ -1061,6 +1174,9 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 		applog(LOG_DEBUG, "DEBUG: Time to submit solution: %.2f ms", (1000.0 * diff.tv_sec) + (0.001 * diff.tv_usec));
 	}
 
+	// Mask Passphrase
+	data[strlen(data) - strlen(passphrase)] = 0;
+
 	applog(LOG_DEBUG, "DEBUG: Submit request - %s %s", url, data);
 
 	accepted = (char *)json_string_value(json_object_get(val, "approved"));
@@ -1072,15 +1188,15 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 	if (req->req_type == SUBMIT_BTY_ANN) {
 		if (err_desc) {
 			if (strstr(err_desc, "Duplicate unconfirmed transaction:")) {
-				applog(LOG_NOTICE, "CPU%d: %s***** Bounty Discarded *****", req->thr_id, CL_YLW);
+				applog(LOG_NOTICE, "%s: %s***** Bounty Discarded *****", thr_info[req->thr_id].name, CL_YLW);
 				applog(LOG_DEBUG, "Work ID: %s - No more bounty announcement slots available", req->work_str, err_desc);
-//				req->delay_tm = time(NULL) + 30;  // Retry In 30s
+				//				req->delay_tm = time(NULL) + 30;  // Retry In 30s
 				req->req_type = SUBMIT_COMPLETE;
 			}
 			else {
-				applog(LOG_NOTICE, "CPU%d: %s***** Bounty Rejected *****", req->thr_id, CL_RED);
+				applog(LOG_NOTICE, "%s: %s***** Bounty Rejected *****", thr_info[req->thr_id].name, CL_RED);
 				applog(LOG_DEBUG, "Reason: %s", err_desc);
-//				req->delay_tm = time(NULL) + 30;  // Retry In 30s
+				//				req->delay_tm = time(NULL) + 30;  // Retry In 30s
 				req->req_type = SUBMIT_COMPLETE;
 				g_bounty_error_cnt++;
 			}
@@ -1094,12 +1210,12 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 			req->req_type = SUBMIT_BOUNTY;
 		}
 		else if (accepted && !strcmp(accepted, "deprecated")) {
-			applog(LOG_NOTICE, "CPU%d: %s***** Bounty Rejected - Deprecated *****", req->thr_id, CL_RED);
+			applog(LOG_NOTICE, "%s: %s***** Bounty Rejected - Deprecated *****", thr_info[req->thr_id].name, CL_RED);
 			g_bounty_deprecated_cnt++;
 			req->req_type = SUBMIT_COMPLETE;
 		}
 		else if (req->retries++ > 20) {		// Timeout After 10 Min
-			applog(LOG_NOTICE, "CPU%d: %s***** Bounty Timed Out *****", req->thr_id, CL_RED);
+			applog(LOG_NOTICE, "%s: %s***** Bounty Timed Out *****", thr_info[req->thr_id].name, CL_RED);
 			g_bounty_timeout_cnt++;
 			req->req_type = SUBMIT_COMPLETE;
 		}
@@ -1111,16 +1227,16 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 	else if (req->req_type == SUBMIT_BOUNTY) {
 		if (err_desc) {
 			if (strstr(err_desc, "Duplicate unconfirmed transaction:")) {
-				applog(LOG_NOTICE, "CPU%d: %s***** Bounty Discarded *****", req->thr_id, CL_YLW);
+				applog(LOG_NOTICE, "%s: %s***** Bounty Discarded *****", thr_info[req->thr_id].name, CL_YLW);
 				applog(LOG_DEBUG, "Work ID: %s - Work is already closed, you missed the reveal period", req->work_str, err_desc);
 			}
 			else {
-				applog(LOG_NOTICE, "CPU%d: %s***** Bounty Rejected! *****", req->thr_id, CL_RED);
+				applog(LOG_NOTICE, "%s: %s***** Bounty Rejected! *****", thr_info[req->thr_id].name, CL_RED);
 				g_bounty_rejected_cnt++;
 			}
 		}
 		else {
-			applog(LOG_NOTICE, "CPU%d: %s***** Bounty Claimed! *****", req->thr_id, CL_GRN);
+			applog(LOG_NOTICE, "%s: %s***** Bounty Claimed! *****", thr_info[req->thr_id].name, CL_GRN);
 			g_bounty_accepted_cnt++;
 		}
 		req->req_type = SUBMIT_COMPLETE;
@@ -1128,17 +1244,18 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 	else if (req->req_type == SUBMIT_POW) {
 		if (err_desc) {
 			if (strstr(err_desc, "Duplicate unconfirmed transaction:")) {
-				applog(LOG_NOTICE, "CPU%d: %s***** POW Discarded! *****", req->thr_id, CL_YLW);
+				applog(LOG_NOTICE, "%s: %s***** POW Discarded! *****", thr_info[req->thr_id].name, CL_YLW);
 				applog(LOG_INFO, "Work ID: %s -%s", req->work_str, err_desc + 34);
 				g_pow_discarded_cnt++;
 			}
 			else {
-				applog(LOG_NOTICE, "CPU%d: %s***** POW Rejected: %s! *****", req->thr_id, CL_RED, err_desc);
+				applog(LOG_NOTICE, "%s: %s***** POW Rejected! *****", thr_info[req->thr_id].name, CL_RED);
+				applog(LOG_INFO, "Work ID: %s, Reason: %s", req->work_str, err_desc);
 				g_pow_rejected_cnt++;
 			}
 		}
 		else {
-			applog(LOG_NOTICE, "CPU%d: %s***** POW Accepted! *****", req->thr_id, CL_CYN);
+			applog(LOG_NOTICE, "%s: %s***** POW Accepted! *****", thr_info[req->thr_id].name, CL_CYN);
 			g_pow_accepted_cnt++;
 		}
 		req->req_type = SUBMIT_COMPLETE;
@@ -1150,7 +1267,7 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 	return true;
 }
 
-static void *miner_thread(void *userdata) {
+static void *cpu_miner_thread(void *userdata) {
 	struct thr_info *mythr = (struct thr_info *) userdata;
 	int thr_id = mythr->id;
 	struct work work;
@@ -1165,22 +1282,19 @@ static void *miner_thread(void *userdata) {
 	double eval_rate;
 	struct instance *inst = NULL;
 	char hash[32];
-	unsigned char hash_str[65];
-	unsigned char gpow_str[65];
-
 	uint32_t *hash32 = (uint32_t *)hash;
+	bool new_work = true;
 
 	// Set lower priority
 	if (!opt_norenice)
 		thread_low_priority();
 
 	// Initialize Global Variables
-	vm_mem = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
 	vm_state = calloc(4, sizeof(uint32_t));
-	vm_stack = calloc(VM_STACK_SIZE, sizeof(vm_stack_item));
-	vm_stack_idx = -1;
+	vm_m = calloc(VM_MEMORY_SIZE, sizeof(int32_t));
+	vm_f = calloc(VM_FLOAT_SIZE, sizeof(double));
 
-	if (!vm_mem || !vm_state || !vm_stack) {
+	if (!vm_m || !vm_f || !vm_state) {
 		applog(LOG_ERR, "CPU%d: Unable to allocate VM memory", thr_id);
 		goto out;
 	}
@@ -1205,6 +1319,7 @@ static void *miner_thread(void *userdata) {
 			// Copy Global Work Into Local Thread Work
 			memcpy((void *)&work, (void *)&g_work, sizeof(struct work));
 			work.thr_id = thr_id;
+			new_work = true;
 
 			// Create A Compiled VM Instance For The Thread
 			if (opt_compile) {
@@ -1212,14 +1327,19 @@ static void *miner_thread(void *userdata) {
 					free_compiler(inst);
 				inst = calloc(1, sizeof(struct instance));
 				create_instance(inst, work.work_str);
-				inst->initialize(vm_mem, vm_state);
+				inst->initialize(vm_m, vm_f, vm_state);
 			}
+		}
+		// Otherwise, Just Update POW Target
+		else {
+			memcpy(&work.pow_target, &g_work.pow_target, 4 * sizeof(uint32_t));
 		}
 
 		work_restart[thr_id].restart = 0;
 
 		// Run VM To Check For POW Hash & Bounties
-		rc = execute_vm(thr_id, &work, inst, &hashes_done, hash);
+		rc = execute_vm(thr_id, &work, inst, &hashes_done, hash, new_work);
+		new_work = false;
 
 		// Record Elapsed Time
 		gettimeofday(&tv_end, NULL);
@@ -1271,11 +1391,8 @@ static void *miner_thread(void *userdata) {
 
 		// Submit Work That Meets POW Target
 		if (rc == 2) {
-			sprintf(hash_str, "%08X%08X%08X...", swap32(hash32[0]), swap32(hash32[1]), swap32(hash32[2]));
-			sprintf(gpow_str, "%08X%08X%08X...", (g_pow_target[0]), (g_pow_target[1]), (g_pow_target[2]));
-
 			applog(LOG_NOTICE, "CPU%d: Submitting POW Solution", thr_id);
-			applog(LOG_DEBUG, "DEBUG: Hash - %s  Tgt - %s",hash_str, gpow_str);
+			applog(LOG_DEBUG, "DEBUG: Hash - %08X%08X%08X...  Tgt - %s", hash32[0], hash32[1], hash32[2], g_pow_target_str);
 			wc = (struct workio_cmd *) calloc(1, sizeof(*wc));
 			if (!wc) {
 				applog(LOG_ERR, "ERROR: Unable to allocate workio_cmd.  Shutting down thread for CPU%d", thr_id);
@@ -1296,13 +1413,216 @@ static void *miner_thread(void *userdata) {
 	}
 
 out:
-	if (vm_mem) free(vm_mem);
+	if (inst) free(inst);
+	if (vm_m) free(vm_m);
+	if (vm_f) free(vm_f);
 	if (vm_state) free(vm_state);
-	if (vm_stack) free(vm_stack);
+
 	tq_freeze(mythr->q);
 
 	return NULL;
 }
+
+#ifdef USE_OPENCL
+static void *gpu_miner_thread(void *userdata) {
+	struct thr_info *mythr = (struct thr_info *) userdata;
+	int thr_id = mythr->id;
+	uint32_t *vm_out = NULL, *vm_input = NULL;
+	struct work work;
+	struct workio_cmd *wc = NULL;
+	uint64_t hashes_done;
+	struct timeval tv_start, tv_end, diff;
+	int i, rc = 0;
+	unsigned char *ocl_source, str[50], msg[64];
+	uint32_t *msg32 = (uint32_t *)msg;
+	uint32_t *workid32;
+	double eval_rate;
+	struct instance *inst = NULL;
+	char hash[32];
+	uint32_t *mult32 = (uint32_t *)work.multiplicator;
+	uint32_t *hash32 = (uint32_t *)hash;
+
+	// Set lower priority
+	if (!opt_norenice)
+		thread_low_priority();
+
+	// Initialize Arrays To Hold OpenCL Core Inputs / Outputs
+	vm_input = (uint32_t *)calloc(24, sizeof(uint32_t));
+	vm_out = (uint32_t *)calloc(gpu[thr_id].threads, sizeof(uint32_t));
+
+	if (!vm_out || !vm_input) {
+		applog(LOG_ERR, "ERROR: Unable to allocate VM memory");
+		goto out;
+	}
+
+	hashes_done = 0;
+	memset(&work, 0, sizeof(work));
+	gettimeofday((struct timeval *) &tv_start, NULL);
+
+	while (1) {
+
+		// No Work Available
+		if (!g_work.work_id) {
+			if (work.work_id)
+				memset(&work, 0, sizeof(struct work));
+			sleep(1);
+			continue;
+		}
+
+		// Check If We Are Mining The Most Current Work
+		if (work.work_id != g_work.work_id) {
+
+			// Copy Global Work Into Local Thread Work
+			memcpy(&work, &g_work, sizeof(struct work));
+			work.thr_id = thr_id;
+
+			// Randomize Inputs
+			mult32[6] = genrand_int32();
+			mult32[7] = genrand_int32();
+
+			ocl_source = load_opencl_source(work.work_str);
+			if (!ocl_source) {
+				memset(&work ,0, sizeof(struct work));
+				sleep(15);
+				continue;
+			}
+
+			if (!init_opencl_kernel(&gpu[thr_id], ocl_source)) {
+				memset(&work, 0, sizeof(struct work));
+				free(ocl_source);
+				sleep(15);
+				continue;
+			}
+			free(ocl_source);
+		}
+		else {
+			// Update Target For Work
+			memcpy(&work.pow_target, &g_work.pow_target, 4 * sizeof(uint32_t));
+		}
+
+		work_restart[thr_id].restart = 0;
+
+		// Increment multiplicator
+		mult32[0] = thr_id;	// Ensures Each GPU Uses Different Inputs
+		mult32[1] = 0;		// Ensures Each GPU OpenCL Thread Uses Different Inputs
+		mult32[2] += 1;		// Ensures Each Evaluation Uses Different Inputs
+
+		// Get Values For VM Inputs
+		get_opencl_base_data(&work, vm_input);
+
+		// Execute The VM
+		if (!execute_kernel(&gpu[thr_id], vm_input, vm_out))
+			goto out;
+
+		// Check VM Output For Solutions
+		for (i = 0; i < gpu[thr_id].threads; i++) {
+
+			// Check For Bounty Solutions
+			if (vm_out[i] == 2) {
+				applog(LOG_NOTICE, "%s - %d: Submitting Bounty Solution", mythr->name, i);
+
+				// Update Multiplicator To Include OpenCL Thread ID That Found The Bounty
+				mult32[1] = i;
+
+				// Create Announcement Message
+				workid32 = (uint32_t *)&work.work_id;
+				memcpy(&msg[0], &workid32[1], 4);	// Swap First 4 Bytes Of Long
+				memcpy(&msg[4], &workid32[0], 4);	// With Second 4 Bytes Of Long
+				memcpy(&msg[8], work.multiplicator, 32);
+				msg[40] = 1;
+				msg32[0] = swap32(msg32[0]);
+				msg32[1] = swap32(msg32[1]);
+
+				// Create Announcment Hash
+				sha256(msg, 41, work.announcement_hash);
+
+				// Create Submit Request
+				wc = (struct workio_cmd *) calloc(1, sizeof(*wc));
+				if (!wc) {
+					applog(LOG_ERR, "ERROR: Unable to allocate workio_cmd.  Shutting down thread for %s", mythr->name);
+					goto out;
+				}
+
+				wc->cmd = SUBMIT_BTY_ANN;
+				wc->thr = mythr;
+				memcpy(&wc->work, &work, sizeof(struct work));
+
+				// Add Solution To Queue
+				if (!tq_push(thr_info[work_thr_id].q, wc)) {
+					applog(LOG_ERR, "ERROR: Unable to add solution to queue.  Shutting down thread for %s", mythr->name);
+					free(wc);
+					goto out;
+				}
+			}
+
+			// Check For POW Solutions
+			else if (vm_out[i] == 1) {
+
+				// Get Hash From Kernel Data
+				if (opt_debug) {
+					dump_opencl_kernel_data(&gpu[thr_id], &hash32[0], i, 16, 4);
+					applog(LOG_DEBUG, "DEBUG: Hash - %08X%08X%08X%08X  Tgt - %08X%08X%08X%08X", hash32[0], hash32[1], hash32[2], hash32[3], work.pow_target[0], work.pow_target[1], work.pow_target[2], work.pow_target[3]);
+				}
+
+				applog(LOG_NOTICE, "%s - %d: Submitting POW Solution", mythr->name, i);
+
+				// Update Multiplicator To Include OpenCL Thread ID That Found The Bounty
+				mult32[1] = i;
+
+				wc = (struct workio_cmd *) calloc(1, sizeof(*wc));
+				if (!wc) {
+					applog(LOG_ERR, "ERROR: Unable to allocate workio_cmd.  Shutting down thread for %s", mythr->name);
+					goto out;
+				}
+
+				wc->cmd = SUBMIT_POW;
+				wc->thr = mythr;
+				memcpy(&wc->work, &work, sizeof(struct work));
+
+				// Add Solution To Queue
+				if (!tq_push(thr_info[work_thr_id].q, wc)) {
+					applog(LOG_ERR, "ERROR: Unable to add solution to queue.  Shutting down thread for %s", mythr->name);
+					free(wc);
+					goto out;
+				}
+			}
+		}
+
+		hashes_done += gpu[thr_id].threads;
+
+		// Record Elapsed Time
+		gettimeofday(&tv_end, NULL);
+		timeval_subtract(&diff, &tv_end, &tv_start);
+		if (diff.tv_sec >= 5) {
+
+			mult32[6] = genrand_int32();
+			mult32[7] = genrand_int32();
+
+			if (!opt_quiet) {
+				eval_rate = (double)((hashes_done / (diff.tv_sec + (diff.tv_usec / 1000000.0))) / 1000.0);
+				sprintf(str, eval_rate >= 1000.0 ? "%0.2f mEval/s" : "%0.2f kEval/s", (eval_rate >= 1000.0) ? eval_rate / 1000 : eval_rate);
+				applog(LOG_INFO, "%s: %s", mythr->name, str);
+			}
+			gettimeofday((struct timeval *) &tv_start, NULL);
+			hashes_done = 0;
+		}
+	}
+
+out:
+	/*
+	clReleaseMemObject(base_data);
+	clReleaseMemObject(input);
+	clReleaseMemObject(output);
+	clReleaseKernel(kernel_execute);
+	clReleaseKernel(kernel_initialize);
+	clReleaseCommandQueue(queue);
+	clReleaseContext(context);
+	*/
+	tq_freeze(mythr->q);
+
+	return NULL;
+}
+#endif
 
 static void restart_threads(void)
 {
@@ -1691,7 +2011,7 @@ static int thread_create(struct thr_info *thr, void* func)
 
 int main(int argc, char **argv) {
 	struct thr_info *thr;
-	int i, err, thr_idx;
+	int i, err, thr_idx, num_gpus = 0;
 
 	fprintf(stdout, "** " PACKAGE_NAME " " PACKAGE_VERSION " **\n");
 
@@ -1716,8 +2036,30 @@ int main(int argc, char **argv) {
 	// Process Command Line Before Starting Any Threads
 	parse_cmdline(argc, argv);
 
-	if (!opt_n_threads)
-		opt_n_threads = num_cpus;
+#ifdef USE_OPENCL
+	// Initialize GPU Devices
+	if (opt_opencl) {
+		num_gpus = init_opencl_devices();
+		if (num_gpus == 0) {
+			applog(LOG_ERR, "ERROR: No OpenCL Devices that support 64bit Floating Point math found");
+			return 1;
+		}
+	}
+#else
+	if (opt_opencl) {
+		applog(LOG_ERR, "ERROR: OpenCL not found on this system.  Running miner with compiled C code instead");
+		opt_opencl = false;
+		opt_compile = true;
+	}
+#endif
+
+
+	if (!opt_n_threads) {
+		if (!opt_opencl)
+			opt_n_threads = num_cpus;
+		else
+			opt_n_threads = num_gpus;
+	}
 
 	if (!rpc_url)
 		rpc_url = strdup("http://127.0.0.1:6876/nxt");
@@ -1736,7 +2078,7 @@ int main(int argc, char **argv) {
 
 	// Seed Random Number Generator
 	init_genrand((unsigned long)time(NULL));
-	RAND_poll();
+//	RAND_poll();
 
 #ifndef WIN32
 	/* Always catch Ctrl+C */
@@ -1769,7 +2111,7 @@ int main(int argc, char **argv) {
 			return 1;
 		}
 
-		pthread_join(thr_info[work_thr_id].pth, NULL);
+		pthread_join(thr_info[0].pth, NULL);
 		free(test_filename);
 		return 0;
 	}
@@ -1789,6 +2131,7 @@ int main(int argc, char **argv) {
 	}
 
 	applog(LOG_INFO, "Attempting to start %d miner threads", opt_n_threads);
+
 	thr_idx = 0;
 
 	// Start Mining Threads
@@ -1799,13 +2142,24 @@ int main(int argc, char **argv) {
 		thr->q = tq_new();
 		if (!thr->q)
 			return 1;
-		err = thread_create(thr, miner_thread);
+		if (opt_opencl) {
+#ifdef USE_OPENCL
+			err = thread_create(thr, gpu_miner_thread);
+#endif
+			sprintf(thr->name, "GPU%d", i);
+		}
+		else {
+			err = thread_create(thr, cpu_miner_thread);
+			sprintf(thr->name, "CPU%d", i);
+		}
 		if (err) {
-			applog(LOG_ERR, "CPU: %d mining thread create failed!", i);
+			applog(LOG_ERR, "%s mining thread create failed!", thr->name);
 			return 1;
 		}
 	}
+
 	applog(LOG_INFO, "%d mining threads started", opt_n_threads);
+
 	gettimeofday(&g_miner_start_time, NULL);
 
 	// Start Longpoll Thread

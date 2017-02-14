@@ -219,6 +219,26 @@ bool hex2ints(uint32_t *p, int array_sz, const char *hex, int len) {
 	return true;
 }
 
+extern int32_t bin2int(unsigned char *str) {
+	int i, len;
+	unsigned char *c = (unsigned char*)str;
+	uint32_t bin = 0;
+
+	len = strlen(str);
+
+	if (len < 1 || len > 32) {
+		applog(LOG_ERR, "ERROR: Can't convert '%s' bin string to int", bin);
+		return 0;
+	}
+
+	for (i = 0; i < len; i++) {
+		if (c[i] == '1')
+			bin |= (1 << (len - i - 1));
+	}
+
+	return (int32_t)bin;
+}
+
 extern bool ascii85dec(unsigned char *str, int strsz, const char *ascii85) {
 	int i, j, num_chars;
 	int bufsz = 0, value = 0, idx_asc = 0, idx_buf = 0;
