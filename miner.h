@@ -101,8 +101,11 @@ struct work_package {
 	unsigned char work_nm[50];
 	uint32_t WCET;
 	uint64_t bounty_limit;
+	uint32_t iterations;
 	uint64_t pow_reward;
 	uint64_t bty_reward;
+	uint32_t *combined_storage;
+	size_t combined_storage_size;
 	int pending_bty_cnt;
 	bool blacklisted;
 };
@@ -118,6 +121,8 @@ struct work {
 	unsigned char multiplicator[32];
 	int32_t storage_ints[BOUNTY_STORAGE_INTS];
 	unsigned char announcement_hash[32];
+	uint32_t *combined_storage;
+	size_t combined_storage_size;
 };
 
 struct thr_info {
