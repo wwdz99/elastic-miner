@@ -792,6 +792,8 @@ static bool get_work(CURL *curl) {
 	memset(g_work_id, 0, sizeof(g_work_id));
 	memset(g_work_nm, 0, sizeof(g_work_nm));
 	memset(g_pow_target_str, 0, sizeof(g_pow_target_str));
+	memset((char*)work.storage_ints, 0, sizeof(int32_t) * BOUNTY_STORAGE_INTS);
+
 
 	gettimeofday(&tv_start, NULL);
 	if (!opt_test_miner) {
@@ -1139,7 +1141,7 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 		return false;
 	}
 
-	if (req->req_type == SUBMIT_BTY_ANN) {
+	/*if (req->req_type == SUBMIT_BTY_ANN) {
 		sprintf(url, "%s?requestType=bountyAnnouncement", rpc_url);
 		sprintf(data, "deadline=3&feeNQT=0&amountNQT=5000&work_id=%s&hash_announcement=%s&secretPhrase=%s", req->work_str, req->hash, passphrase);
 	}
@@ -1147,9 +1149,11 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 		sprintf(url, "%s?requestType=getApprovedBounties", rpc_url);
 		sprintf(data, "work_id=%s&hash_announcement=%s&secretPhrase=%s", req->work_str, req->hash, passphrase);
 	}
-	else if (req->req_type == SUBMIT_BOUNTY) {
+	else */if (req->req_type == SUBMIT_BOUNTY) {
+		char st_ints[BOUNTY_STORAGE_INTS*8 + 1];
+		ints2hex(req->storage_ints, BOUNTY_STORAGE_INTS, st_ints, BOUNTY_STORAGE_INTS*8 + 1);
 		sprintf(url, "%s?requestType=createPoX", rpc_url);
-		sprintf(data, "deadline=3&feeNQT=0&amountNQT=0&work_id=%s&multiplicator=%s&is_pow=false&secretPhrase=%s", req->work_str, req->mult, passphrase);
+		sprintf(data, "deadline=3&feeNQT=0&amountNQT=0&work_id=%s&storage=%s&multiplicator=%s&is_pow=false&secretPhrase=%s", req->work_str, st_ints, req->mult, passphrase);
 	}
 	else if (req->req_type == SUBMIT_POW) {
 		sprintf(url, "%s?requestType=createPoX", rpc_url);
@@ -1185,7 +1189,7 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 	if (err_desc)
 		applog(LOG_DEBUG, "DEBUG: Submit response error - %s", err_desc);
 
-	if (req->req_type == SUBMIT_BTY_ANN) {
+	/*if (req->req_type == SUBMIT_BTY_ANN) {
 		if (err_desc) {
 			if (strstr(err_desc, "Duplicate unconfirmed transaction:")) {
 				applog(LOG_NOTICE, "%s: %s***** Bounty Discarded *****", thr_info[req->thr_id].name, CL_YLW);
@@ -1224,7 +1228,7 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
 			applog(LOG_DEBUG, "DEBUG: Retry confirmation in 30s");
 		}
 	}
-	else if (req->req_type == SUBMIT_BOUNTY) {
+	else */if (req->req_type == SUBMIT_BOUNTY) {
 		if (err_desc) {
 			if (strstr(err_desc, "Duplicate unconfirmed transaction:")) {
 				applog(LOG_NOTICE, "%s: %s***** Bounty Discarded *****", thr_info[req->thr_id].name, CL_YLW);
@@ -1377,7 +1381,8 @@ static void *cpu_miner_thread(void *userdata) {
 				goto out;
 			}
 
-			wc->cmd = SUBMIT_BTY_ANN;
+			//wc->cmd = SUBMIT_BTY_ANN;
+			wc->cmd = SUBMIT_BOUNTY;
 			wc->thr = mythr;
 			memcpy(&wc->work, &work, sizeof(struct work));
 
@@ -1543,7 +1548,8 @@ static void *gpu_miner_thread(void *userdata) {
 					goto out;
 				}
 
-				wc->cmd = SUBMIT_BTY_ANN;
+				//wc->cmd = SUBMIT_BTY_ANN;
+				wc->cmd = SUBMIT_BOUNTY;
 				wc->thr = mythr;
 				memcpy(&wc->work, &work, sizeof(struct work));
 
@@ -1847,6 +1853,9 @@ static bool add_submit_req(struct work *work, enum submit_commands req_type) {
 	g_submit_req[g_submit_req_cnt].delay_tm = 0;
 	g_submit_req[g_submit_req_cnt].retries = 0;
 	g_submit_req[g_submit_req_cnt].work_id = work->work_id;
+
+	memcpy((char*)g_submit_req[g_submit_req_cnt].storage_ints, (char*)work->storage_ints, sizeof(int32_t) * BOUNTY_STORAGE_INTS);
+
 	strncpy(g_submit_req[g_submit_req_cnt].work_str, work->work_str, 21);
 	sprintf(g_submit_req[g_submit_req_cnt].hash, "%08X%08X%08X%08X%08X%08X%08X%08X", swap32(hash32[0]), swap32(hash32[1]), swap32(hash32[2]), swap32(hash32[3]), swap32(hash32[4]), swap32(hash32[5]), swap32(hash32[6]), swap32(hash32[7]));
 	sprintf(g_submit_req[g_submit_req_cnt].mult, "%08X%08X%08X%08X%08X%08X%08X%08X", swap32(mult32[0]), swap32(mult32[1]), swap32(mult32[2]), swap32(mult32[3]), swap32(mult32[4]), swap32(mult32[5]), swap32(mult32[6]), swap32(mult32[7]));
@@ -2010,6 +2019,7 @@ static int thread_create(struct thr_info *thr, void* func)
 }
 
 int main(int argc, char **argv) {
+
 	struct thr_info *thr;
 	int i, err, thr_idx, num_gpus = 0;
 

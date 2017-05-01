@@ -185,6 +185,21 @@ int timeval_subtract(struct timeval *result, struct timeval *x,	struct timeval *
 	return x->tv_sec < y->tv_sec;
 }
 
+bool ints2hex(const uint32_t *i, int array_sz, char* hex, int len){
+
+	if (array_sz <= 0 || len <= 0 || len != (8 * array_sz) + 1) {
+		applog(LOG_ERR, "ERROR: Can't convert %d ints to array of %d hex chars with optional terminating zero'", array_sz, len);
+		return false;
+	}
+
+	for (int z=0; z<array_sz; z++) {
+		int x = i[z];
+		sprintf(hex + z*8, "%08x", x);
+	}
+
+	return true;
+}
+
 bool hex2ints(uint32_t *p, int array_sz, const char *hex, int len) {
 	int i, j, idx;
 	unsigned char val;

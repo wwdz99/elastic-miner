@@ -84,9 +84,11 @@ static const int BASE85_POW[] = {
 	85 * 85 * 85 * 85
 };
 
+#define BOUNTY_STORAGE_INTS 32
+
 enum submit_commands {
-	SUBMIT_BTY_ANN,
-	SUBMIT_BTY_CONF,
+	/*SUBMIT_BTY_ANN,
+	SUBMIT_BTY_CONF,*/
 	SUBMIT_BOUNTY,
 	SUBMIT_POW,
 	SUBMIT_COMPLETE
@@ -114,6 +116,7 @@ struct work {
 	uint32_t pow_target[4];
 	int32_t vm_input[12];
 	unsigned char multiplicator[32];
+	int32_t storage_ints[BOUNTY_STORAGE_INTS];
 	unsigned char announcement_hash[32];
 };
 
@@ -139,6 +142,7 @@ struct submit_req {
 	int retries;
 	char hash[65];		// Announcment Hash In Hex
 	char mult[65];		// Multiplicator In Hex
+	int32_t storage_ints[BOUNTY_STORAGE_INTS];
 	uint64_t work_id;
 	unsigned char work_str[22];
 };
@@ -322,6 +326,7 @@ static bool get_opencl_base_data(struct work *work, uint32_t *vm_input);
 extern void applog(int prio, const char *fmt, ...);
 extern int timeval_subtract(struct timeval *result, struct timeval *x, struct timeval *y);
 extern bool hex2ints(uint32_t *p, int array_sz, const char *hex, int len);
+extern bool ints2hex(const uint32_t *i, int array_sz, char* hex, int len);
 extern int32_t bin2int(unsigned char *str);
 extern bool ascii85dec(unsigned char *str, int strsz, const char *ascii85);
 static void databuf_free(struct data_buffer *db);
