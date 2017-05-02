@@ -97,6 +97,7 @@ enum submit_commands {
 struct work_package {
 	uint64_t block_id;
 	uint64_t work_id;
+	unsigned char referenced_storage_height[18];
 	unsigned char work_str[22];
 	unsigned char work_nm[50];
 	uint32_t WCET;
@@ -114,6 +115,7 @@ struct work {
 	int thr_id;
 	uint64_t block_id;
 	uint64_t work_id;
+	unsigned char referenced_storage_height[18];
 	unsigned char work_str[22];
 	unsigned char work_nm[50];
 	uint32_t pow_target[4];
@@ -148,6 +150,7 @@ struct submit_req {
 	char hash[65];		// Announcment Hash In Hex
 	char mult[65];		// Multiplicator In Hex
 	int32_t storage_ints[BOUNTY_STORAGE_INTS];
+	unsigned char referenced_storage_height[18];
 	uint64_t work_id;
 	unsigned char work_str[22];
 };

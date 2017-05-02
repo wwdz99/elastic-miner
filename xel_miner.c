@@ -969,6 +969,7 @@ static int work_decode(const json_t *val, struct work *work) {
             work_package.block_id = strtoull(str, NULL, 10);
             str = (char *)json_string_value(json_object_get(pkg, "title"));
             strncpy(work_package.work_nm, str, 49);
+            
             work_package.bounty_limit = (uint32_t)json_integer_value(json_object_get(pkg, "bounty_limit"));
             work_package.iterations = (uint32_t)json_integer_value(json_object_get(pkg, "repetitions"));
             work_package.bty_reward = (uint64_t)json_number_value(json_object_get(pkg, "xel_per_bounty"));
@@ -1064,6 +1065,10 @@ static int work_decode(const json_t *val, struct work *work) {
             pt = strtok (NULL, ",");
         }
 
+        // Update the referenced storage height
+        str = (char *)json_string_value(json_object_get(pkg, "referenced_storage_height"));
+        strncpy(g_work_package[work_pkg_id].referenced_storage_height, str, 18);
+
 
         // Check If Work Has Been Blacklisted
         if (g_work_package[work_pkg_id].blacklisted) {
@@ -1157,6 +1162,7 @@ static int work_decode(const json_t *val, struct work *work) {
     work->block_id = g_work_package[best_pkg].block_id;
     work->work_id = g_work_package[best_pkg].work_id;
     strncpy(work->work_str, g_work_package[best_pkg].work_str, 21);
+    strncpy(work->referenced_storage_height, g_work_package[best_pkg].referenced_storage_height, 18);
     strncpy(work->work_nm, g_work_package[best_pkg].work_nm, 49);
     work->combined_storage_size = g_work_package[best_pkg].combined_storage_size;
     if(work->combined_storage != 0)
@@ -1199,7 +1205,7 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
         char st_ints[BOUNTY_STORAGE_INTS*8 + 1];
         ints2hex(req->storage_ints, BOUNTY_STORAGE_INTS, st_ints, BOUNTY_STORAGE_INTS*8 + 1);
         sprintf(url, "%s?requestType=createPoX", rpc_url);
-        sprintf(data, "deadline=3&feeNQT=0&amountNQT=0&work_id=%s&storage=%s&multiplicator=%s&is_pow=false&secretPhrase=%s", req->work_str, st_ints, req->mult, passphrase);
+        sprintf(data, "deadline=3&feeNQT=0&amountNQT=0&referenced_storage_height=%s&work_id=%s&storage=%s&multiplicator=%s&is_pow=false&secretPhrase=%s", req->referenced_storage_height, req->work_str, st_ints, req->mult, passphrase);
     }
     else if (req->req_type == SUBMIT_POW) {
         sprintf(url, "%s?requestType=createPoX", rpc_url);
@@ -1903,6 +1909,7 @@ static bool add_submit_req(struct work *work, enum submit_commands req_type) {
     memcpy((char*)g_submit_req[g_submit_req_cnt].storage_ints, (char*)work->storage_ints, sizeof(int32_t) * BOUNTY_STORAGE_INTS);
 
     strncpy(g_submit_req[g_submit_req_cnt].work_str, work->work_str, 21);
+    strncpy(g_submit_req[g_submit_req_cnt].referenced_storage_height, work->referenced_storage_height, 18);
     sprintf(g_submit_req[g_submit_req_cnt].hash, "%08X%08X%08X%08X%08X%08X%08X%08X", swap32(hash32[0]), swap32(hash32[1]), swap32(hash32[2]), swap32(hash32[3]), swap32(hash32[4]), swap32(hash32[5]), swap32(hash32[6]), swap32(hash32[7]));
     sprintf(g_submit_req[g_submit_req_cnt].mult, "%08X%08X%08X%08X%08X%08X%08X%08X", swap32(mult32[0]), swap32(mult32[1]), swap32(mult32[2]), swap32(mult32[3]), swap32(mult32[4]), swap32(mult32[5]), swap32(mult32[6]), swap32(mult32[7]));
     if (req_type != SUBMIT_POW) {
