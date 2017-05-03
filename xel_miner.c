@@ -79,6 +79,7 @@ bool g_need_work = false;
 char g_work_nm[50];
 char g_work_id[22];
 uint64_t g_cur_work_id;
+char g_cur_storage_height[32];
 unsigned char g_pow_target_str[33];
 uint32_t g_pow_target[4];
 
@@ -870,16 +871,20 @@ static bool get_work(CURL *curl) {
         memcpy(&g_work, &work, sizeof(struct work));
 
         // Restart Miner Threads If Work Package Changes
-        if (work.work_id != g_cur_work_id) {
-            applog(LOG_NOTICE, "Switching to work_id: %s (target: %s)", work.work_str, g_pow_target_str);
+        if (work.work_id != g_cur_work_id || strcmp(work.referenced_storage_height, g_cur_storage_height) != 0) {
+            applog(LOG_NOTICE, "Switching to work_id: %s (target: %s, storage version: %s)", work.work_str, g_pow_target_str, g_cur_storage_height);
             restart_threads();
         }
 
+        
+
         g_cur_work_id = work.work_id;
+        strncpy(g_cur_storage_height, work.referenced_storage_height, 32);
     }
     else {
         g_cur_work_id = 0;
         memset(&g_work, 0, sizeof(struct work));
+        memset(&g_cur_storage_height, 0, sizeof(char)*32);
         restart_threads();
     }
 
@@ -1053,6 +1058,12 @@ static int work_decode(const json_t *val, struct work *work) {
             work_pkg_id = g_work_package_cnt - 1;
         }
 
+        // Check If Work Has Been Blacklisted
+        if (g_work_package[work_pkg_id].blacklisted) {
+            applog(LOG_DEBUG, "DEBUG: Skipping blacklisted work_id: %s", g_work_package[work_pkg_id].work_str);
+            continue;
+        }
+
         // build or refresh storage
         str = (char *)json_string_value(json_object_get(pkg, "combined_storage"));
         char parsetok[strlen(str)-2];
@@ -1073,11 +1084,7 @@ static int work_decode(const json_t *val, struct work *work) {
         strncpy(g_work_package[work_pkg_id].referenced_storage_height, str, 32);
 
 
-        // Check If Work Has Been Blacklisted
-        if (g_work_package[work_pkg_id].blacklisted) {
-            applog(LOG_DEBUG, "DEBUG: Skipping blacklisted work_id: %s", g_work_package[work_pkg_id].work_str);
-            continue;
-        }
+       
 
         // Check If Work Has Available Bounties
         bty_rcvd = (int)json_integer_value(json_object_get(pkg, "received_bounties"));
