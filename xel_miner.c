@@ -813,6 +813,7 @@ static bool get_work(CURL *curl) {
     memset(g_work_id, 0, sizeof(g_work_id));
     memset(g_work_nm, 0, sizeof(g_work_nm));
     memset(g_pow_target_str, 0, sizeof(g_pow_target_str));
+    memset(g_cur_storage_height, 0, sizeof(g_cur_storage_height));
     memset((char*)work.storage_ints, 0, sizeof(int32_t) * BOUNTY_STORAGE_INTS);
 
     uint32_t rand_id = rand();
