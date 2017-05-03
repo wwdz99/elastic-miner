@@ -80,6 +80,8 @@ char g_work_nm[50];
 char g_work_id[22];
 uint64_t g_cur_work_id;
 char g_cur_storage_height[32];
+char g_last_storage_height[32];
+bool initialized_sh = false;
 unsigned char g_pow_target_str[33];
 uint32_t g_pow_target[4];
 
@@ -813,8 +815,8 @@ static bool get_work(CURL *curl) {
     memset(g_work_id, 0, sizeof(g_work_id));
     memset(g_work_nm, 0, sizeof(g_work_nm));
     memset(g_pow_target_str, 0, sizeof(g_pow_target_str));
-    memset(g_cur_storage_height, 0, sizeof(g_cur_storage_height));
     memset((char*)work.storage_ints, 0, sizeof(int32_t) * BOUNTY_STORAGE_INTS);
+
 
     uint32_t rand_id = rand();
     sprintf(data, "requestType=getMineableWork&n=1&random=%u", rand_id);
@@ -872,7 +874,7 @@ static bool get_work(CURL *curl) {
         memcpy(&g_work, &work, sizeof(struct work));
 
         // Restart Miner Threads If Work Package Changes
-        if (work.work_id != g_cur_work_id || strcmp(work.referenced_storage_height, g_cur_storage_height) != 0) {
+        if (work.work_id != g_cur_work_id || strcmp(g_last_storage_height, g_cur_storage_height) != 0) {
             applog(LOG_NOTICE, "Switching to work_id: %s (target: %s, storage version: %s)", work.work_str, g_pow_target_str, g_cur_storage_height);
             restart_threads();
         }
@@ -880,7 +882,6 @@ static bool get_work(CURL *curl) {
         
 
         g_cur_work_id = work.work_id;
-        strncpy(g_cur_storage_height, work.referenced_storage_height, 32);
     }
     else {
         g_cur_work_id = 0;
@@ -918,6 +919,7 @@ static double calc_diff(uint32_t *target) {
 static int work_decode(const json_t *val, struct work *work) {
     int i, j, rc, num_pkg, best_pkg, bty_rcvd, work_pkg_id;
     uint64_t work_id;
+    bool updated_sh = false;
     uint32_t best_wcet = 0xFFFFFFFF, pow_tgt[4];
     double difficulty, best_profit = 0, profit = 0;
     char *tgt = NULL, *src = NULL, *str = NULL, *best_src = NULL, *best_tgt = NULL, *elastic_src = NULL;
@@ -1080,10 +1082,12 @@ static int work_decode(const json_t *val, struct work *work) {
             pt = strtok (NULL, ",");
         }
 
-        // Update the referenced storage height
-        str = (char *)json_string_value(json_object_get(pkg, "referenced_storage_height"));
-        strncpy(g_work_package[work_pkg_id].referenced_storage_height, str, 32);
-
+        // Update the currect sh, only needed once since it's expected to be the the same for all works in this iteration
+        if(!updated_sh){
+            str = (char *)json_string_value(json_object_get(pkg, "referenced_storage_height"));
+            strncpy(g_cur_storage_height, str, 32);
+            updated_sh = true;
+        }
 
        
 
@@ -1173,7 +1177,6 @@ static int work_decode(const json_t *val, struct work *work) {
     work->block_id = g_work_package[best_pkg].block_id;
     work->work_id = g_work_package[best_pkg].work_id;
     strncpy(work->work_str, g_work_package[best_pkg].work_str, 21);
-    strncpy(work->referenced_storage_height, g_work_package[best_pkg].referenced_storage_height, 32);
     strncpy(work->work_nm, g_work_package[best_pkg].work_nm, 49);
     work->combined_storage_size = g_work_package[best_pkg].combined_storage_size;
     if(work->combined_storage != 0)
@@ -1218,7 +1221,7 @@ static bool submit_work(CURL *curl, struct submit_req *req) {
         char st_ints[BOUNTY_STORAGE_INTS*8 + 1];
         ints2hex(req->storage_ints, BOUNTY_STORAGE_INTS, st_ints, BOUNTY_STORAGE_INTS*8 + 1);
         sprintf(url, "%s?requestType=createPoX", rpc_url);
-        sprintf(data, "random=%u&deadline=3&feeNQT=0&amountNQT=0&referenced_storage_height=%s&work_id=%s&storage=%s&multiplicator=%s&is_pow=false&secretPhrase=%s", rand_id, req->referenced_storage_height, req->work_str, st_ints, req->mult, passphrase);
+        sprintf(data, "random=%u&deadline=3&feeNQT=0&amountNQT=0&referenced_storage_height=%s&work_id=%s&storage=%s&multiplicator=%s&is_pow=false&secretPhrase=%s", rand_id, g_cur_storage_height, req->work_str, st_ints, req->mult, passphrase);
     }
     else if (req->req_type == SUBMIT_POW) {
         sprintf(url, "%s?requestType=createPoX", rpc_url);
@@ -1697,6 +1700,10 @@ out:
 
 static void restart_threads(void)
 {
+
+    // reset sh
+    strncpy(g_last_storage_height, g_cur_storage_height, 32);
+
     int i;
     for (i = 0; i < opt_n_threads; i++)
         work_restart[i].restart = 1;
@@ -1922,7 +1929,6 @@ static bool add_submit_req(struct work *work, enum submit_commands req_type) {
     memcpy((char*)g_submit_req[g_submit_req_cnt].storage_ints, (char*)work->storage_ints, sizeof(int32_t) * BOUNTY_STORAGE_INTS);
 
     strncpy(g_submit_req[g_submit_req_cnt].work_str, work->work_str, 21);
-    strncpy(g_submit_req[g_submit_req_cnt].referenced_storage_height, work->referenced_storage_height, 32);
     sprintf(g_submit_req[g_submit_req_cnt].hash, "%08X%08X%08X%08X%08X%08X%08X%08X", swap32(hash32[0]), swap32(hash32[1]), swap32(hash32[2]), swap32(hash32[3]), swap32(hash32[4]), swap32(hash32[5]), swap32(hash32[6]), swap32(hash32[7]));
     sprintf(g_submit_req[g_submit_req_cnt].mult, "%08X%08X%08X%08X%08X%08X%08X%08X", swap32(mult32[0]), swap32(mult32[1]), swap32(mult32[2]), swap32(mult32[3]), swap32(mult32[4]), swap32(mult32[5]), swap32(mult32[6]), swap32(mult32[7]));
     if (req_type != SUBMIT_POW) {
@@ -2087,6 +2093,11 @@ static int thread_create(struct thr_info *thr, void* func)
 int main(int argc, char **argv) {
 
     srand(time(NULL));
+
+    // init sh
+    memset(g_cur_storage_height, 0, sizeof(g_cur_storage_height));
+    memset(g_last_storage_height, 0, sizeof(g_last_storage_height));
+
 
     struct thr_info *thr;
     int i, err, thr_idx, num_gpus = 0;
