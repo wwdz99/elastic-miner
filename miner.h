@@ -289,6 +289,7 @@ static void *gpu_miner_thread(void *userdata);
 #endif
 
 struct thread_q;
+const struct timespec;
 
 struct thread_q *tq_new(void);
 void tq_free(struct thread_q *tq);
