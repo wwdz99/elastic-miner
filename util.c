@@ -191,8 +191,8 @@ bool ints2hex(const uint32_t *i, int array_sz, char* hex, int len){
 		applog(LOG_ERR, "ERROR: Can't convert %d ints to array of %d hex chars with optional terminating zero'", array_sz, len);
 		return false;
 	}
-
-	for (int z=0; z<array_sz; z++) {
+	int z;
+	for (z=0; z<array_sz; z++) {
 		int x = i[z];
 		sprintf(hex + z*8, "%08x", x);
 	}
